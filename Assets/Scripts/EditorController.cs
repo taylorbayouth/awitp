@@ -57,6 +57,7 @@ public class EditorController : MonoBehaviour
             else if (currentMode == GameMode.LevelEditor)
             {
                 HandlePlaceableSpaceToggle();
+                HandlePermanentBlockPlacement();
                 HandleLemPlacement();
             }
         }
@@ -102,6 +103,19 @@ public class EditorController : MonoBehaviour
             int cursorIndex = GridManager.Instance.currentCursorIndex;
             GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
             Debug.Log($"Placed {currentBlockType} block at index {cursorIndex}");
+        }
+    }
+
+    private void HandlePermanentBlockPlacement()
+    {
+        if (GridManager.Instance == null) return;
+
+        // B key places a permanent block in Level Editor mode
+        if (Input.GetKeyDown(KeyCode.B))
+        {
+            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            GridManager.Instance.PlacePermanentBlock(currentBlockType, cursorIndex);
+            Debug.Log($"Placed permanent {currentBlockType} block at index {cursorIndex}");
         }
     }
 
@@ -157,8 +171,8 @@ public class EditorController : MonoBehaviour
 
         if (newBlockType.HasValue)
         {
-            // Check if this block type is available in inventory
-            if (blockInventory != null && !blockInventory.CanPlaceBlock(newBlockType.Value))
+            // Check if this block type is available in inventory (Editor mode only)
+            if (currentMode == GameMode.Editor && blockInventory != null && !blockInventory.CanPlaceBlock(newBlockType.Value))
             {
                 Debug.LogWarning($"Cannot switch to {newBlockType.Value} - no blocks remaining in inventory");
                 return;
@@ -189,12 +203,20 @@ public class EditorController : MonoBehaviour
 
         // Store position and index
         int gridIndex = block.gridIndex;
+        bool wasPermanent = block.isPermanent;
 
         // Remove old block
         block.DestroyBlock();
 
         // Place new block of different type at same position
-        GridManager.Instance.PlaceBlock(newType, gridIndex);
+        if (wasPermanent)
+        {
+            GridManager.Instance.PlacePermanentBlock(newType, gridIndex);
+        }
+        else
+        {
+            GridManager.Instance.PlaceBlock(newType, gridIndex);
+        }
     }
 
     private void HandleLemPlacement()
@@ -219,12 +241,14 @@ public class EditorController : MonoBehaviour
                 currentMode = GameMode.Editor;
                 Debug.Log("=== EDITOR MODE === Place blocks");
                 if (editorModeManager != null) editorModeManager.SetNormalMode();
+                UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Editor)
             {
                 currentMode = GameMode.LevelEditor;
                 Debug.Log("=== LEVEL EDITOR MODE === Place Lem and mark placeable spaces");
                 if (editorModeManager != null) editorModeManager.SetEditorMode();
+                UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Play)
             {
@@ -246,6 +270,7 @@ public class EditorController : MonoBehaviour
                 {
                     GridManager.Instance.ResetAllLems();
                 }
+                UpdateCursorVisibility();
             }
             else
             {
@@ -253,8 +278,15 @@ public class EditorController : MonoBehaviour
                 currentMode = GameMode.Play;
                 Debug.Log("=== PLAY MODE === Lem is walking!");
                 UnfreezeAllLems();
+                UpdateCursorVisibility();
             }
         }
+    }
+
+    private void UpdateCursorVisibility()
+    {
+        if (GridManager.Instance == null) return;
+        GridManager.Instance.SetCursorVisible(currentMode != GameMode.Play);
     }
 
     private void FreezeAllLems()
