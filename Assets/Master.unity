@@ -390,12 +390,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gridWidth: 7
-  gridHeight: 7
+  gridHeight: 5
   cellSize: 1
   gridOrigin: {x: 0, y: 0, z: 0}
   currentCursorIndex: 0
   cursorHighlightPrefab: {fileID: 0}
-  allSpacesPlaceableByDefault: 0
 --- !u!4 &1602858732
 Transform:
   m_ObjectHideFlags: 0
