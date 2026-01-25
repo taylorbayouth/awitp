@@ -12,6 +12,7 @@ public class BaseBlock : MonoBehaviour
     public string uniqueID;
     public BlockType blockType = BlockType.Default;
     public int gridIndex = -1;
+    public bool isPermanent = false;
 
     [Header("Detection Settings")]
     public float detectionSize = 1f;
@@ -92,7 +93,7 @@ public class BaseBlock : MonoBehaviour
     public void DestroyBlock()
     {
         BlockInventory inventory = FindObjectOfType<BlockInventory>();
-        if (inventory != null)
+        if (!isPermanent && inventory != null)
         {
             inventory.ReturnBlock(blockType);
         }

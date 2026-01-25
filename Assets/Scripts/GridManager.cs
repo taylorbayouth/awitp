@@ -34,6 +34,7 @@ public class GridManager : MonoBehaviour
     private bool[] placeableSpaces;
 
     private Dictionary<int, BaseBlock> placedBlocks = new Dictionary<int, BaseBlock>();
+    private Dictionary<int, BaseBlock> permanentBlocks = new Dictionary<int, BaseBlock>();
     private Dictionary<int, GameObject> placedLems = new Dictionary<int, GameObject>();
     private Dictionary<int, LemPlacementData> originalLemPlacements = new Dictionary<int, LemPlacementData>();
 
@@ -189,6 +190,12 @@ public class GridManager : MonoBehaviour
             return null;
         }
 
+        if (IsPermanentBlockAtIndex(gridIndex))
+        {
+            Debug.LogWarning($"Cannot place block at index {gridIndex}: permanent block present");
+            return null;
+        }
+
         BlockInventory inventory = FindObjectOfType<BlockInventory>();
         if (inventory != null && !inventory.CanPlaceBlock(blockType))
         {
@@ -207,7 +214,8 @@ public class GridManager : MonoBehaviour
         }
 
         BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
-        newBlock.transform.position = IndexToWorldPosition(gridIndex);
+        newBlock.isPermanent = false;
+        PositionBlock(newBlock, gridIndex);
 
         placedBlocks[gridIndex] = newBlock;
         UpdateCursorState();
@@ -215,31 +223,77 @@ public class GridManager : MonoBehaviour
         return newBlock;
     }
 
+    public BaseBlock PlacePermanentBlock(BlockType blockType, int gridIndex)
+    {
+        if (!IsValidIndex(gridIndex))
+        {
+            Debug.LogWarning($"Invalid grid index: {gridIndex}");
+            return null;
+        }
+
+        BaseBlock existingBlock = GetBlockAtIndex(gridIndex);
+        if (existingBlock != null)
+        {
+            existingBlock.DestroyBlock();
+        }
+
+        BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
+        newBlock.isPermanent = true;
+        PositionBlock(newBlock, gridIndex);
+
+        permanentBlocks[gridIndex] = newBlock;
+        SetSpacePlaceable(gridIndex, false);
+
+        return newBlock;
+    }
+
+    private void PositionBlock(BaseBlock block, int gridIndex)
+    {
+        Vector3 position = IndexToWorldPosition(gridIndex);
+        position.z += cellSize * 0.5f; // Center block so front face is flush with grid (z=0)
+        block.transform.position = position;
+        block.transform.localScale = Vector3.one * cellSize;
+    }
+
     public void RegisterBlock(BaseBlock block)
     {
         if (IsValidIndex(block.gridIndex))
         {
-            placedBlocks[block.gridIndex] = block;
+            if (block.isPermanent)
+            {
+                permanentBlocks[block.gridIndex] = block;
+            }
+            else
+            {
+                placedBlocks[block.gridIndex] = block;
+            }
         }
     }
 
     public void UnregisterBlock(BaseBlock block)
     {
-        if (placedBlocks.ContainsKey(block.gridIndex))
-        {
-            placedBlocks.Remove(block.gridIndex);
-        }
+        placedBlocks.Remove(block.gridIndex);
+        permanentBlocks.Remove(block.gridIndex);
         UpdateCursorState();
     }
 
     public BaseBlock GetBlockAtIndex(int index)
     {
+        if (permanentBlocks.TryGetValue(index, out BaseBlock permanentBlock))
+        {
+            return permanentBlock;
+        }
         return placedBlocks.TryGetValue(index, out BaseBlock block) ? block : null;
+    }
+
+    public bool IsPermanentBlockAtIndex(int index)
+    {
+        return permanentBlocks.ContainsKey(index);
     }
 
     public bool IsGridSpaceOccupied(int index)
     {
-        return placedBlocks.ContainsKey(index);
+        return placedBlocks.ContainsKey(index) || permanentBlocks.ContainsKey(index);
     }
 
     #endregion
@@ -270,6 +324,12 @@ public class GridManager : MonoBehaviour
                 Debug.Log($"Turned Lem around at index {gridIndex}");
             }
             return existingLem;
+        }
+
+        // Only one Lem allowed - remove any existing Lem first
+        if (placedLems.Count > 0)
+        {
+            ClearAllLems();
         }
 
         // Create new Lem - place on top of block if one exists, otherwise at grid position
@@ -430,6 +490,14 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    public void SetCursorVisible(bool visible)
+    {
+        if (gridCursor != null)
+        {
+            gridCursor.SetVisible(visible);
+        }
+    }
+
     private void UpdateCursorState()
     {
         if (gridCursor == null) return;
@@ -437,13 +505,13 @@ public class GridManager : MonoBehaviour
         bool isPlaceable = IsSpacePlaceable(currentCursorIndex);
         bool hasBlock = IsGridSpaceOccupied(currentCursorIndex);
 
-        if (!isPlaceable)
-        {
-            gridCursor.SetState(GridCursor.CursorState.NonPlaceable);
-        }
-        else if (hasBlock)
+        if (hasBlock)
         {
             gridCursor.SetState(GridCursor.CursorState.Editable);
+        }
+        else if (!isPlaceable)
+        {
+            gridCursor.SetState(GridCursor.CursorState.NonPlaceable);
         }
         else
         {
@@ -458,6 +526,7 @@ public class GridManager : MonoBehaviour
     public bool IsSpacePlaceable(int index)
     {
         if (!IsValidIndex(index)) return false;
+        if (IsPermanentBlockAtIndex(index)) return false;
         return placeableSpaces[index];
     }
 
@@ -465,6 +534,11 @@ public class GridManager : MonoBehaviour
     {
         if (IsValidIndex(index))
         {
+            if (placeable && IsPermanentBlockAtIndex(index))
+            {
+                Debug.LogWarning($"Cannot mark index {index} as placeable: permanent block present");
+                return;
+            }
             placeableSpaces[index] = placeable;
             UpdateCursorState();
 
@@ -485,6 +559,11 @@ public class GridManager : MonoBehaviour
     {
         if (IsValidIndex(index))
         {
+            if (IsPermanentBlockAtIndex(index))
+            {
+                Debug.LogWarning($"Cannot toggle placeable at index {index}: permanent block present");
+                return;
+            }
             placeableSpaces[index] = !placeableSpaces[index];
             UpdateCursorState();
 
@@ -539,6 +618,15 @@ public class GridManager : MonoBehaviour
             cellSize = cellSize
         };
 
+        // Capture permanent blocks
+        foreach (var kvp in permanentBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                levelData.permanentBlocks.Add(new LevelData.BlockData(kvp.Value.blockType, kvp.Key));
+            }
+        }
+
         // Capture all placed blocks
         foreach (var kvp in placedBlocks)
         {
@@ -551,7 +639,7 @@ public class GridManager : MonoBehaviour
         // Capture placeable spaces (only store indices where placeable = true)
         for (int i = 0; i < placeableSpaces.Length; i++)
         {
-            if (placeableSpaces[i])
+            if (placeableSpaces[i] && !IsPermanentBlockAtIndex(i))
             {
                 levelData.placeableSpaceIndices.Add(i);
             }
@@ -563,7 +651,7 @@ public class GridManager : MonoBehaviour
             levelData.lems.Add(new LevelData.LemData(kvp.Value.gridIndex, kvp.Value.facingRight));
         }
 
-        Debug.Log($"Captured level data: {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+        Debug.Log($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
         return levelData;
     }
 
@@ -598,43 +686,66 @@ public class GridManager : MonoBehaviour
         }
 
         // Restore placeable spaces
-        foreach (int index in levelData.placeableSpaceIndices)
+        if (levelData.placeableSpaceIndices != null)
         {
-            if (IsValidIndex(index))
+            foreach (int index in levelData.placeableSpaceIndices)
             {
-                placeableSpaces[index] = true;
+                if (IsValidIndex(index))
+                {
+                    placeableSpaces[index] = true;
+                }
+            }
+        }
+
+        // Restore permanent blocks
+        if (levelData.permanentBlocks != null)
+        {
+            foreach (var blockData in levelData.permanentBlocks)
+            {
+                if (IsValidIndex(blockData.gridIndex))
+                {
+                    PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
+                }
             }
         }
 
         // Restore blocks
-        foreach (var blockData in levelData.blocks)
+        if (levelData.blocks != null)
         {
-            if (IsValidIndex(blockData.gridIndex))
+            foreach (var blockData in levelData.blocks)
             {
-                // Temporarily set space as placeable to allow block placement
-                bool wasPlaceable = placeableSpaces[blockData.gridIndex];
-                placeableSpaces[blockData.gridIndex] = true;
+                if (IsValidIndex(blockData.gridIndex))
+                {
+                    // Temporarily set space as placeable to allow block placement
+                    bool wasPlaceable = placeableSpaces[blockData.gridIndex];
+                    placeableSpaces[blockData.gridIndex] = true;
 
-                PlaceBlock(blockData.blockType, blockData.gridIndex);
+                    PlaceBlock(blockData.blockType, blockData.gridIndex);
 
-                // Restore original placeable state
-                placeableSpaces[blockData.gridIndex] = wasPlaceable;
+                    // Restore original placeable state
+                    placeableSpaces[blockData.gridIndex] = wasPlaceable;
+                }
             }
         }
 
         // Restore Lems
-        foreach (var lemData in levelData.lems)
+        if (levelData.lems != null)
         {
-            if (IsValidIndex(lemData.gridIndex))
+            bool lemPlaced = false;
+            foreach (var lemData in levelData.lems)
             {
-                GameObject lem = PlaceLem(lemData.gridIndex);
-                if (lem != null)
+                if (!lemPlaced && IsValidIndex(lemData.gridIndex))
                 {
-                    LemController controller = lem.GetComponent<LemController>();
-                    if (controller != null)
+                    GameObject lem = PlaceLem(lemData.gridIndex);
+                    if (lem != null)
                     {
-                        controller.SetFacingRight(lemData.facingRight);
-                        controller.SetFrozen(true); // Start frozen in editor mode
+                        LemController controller = lem.GetComponent<LemController>();
+                        if (controller != null)
+                        {
+                            controller.SetFacingRight(lemData.facingRight);
+                            controller.SetFrozen(true); // Start frozen in editor mode
+                        }
+                        lemPlaced = true;
                     }
                 }
             }
@@ -649,7 +760,7 @@ public class GridManager : MonoBehaviour
 
         UpdateCursorState();
 
-        Debug.Log($"Restored level data: {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+        Debug.Log($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems");
     }
 
     /// <summary>
@@ -682,17 +793,17 @@ public class GridManager : MonoBehaviour
     {
         // Create a copy of the keys to avoid modification during iteration
         var indices = new System.Collections.Generic.List<int>(placedBlocks.Keys);
+        indices.AddRange(permanentBlocks.Keys);
         foreach (int index in indices)
         {
-            if (placedBlocks.TryGetValue(index, out BaseBlock block))
+            BaseBlock block = GetBlockAtIndex(index);
+            if (block != null)
             {
-                if (block != null)
-                {
-                    Destroy(block.gameObject);
-                }
+                Destroy(block.gameObject);
             }
         }
         placedBlocks.Clear();
+        permanentBlocks.Clear();
     }
 
     /// <summary>
@@ -751,6 +862,7 @@ public class GridManager : MonoBehaviour
         {
             Gizmos.color = Color.cyan;
             Vector3 cursorPos = IndexToWorldPosition(currentCursorIndex);
+            cursorPos.z += cellSize * 0.5f; // Visualize block volume at placement depth
             Gizmos.DrawWireCube(cursorPos, Vector3.one * cellSize);
         }
     }

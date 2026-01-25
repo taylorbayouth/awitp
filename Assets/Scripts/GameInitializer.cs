@@ -66,6 +66,12 @@ public class GameInitializer : MonoBehaviour
             Debug.Log("GameInitializer: Added EditorController");
         }
 
+        if (gridManager.GetComponent<ControlsUI>() == null)
+        {
+            gridManager.gameObject.AddComponent<ControlsUI>();
+            Debug.Log("GameInitializer: Added ControlsUI");
+        }
+
         // Verify they're both present
         EditorController ec = gridManager.GetComponent<EditorController>();
         EditorModeManager emm = gridManager.GetComponent<EditorModeManager>();

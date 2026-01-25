@@ -2,7 +2,7 @@
 
 ## Overview
 
-The save system provides persistent level storage using JSON serialization. It captures all editor state (blocks, placeable spaces, Lem placements) and can restore it exactly, even after Unity is closed.
+The save system provides persistent level storage using JSON serialization. It captures all editor state (blocks, permanent blocks, placeable spaces, Lem placements) and can restore it exactly, even after Unity is closed.
 
 ## Architecture
 
@@ -19,6 +19,7 @@ Serializable data structure that represents a complete level state.
 **Data Stored**:
 - Grid dimensions (width, height, cellSize)
 - Block placements (type and index for each block)
+- Permanent block placements (type and index for each block)
 - Placeable spaces (list of indices where blocks can be placed)
 - Lem placements (position and facing direction)
 - Metadata (level name, save timestamp)
@@ -63,6 +64,7 @@ EditorController.HandleSaveLoad()
 GridManager.SaveLevel()
     ↓
 GridManager.CaptureLevelData()
+    ├─ Iterate permanentBlocks dictionary → LevelData.permanentBlocks
     ├─ Iterate placedBlocks dictionary → LevelData.blocks
     ├─ Iterate placeableSpaces array → LevelData.placeableSpaceIndices
     └─ Iterate originalLemPlacements → LevelData.lems
@@ -96,6 +98,7 @@ GridManager.RestoreLevelData(levelData)
     ├─ ClearPlaceableSpaces() - reset placeable array
     ├─ Check if grid size changed → reinitialize if needed
     ├─ Restore placeableSpaces array from indices
+    ├─ PlacePermanentBlock() for each saved permanent block
     ├─ PlaceBlock() for each saved block
     └─ PlaceLem() for each saved Lem
     ↓
@@ -123,6 +126,12 @@ Success/failure reported to console
       "gridIndex": 46
     }
   ],
+  "permanentBlocks": [
+    {
+      "blockType": 2,
+      "gridIndex": 12
+    }
+  ],
   "placeableSpaceIndices": [
     44, 45, 46, 54, 55, 56, 64, 65, 66
   ],
@@ -144,6 +153,10 @@ Success/failure reported to console
 **cellSize** (float): Size of each grid cell in world units
 
 **blocks** (array): List of all placed blocks
+- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
+- `gridIndex` (int): Linear index in grid (0 to width*height-1)
+
+**permanentBlocks** (array): List of designer-placed permanent blocks
 - `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
 - `gridIndex` (int): Linear index in grid (0 to width*height-1)
 

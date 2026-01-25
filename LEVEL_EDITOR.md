@@ -30,6 +30,8 @@
 **Controls**:
 - **Arrow Keys / WASD** - Move cursor
 - **Space / Enter** - Toggle placeable space (shows black border)
+- **1-4 Keys** - Select block type for permanent blocks
+- **B** - Place permanent block (uses selected block type)
 - **L** - Place Lem (press again to flip direction)
 - **Delete / Backspace** - Remove Lem at cursor
 - **E** - Return to Editor Mode
@@ -56,6 +58,7 @@ Press **Ctrl+S** (Windows/Linux) or **Cmd+S** (Mac)
 
 The level will be saved to a JSON file including:
 - All placed blocks (type and position)
+- All permanent blocks (type and position)
 - Placeable space markings
 - Lem placements and facing directions
 - Grid settings (width, height, cell size)
@@ -92,7 +95,9 @@ The console will show you the full path to where levels are saved.
 2. Move cursor to spaces where players should be able to place blocks
 3. Press Space/Enter to toggle placeable spaces
    - Placeable spaces show a black border
-4. Think about:
+4. To add fixed geometry, press **B** to place a permanent block (uses the selected block type)
+   - Permanent blocks are always non-placeable for players
+5. Think about:
    - Which spaces create interesting puzzles?
    - Are there multiple solutions?
    - Is the level solvable with the available spaces?
@@ -103,6 +108,7 @@ The console will show you the full path to where levels are saved.
 3. Press **L** to place a Lem
    - The Lem appears on top of any block at that position
    - Default facing direction is RIGHT
+   - Only one Lem can exist; placing a new one replaces the old
 4. Press **L** again to flip the Lem's direction
 5. Press Delete/Backspace to remove a Lem
 
@@ -165,6 +171,8 @@ The console will show you the full path to where levels are saved.
 
 ### Level Editor Mode
 - **Space / Enter** - Toggle placeable space marking
+- **1-4** - Select block type for permanent blocks
+- **B** - Place permanent block (uses selected block type)
 - **L** - Place/flip Lem
 - **Delete / Backspace** - Remove block or Lem
 - **E** - Return to Editor Mode

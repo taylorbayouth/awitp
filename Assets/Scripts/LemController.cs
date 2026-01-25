@@ -152,7 +152,7 @@ public class LemController : MonoBehaviour
     public void TurnAround()
     {
         facingRight = !facingRight;
-        UpdateHatDirection();
+        UpdateFacingVisuals();
     }
 
     public bool GetFacingRight()
@@ -163,7 +163,7 @@ public class LemController : MonoBehaviour
     public void SetFacingRight(bool facing)
     {
         facingRight = facing;
-        UpdateHatDirection();
+        UpdateFacingVisuals();
     }
 
     public void SetFrozen(bool frozen)
@@ -175,13 +175,10 @@ public class LemController : MonoBehaviour
         }
     }
 
-    private void UpdateHatDirection()
+    private void UpdateFacingVisuals()
     {
-        if (hatTransform == null) return;
-
-        // Rotate hat to point in walking direction (rotate around Z for XY plane view)
-        float angle = facingRight ? -90f : 90f;
-        hatTransform.localRotation = Quaternion.Euler(0, 0, angle);
+        float yRotation = facingRight ? 0f : 180f;
+        transform.rotation = Quaternion.Euler(0f, yRotation, 0f);
     }
 
     public void Die()
@@ -221,15 +218,15 @@ public class LemController : MonoBehaviour
         GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Cube);
         hat.name = "Hat";
         hat.transform.SetParent(lem.transform);
-        hat.transform.localPosition = new Vector3(0.3f, 1.1f, 0);
-        hat.transform.localScale = new Vector3(0.4f, 0.15f, 0.3f);
+        hat.transform.localPosition = new Vector3(0.35f, 1.15f, 0);
+        hat.transform.localScale = new Vector3(0.5f, 0.12f, 0.35f);
         hat.transform.localRotation = Quaternion.Euler(0, 0, -90f);
         Destroy(hat.GetComponent<Collider>());
 
         Renderer hatRenderer = hat.GetComponent<Renderer>();
         if (hatRenderer != null)
         {
-            hatRenderer.material.color = Color.red; // Red hat
+            hatRenderer.material.color = new Color(0.1f, 0.1f, 0.1f); // Dark hat
         }
 
         // Collider on parent - smaller and centered
@@ -241,6 +238,7 @@ public class LemController : MonoBehaviour
         // Controller
         LemController controller = lem.AddComponent<LemController>();
         controller.isFrozen = true; // Start frozen in editor
+        controller.UpdateFacingVisuals();
 
         return lem;
     }

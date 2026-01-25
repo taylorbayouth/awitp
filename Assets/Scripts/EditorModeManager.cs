@@ -5,6 +5,7 @@ public class EditorModeManager : MonoBehaviour
     [Header("Background Colors")]
     public Color normalModeColor = new Color(0.192f, 0.301f, 0.474f); // Unity default blue-grey
     public Color editorModeColor = new Color(0.3f, 0.2f, 0.1f); // Brown tint for editor mode
+    public Color playModeColor = new Color(0.1f, 0.1f, 0.1f); // Dark for play mode
 
     [Header("References")]
     public Camera mainCamera;
@@ -88,6 +89,11 @@ public class EditorModeManager : MonoBehaviour
         {
             mainCamera.backgroundColor = editorModeColor;
             Debug.Log($"Background changed to LEVEL EDITOR MODE color: {editorModeColor}");
+        }
+        else if (editorController.currentMode == GameMode.Play)
+        {
+            mainCamera.backgroundColor = playModeColor;
+            Debug.Log($"Background changed to PLAY MODE color: {playModeColor}");
         }
         else
         {

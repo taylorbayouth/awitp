@@ -40,8 +40,11 @@ public class LevelData
     public int gridHeight;
     public float cellSize;
 
-    // Placed blocks
+    // Placed blocks (player-placeable spaces)
     public List<BlockData> blocks = new List<BlockData>();
+
+    // Permanent blocks (designer-placed, non-placeable)
+    public List<BlockData> permanentBlocks = new List<BlockData>();
 
     // Placeable spaces (stored as indices where placeable = true)
     public List<int> placeableSpaceIndices = new List<int>();
