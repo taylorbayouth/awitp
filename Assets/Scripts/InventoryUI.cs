@@ -10,10 +10,10 @@ public class InventoryUI : MonoBehaviour
     public EditorController editorController;
 
     [Header("UI Settings")]
-    public float boxSize = 80f;
-    public float spacing = 10f;
-    public float topMargin = 20f;
-    public float leftMargin = 20f;
+    public float boxSize = 160f;  // Doubled from 80f
+    public float spacing = 20f;   // Doubled from 10f
+    public float topMargin = 40f; // Doubled from 20f
+    public float leftMargin = 40f; // Doubled from 20f
 
     private GUIStyle normalStyle;
     private GUIStyle selectedStyle;
@@ -74,7 +74,7 @@ public class InventoryUI : MonoBehaviour
             textStyle = new GUIStyle(GUI.skin.label);
             textStyle.alignment = TextAnchor.MiddleCenter;
             textStyle.normal.textColor = Color.white;
-            textStyle.fontSize = 14;
+            textStyle.fontSize = 28;  // Doubled from 14
             textStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -83,7 +83,7 @@ public class InventoryUI : MonoBehaviour
             labelStyle = new GUIStyle(GUI.skin.label);
             labelStyle.alignment = TextAnchor.MiddleCenter;
             labelStyle.normal.textColor = Color.white;
-            labelStyle.fontSize = 10;
+            labelStyle.fontSize = 20;  // Doubled from 10
         }
     }
 
