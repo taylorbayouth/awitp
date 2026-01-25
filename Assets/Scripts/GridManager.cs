@@ -147,7 +147,7 @@ public class GridManager : MonoBehaviour
             // Cache CameraSetup reference to avoid repeated FindObjectOfType calls
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = Object.FindObjectOfType<CameraSetup>();
+                _cachedCameraSetup = UnityEngine.Object.FindObjectOfType<CameraSetup>();
             }
 
             if (_cachedCameraSetup != null)
@@ -293,7 +293,7 @@ public class GridManager : MonoBehaviour
 
             // Check 5: Inventory availability
             // Use cached inventory reference
-            BlockInventory inventory = Object.FindObjectOfType<BlockInventory>();
+            BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
             if (inventory != null && !inventory.CanPlaceBlock(blockType))
             {
                 Debug.LogWarning($"[GridManager] Cannot place {blockType}: No blocks remaining in inventory");
@@ -730,7 +730,7 @@ public class GridManager : MonoBehaviour
 
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = Object.FindObjectOfType<CameraSetup>();
+                _cachedCameraSetup = UnityEngine.Object.FindObjectOfType<CameraSetup>();
             }
 
             // Refresh grid lines
