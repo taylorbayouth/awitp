@@ -311,7 +311,7 @@ public class BaseBlock : MonoBehaviour
                 // Use cached inventory reference to avoid expensive FindObjectOfType
                 if (_cachedInventory == null)
                 {
-                    _cachedInventory = Object.FindObjectOfType<BlockInventory>();
+                    _cachedInventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
                 }
 
                 if (_cachedInventory != null)
