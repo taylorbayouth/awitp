@@ -1,35 +1,47 @@
-# AWITP - Grid-Based Puzzle Game
+# A Walk in the Park (AWITP)
 
-A Unity 3D puzzle game with Lemmings-inspired mechanics featuring a grid-based block placement system and spatial awareness AI.
+A Unity 3D puzzle game where players control "Lems" (lemming-like characters) that walk on blocks placed on a vertical wall. Features a comprehensive level editor with real-time testing and persistent save/load functionality.
 
 ## Features
 
+### Level Editor
+- **Three Game Modes**:
+  - **Editor Mode**: Place and edit blocks
+  - **Level Editor Mode**: Define placeable spaces and position Lems
+  - **Play Mode**: Test your level with active Lem AI
+- **Real-Time Testing**: Switch to Play mode instantly to test your level
+- **Persistent Storage**: Save/load levels to JSON files (Ctrl+S / Ctrl+L)
+- **Visual Feedback**: Color-coded cursor shows placeable/editable states
+
 ### Grid System
 - **Dynamic Grid Manager**: Configurable grid size and cell dimensions
-- **Visual Grid Lines**: Double-sided mesh rendering with proper z-ordering
-- **Editor Mode**: Define placeable vs. non-placeable spaces
-- **Orthographic Camera**: Top-down 2D view in 3D space
+- **Auto-Centering**: Grid automatically centers around world origin
+- **Visual Grid Lines**: LineRenderer with configurable opacity and width
+- **Coordinate Conversion**: Utilities for index ↔ coordinates ↔ world position
 
 ### Block System
-- **4 Block Types**: Default, Teleporter, Crumbler, Transporter
-- **Spatial Awareness**: Blocks detect surrounding objects in 8 directions (see [AGENTS.md](AGENTS.md))
-- **Player Detection**: Trigger-based detection when player enters/reaches center
-- **Visual Highlighting**: Color-based feedback system
+- **4 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow)
+- **Spatial Awareness**: Blocks detect surrounding objects in 4 directions (see [AGENTS.md](AGENTS.md))
+- **Player Detection**: Trigger-based detection when Lem enters/reaches center
+- **Inventory Management**: Per-level constraints on block counts
 
-### Inventory System
-- **Per-Level Constraints**: Limited quantities for each block type
-- **OnGUI Interface**: Real-time display of available/total blocks
-- **Color-Coded UI**: Visual distinction between block types
-- **Keyboard Selection**: Press 1-4 to select block types
+### Character System
+- **Lem Controller**: Walking AI with gravity, collision detection, and turning logic
+- **Frozen/Active States**: Lems freeze in editor modes, walk in Play mode
+- **Direction Control**: Flip Lem facing direction during placement
+- **Grid-Based Placement**: Lems snap to grid positions on blocks
+
+### Save/Load System
+- **Comprehensive State**: Saves blocks, placeable spaces, Lems, and grid settings
+- **JSON Format**: Human-readable, debuggable, version-control friendly
+- **Cross-Platform**: Uses Application.persistentDataPath for compatibility
+- **Auto-Timestamping**: Tracks when levels were saved
 
 ### Visual System
-- **Z-Fighting Solution**: Picture-frame mesh borders with proper layering
-- **Three Render Layers**:
-  - Grid lines (lowest)
-  - Placeable/non-placeable borders (middle)
-  - Cursor (highest)
-- **Centralized Constants**: `BlockColors` and `RenderingConstants` utilities
-- **Border Renderer**: Single hollow-square mesh with double-sided geometry
+- **Depth-Based Layering**: Cursor > Borders > Blocks >= Grid
+- **Sorting Orders**: LineRenderer sorting for reliable 2D rendering
+- **Configurable Constants**: All rendering values centralized in RenderingConstants.cs
+- **Alpha Blending**: Smooth lines with opacity control
 
 ## Architecture
 
@@ -56,116 +68,178 @@ A Unity 3D puzzle game with Lemmings-inspired mechanics featuring a grid-based b
 
 ## Controls
 
-### Editor Mode (E key)
-- **Mouse**: Hover over spaces to toggle placeable state
-- **Left Click**: Toggle space (green cursor = editable)
-- **E**: Exit editor mode
+### Navigation (All Modes)
+- **Arrow Keys / WASD**: Move cursor around grid
 
-### Normal Mode
-- **1-4 Keys**: Select block type
-- **Mouse**: Hover over grid spaces
-- **Left Click**: Place selected block (if available and placeable)
-- **Right Click**: Remove block and return to inventory
-- **E**: Enter editor mode
+### Editor Mode (Default)
+- **Space / Enter**: Place selected block type
+- **Delete / Backspace**: Remove block
+- **1-4**: Select block type (1=Default, 2=Teleporter, 3=Crumbler, 4=Transporter)
+- **E**: Switch to Level Editor Mode
 
-## Block Spatial Detection
+### Level Editor Mode
+- **Space / Enter**: Toggle placeable space marking (black border)
+- **L**: Place/flip Lem character
+- **Delete / Backspace**: Remove block or Lem
+- **E**: Return to Editor Mode
 
-Each block continuously monitors 8 surrounding grid spaces (N, NE, E, SE, S, SW, W, NW) for:
-- Other blocks
-- Player character
-- Enemies
-- Walls
-- Any collider-based object
+### Play Mode
+- **P**: Exit Play Mode (returns to Editor Mode)
+- Lems walk automatically
 
-**API:**
+### Save/Load
+- **Ctrl+S / Cmd+S**: Save current level
+- **Ctrl+L / Cmd+L**: Load saved level
+- **Ctrl+Shift+S / Cmd+Shift+S**: Show save location in console
+
+### Mode Switching
+- **E**: Toggle between Editor and Level Editor modes
+- **P**: Toggle Play Mode on/off
+
+## Documentation
+
+### Quick Start
+See [LEVEL_EDITOR.md](LEVEL_EDITOR.md) for a complete user guide on creating levels.
+
+### Technical Documentation
+- **[PROJECT.md](PROJECT.md)** - Complete project architecture and technical overview
+- **[LEVEL_EDITOR.md](LEVEL_EDITOR.md)** - User guide for the level editor
+- **[SAVE_SYSTEM.md](SAVE_SYSTEM.md)** - Technical details on save/load system
+- **[AGENTS.md](AGENTS.md)** - Block spatial detection system documentation
+
+### API Examples
+
+**Block Detection:**
 ```csharp
 // Get all objects in a direction
-List<Collider> objects = block.GetObjectsInDirection(Direction.North);
+List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.Right);
 
 // Get only blocks in a direction
-List<BaseBlock> blocks = block.GetBlocksInDirection(Direction.East);
+List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.Left);
 ```
 
-See [AGENTS.md](AGENTS.md) for detailed documentation on the spatial detection system.
+**Save/Load:**
+```csharp
+// Save current level
+GridManager.Instance.SaveLevel();
+
+// Load saved level
+GridManager.Instance.LoadLevel();
+
+// Check if save exists
+bool exists = LevelSaveSystem.LevelExists();
+```
 
 ## Project Structure
 
 ```
 Assets/
 ├── Scripts/
-│   ├── Core/
-│   │   ├── GridManager.cs
-│   │   ├── BaseBlock.cs
-│   │   └── BlockType.cs
-│   ├── Visualization/
-│   │   ├── GridVisualizer.cs
-│   │   ├── PlaceableSpaceVisualizer.cs
-│   │   ├── BorderRenderer.cs
-│   │   └── GridCursor.cs
-│   ├── Editor/
-│   │   ├── EditorController.cs
-│   │   └── EditorModeManager.cs
-│   ├── Inventory/
-│   │   ├── BlockInventory.cs
-│   │   └── InventoryUI.cs
-│   ├── Utilities/
-│   │   ├── BlockColors.cs
-│   │   ├── RenderingConstants.cs
-│   │   └── CameraSetup.cs
-│   └── Setup/
-│       └── GameInitializer.cs
-└── Master.unity
+│   ├── GridManager.cs              # Core grid state and management
+│   ├── GridVisualizer.cs           # Grid line rendering
+│   ├── GridCursor.cs               # Interactive cursor
+│   ├── PlaceableSpaceVisualizer.cs # Placeable space borders
+│   ├── BaseBlock.cs                # Base block class
+│   ├── BlockType.cs                # Block type enum
+│   ├── BlockColors.cs              # Centralized color definitions
+│   ├── BlockInventory.cs           # Block count management
+│   ├── LemController.cs            # Lem AI and movement
+│   ├── LemSpawner.cs               # Lem spawning utility
+│   ├── EditorController.cs         # Editor input handling
+│   ├── EditorModeManager.cs        # Mode management
+│   ├── GameMode.cs                 # Game mode enum
+│   ├── BorderRenderer.cs           # Border rendering utility
+│   ├── RenderingConstants.cs       # Rendering constants
+│   ├── LevelData.cs                # Level data structure
+│   ├── LevelSaveSystem.cs          # Save/load operations
+│   ├── CameraSetup.cs              # Camera positioning
+│   ├── GameInitializer.cs          # Game initialization
+│   ├── InventoryUI.cs              # Inventory display
+│   └── Editor/
+│       └── LightmapperFix.cs       # Unity lightmapper fix
+└── Master.unity                     # Main scene
 ```
 
 ## Technical Highlights
 
-### Z-Fighting Solution
-Complete elimination of z-fighting through:
-- Single hollow-square mesh (picture frame style) instead of 4 segments
-- `ZWrite Off` on all border materials
-- Double-sided geometry with reversed triangle winding
-- 100-unit render queue gaps between layers
-- Sprites/Default shader for reliable 2D rendering
+### Rendering System
+- **Depth-Based Layering**: Z-position separation prevents conflicts
+- **Sorting Orders**: LineRenderer sorting for reliable 2D layering
+- **Alpha Blending**: Legacy Shaders/Particles/Alpha Blended for smooth lines
+- **Configurable Visuals**: All constants centralized in RenderingConstants.cs
 
-### Centralized Constants
-All magic numbers eliminated via utility classes:
-- `BlockColors`: Color definitions and block type utilities
-- `RenderingConstants`: Layer heights, render queues, line widths
+### Save System
+- **JSON Serialization**: Unity's JsonUtility for native support
+- **Efficient Storage**: Only stores occupied spaces and placeable indices
+- **Grid Size Flexibility**: Handles loading levels with different grid dimensions
+- **Cross-Platform**: Uses Application.persistentDataPath
 
-### Auto-Initialization
-`GameInitializer` component ensures proper setup order:
-1. GridManager validation
-2. Component attachment (GridVisualizer, PlaceableSpaceVisualizer, etc.)
-3. EditorModeManager before EditorController (dependency order)
-4. InventoryUI setup with references
-5. Camera configuration
+### Grid Architecture
+- **Auto-Centering**: Grid automatically centers around world origin
+- **Index-Based Addressing**: Efficient O(1) lookups for grid operations
+- **Coordinate Utilities**: Comprehensive conversion methods
+- **Validation**: All grid operations validate bounds
 
-## Version History
+### Character AI
+- **Physics-Based Movement**: Uses Rigidbody and gravity
+- **Collision Detection**: Ground detection with raycasting
+- **State Management**: Frozen/active states for editor/play modes
+- **Direction Handling**: Automatic turning at edges and walls
 
-**v0.1-refactor** (Latest)
-- Centralized color and rendering constants
-- Comprehensive XML documentation
-- Complete z-fighting solution
-- Working inventory UI
-- Stable codebase ready for feature development
+## Quick Start
+
+1. Open Unity and load the Master.unity scene
+2. Press Play to enter the level editor
+3. Use arrow keys or WASD to move the cursor
+4. Press 1-4 to select block types and Space to place
+5. Press E to enter Level Editor Mode and mark placeable spaces
+6. Press L to place Lems
+7. Press P to test your level in Play Mode
+8. Press Ctrl+S to save your level
+
+See [LEVEL_EDITOR.md](LEVEL_EDITOR.md) for detailed instructions.
 
 ## Development
 
-Built with Unity 3D using C# scripting.
+Built with Unity 2022+ using C# scripting.
 
 ### Key Design Decisions
-- OnGUI for UI (no external packages needed)
-- Mesh-based rendering for all visual elements
-- Physics-based spatial detection (OverlapBox)
-- Singleton pattern for GridManager
-- Factory pattern for block instantiation
+- **LineRenderer** for all visual elements (grid, borders, cursor)
+- **JSON** for level serialization (human-readable, debuggable)
+- **Physics-based** spatial detection (OverlapBox)
+- **Singleton pattern** for GridManager
+- **Factory pattern** for block instantiation
+- **Region organization** for code clarity
 
-## Future Features
+### Architecture Patterns
+- **State Management**: GameMode enum with mode-specific behaviors
+- **Event-Driven**: Lem placement tracking for reset functionality
+- **Separation of Concerns**: Visualization separated from logic
+- **Centralized Constants**: BlockColors and RenderingConstants utilities
 
-Potential expansions:
-- More block types (Bridge, Switch, Gate, etc.)
-- Player character implementation
-- Level system with progression
-- Save/load functionality
+## Contributing
+
+When adding new features:
+1. Document code with XML summary comments
+2. Update relevant .md files
+3. Add constants to RenderingConstants.cs or BlockColors.cs
+4. Use regions to organize code
+5. Test in all three game modes
+
+## Future Enhancements
+
+### Planned Features
+- Multiple level save slots
+- Level naming and metadata
+- Undo/redo system
+- Block pattern templates
+- Level validation (solvability check)
+
+### Potential Improvements
+- Custom level file format with compression
+- Level thumbnail generation
+- In-game level browser
+- Multiplayer level sharing
+- More block types (Bridge, Switch, Gate, Portal, etc.)
 - Sound effects and music
 - Particle effects for block interactions

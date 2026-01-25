@@ -76,3 +76,4 @@ crashlytics-build.properties
 
 # Claude
 .claude/
+mono_crash.*.json

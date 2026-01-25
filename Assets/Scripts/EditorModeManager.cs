@@ -10,7 +10,7 @@ public class EditorModeManager : MonoBehaviour
     public Camera mainCamera;
     public EditorController editorController;
 
-    private bool wasEditingPlaceableSpaces = false;
+    private GameMode previousMode = GameMode.Editor;
 
     private void Awake()
     {
@@ -71,11 +71,11 @@ public class EditorModeManager : MonoBehaviour
             return;
         }
 
-        // Check if editor mode changed
-        if (editorController.isEditingPlaceableSpaces != wasEditingPlaceableSpaces)
+        // Check if game mode changed
+        if (editorController.currentMode != previousMode)
         {
-            Debug.Log($"EditorModeManager detected change: {wasEditingPlaceableSpaces} -> {editorController.isEditingPlaceableSpaces}");
-            wasEditingPlaceableSpaces = editorController.isEditingPlaceableSpaces;
+            Debug.Log($"EditorModeManager detected mode change: {previousMode} -> {editorController.currentMode}");
+            previousMode = editorController.currentMode;
             UpdateBackgroundColor();
         }
     }
@@ -84,10 +84,10 @@ public class EditorModeManager : MonoBehaviour
     {
         if (mainCamera == null) return;
 
-        if (editorController.isEditingPlaceableSpaces)
+        if (editorController.currentMode == GameMode.LevelEditor)
         {
             mainCamera.backgroundColor = editorModeColor;
-            Debug.Log($"Background changed to EDITOR MODE color: {editorModeColor}");
+            Debug.Log($"Background changed to LEVEL EDITOR MODE color: {editorModeColor}");
         }
         else
         {
