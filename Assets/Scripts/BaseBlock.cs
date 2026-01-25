@@ -4,19 +4,18 @@ using System.Collections.Generic;
 
 /// <summary>
 /// Base class for all block types in the puzzle game.
-/// Handles placement, spatial awareness (detecting surrounding objects),
-/// player detection, and visual highlighting.
+/// Blocks exist on the XY plane (Z=0).
 /// </summary>
 public class BaseBlock : MonoBehaviour
 {
     [Header("Block Identity")]
     public string uniqueID;
     public BlockType blockType = BlockType.Default;
-    public int gridIndex = -1; // -1 means not placed on grid yet
+    public int gridIndex = -1;
 
     [Header("Detection Settings")]
-    public float detectionSize = 1f; // Size of detection box (1 unit cube)
-    public LayerMask detectionLayerMask; // What layers to detect
+    public float detectionSize = 1f;
+    public LayerMask detectionLayerMask;
 
     [Header("Highlight Settings")]
     public Color highlightColor = Color.yellow;
@@ -24,40 +23,25 @@ public class BaseBlock : MonoBehaviour
     private Renderer blockRenderer;
     private bool isHighlighted = false;
 
-    [Header("Player Detection")]
     private bool playerAtCenter = false;
 
-    // Store what's in each surrounding space
-    private Dictionary<Direction, List<Collider>> surroundingObjects = new Dictionary<Direction, List<Collider>>();
+    public enum Direction { Left, Right, Up, Down }
 
-    public enum Direction
-    {
-        North,
-        NorthEast,
-        East,
-        SouthEast,
-        South,
-        SouthWest,
-        West,
-        NorthWest
-    }
+    private Dictionary<Direction, List<Collider>> surroundingObjects = new Dictionary<Direction, List<Collider>>();
 
     private void Awake()
     {
-        // Generate unique ID if not already set
         if (string.IsNullOrEmpty(uniqueID))
         {
             uniqueID = Guid.NewGuid().ToString();
         }
 
-        // Get renderer for highlighting
         blockRenderer = GetComponent<Renderer>();
         if (blockRenderer != null)
         {
             originalColor = blockRenderer.material.color;
         }
 
-        // Initialize surrounding objects dictionary
         foreach (Direction dir in Enum.GetValues(typeof(Direction)))
         {
             surroundingObjects[dir] = new List<Collider>();
@@ -66,7 +50,6 @@ public class BaseBlock : MonoBehaviour
 
     private void Start()
     {
-        // Register with grid manager if we have a valid grid index
         if (gridIndex >= 0 && GridManager.Instance != null)
         {
             GridManager.Instance.RegisterBlock(this);
@@ -75,16 +58,11 @@ public class BaseBlock : MonoBehaviour
 
     private void Update()
     {
-        // Continuously detect surrounding spaces
         DetectSurroundingSpaces();
     }
 
     #region Instantiation and Destruction
 
-    /// <summary>
-    /// Factory method for creating and configuring a new block instance.
-    /// Called by GridManager when placing a block.
-    /// </summary>
     public static BaseBlock Instantiate(BlockType type, int gridIndex)
     {
         GameObject blockObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -95,34 +73,22 @@ public class BaseBlock : MonoBehaviour
         block.gridIndex = gridIndex;
         block.uniqueID = Guid.NewGuid().ToString();
 
-        // Add Rigidbody
+        // Blocks are kinematic (don't fall)
         Rigidbody rb = blockObj.AddComponent<Rigidbody>();
-        rb.isKinematic = true; // Blocks don't fall, but can be moved programmatically
+        rb.isKinematic = true;
         rb.useGravity = false;
 
-        // Set color based on block type
         Renderer renderer = blockObj.GetComponent<Renderer>();
         if (renderer != null)
         {
-            Color blockColor = GetColorForBlockType(type);
+            Color blockColor = BlockColors.GetColorForBlockType(type);
             renderer.material.color = blockColor;
-            // Update the original color reference so highlighting works correctly
             block.originalColor = blockColor;
         }
-
-        // Position will be set by GridManager
 
         return block;
     }
 
-    private static Color GetColorForBlockType(BlockType type)
-    {
-        return BlockColors.GetColorForBlockType(type);
-    }
-
-    /// <summary>
-    /// Destroys this block and returns it to the inventory.
-    /// </summary>
     public void DestroyBlock()
     {
         BlockInventory inventory = FindObjectOfType<BlockInventory>();
@@ -131,13 +97,11 @@ public class BaseBlock : MonoBehaviour
             inventory.ReturnBlock(blockType);
         }
 
-        // Unregister from grid manager
         if (GridManager.Instance != null)
         {
             GridManager.Instance.UnregisterBlock(this);
         }
 
-        // Destroy the game object
         Destroy(gameObject);
     }
 
@@ -145,10 +109,6 @@ public class BaseBlock : MonoBehaviour
 
     #region Spatial Detection
 
-    /// <summary>
-    /// Continuously detects objects in the 8 surrounding grid spaces.
-    /// Called every frame to maintain awareness of nearby blocks and entities.
-    /// </summary>
     private void DetectSurroundingSpaces()
     {
         foreach (var list in surroundingObjects.Values)
@@ -156,27 +116,22 @@ public class BaseBlock : MonoBehaviour
             list.Clear();
         }
 
-        // Check each of the 8 surrounding spaces
-        CheckSpace(Direction.North, Vector3.forward);
-        CheckSpace(Direction.NorthEast, new Vector3(1, 0, 1).normalized);
-        CheckSpace(Direction.East, Vector3.right);
-        CheckSpace(Direction.SouthEast, new Vector3(1, 0, -1).normalized);
-        CheckSpace(Direction.South, Vector3.back);
-        CheckSpace(Direction.SouthWest, new Vector3(-1, 0, -1).normalized);
-        CheckSpace(Direction.West, Vector3.left);
-        CheckSpace(Direction.NorthWest, new Vector3(-1, 0, 1).normalized);
+        // Check 4 directions on the XY plane
+        CheckSpace(Direction.Left, Vector3.left);
+        CheckSpace(Direction.Right, Vector3.right);
+        CheckSpace(Direction.Up, Vector3.up);
+        CheckSpace(Direction.Down, Vector3.down);
     }
 
     private void CheckSpace(Direction direction, Vector3 offset)
     {
         Vector3 checkPosition = transform.position + (offset * detectionSize);
-        Vector3 boxSize = Vector3.one * (detectionSize * 0.9f); // Slightly smaller to avoid overlap
+        Vector3 boxSize = Vector3.one * (detectionSize * 0.9f);
 
         Collider[] hits = Physics.OverlapBox(checkPosition, boxSize / 2f, Quaternion.identity, detectionLayerMask);
 
         foreach (Collider hit in hits)
         {
-            // Don't detect self
             if (hit.gameObject != gameObject)
             {
                 surroundingObjects[direction].Add(hit);
@@ -184,17 +139,11 @@ public class BaseBlock : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Gets all colliders detected in a specific direction.
-    /// </summary>
     public List<Collider> GetObjectsInDirection(Direction direction)
     {
         return surroundingObjects[direction];
     }
 
-    /// <summary>
-    /// Gets all blocks detected in a specific direction (filters for BaseBlock components).
-    /// </summary>
     public List<BaseBlock> GetBlocksInDirection(Direction direction)
     {
         List<BaseBlock> blocks = new List<BaseBlock>();
@@ -234,9 +183,8 @@ public class BaseBlock : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            // Check if player is at center of block
             float distanceToCenter = Vector3.Distance(
-                new Vector3(other.transform.position.x, transform.position.y, other.transform.position.z),
+                new Vector3(other.transform.position.x, other.transform.position.y, transform.position.z),
                 transform.position
             );
 
@@ -248,21 +196,9 @@ public class BaseBlock : MonoBehaviour
         }
     }
 
-    // Virtual methods for child classes to override
-    protected virtual void OnPlayerEnter()
-    {
-        Debug.Log($"Player entered block {uniqueID} ({blockType})");
-    }
-
-    protected virtual void OnPlayerExit()
-    {
-        Debug.Log($"Player exited block {uniqueID} ({blockType})");
-    }
-
-    protected virtual void OnPlayerReachCenter()
-    {
-        Debug.Log($"Player reached center of block {uniqueID} ({blockType})");
-    }
+    protected virtual void OnPlayerEnter() { }
+    protected virtual void OnPlayerExit() { }
+    protected virtual void OnPlayerReachCenter() { }
 
     #endregion
 
@@ -286,24 +222,14 @@ public class BaseBlock : MonoBehaviour
         }
     }
 
-    public bool IsHighlighted()
-    {
-        return isHighlighted;
-    }
+    public bool IsHighlighted() => isHighlighted;
 
     #endregion
 
     #region Grid Position
 
-    public void SetGridIndex(int index)
-    {
-        gridIndex = index;
-    }
-
-    public int GetGridIndex()
-    {
-        return gridIndex;
-    }
+    public void SetGridIndex(int index) => gridIndex = index;
+    public int GetGridIndex() => gridIndex;
 
     public Vector2Int GetGridCoordinates()
     {
@@ -320,21 +246,11 @@ public class BaseBlock : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        // Visualize the 8 surrounding detection spaces
         Gizmos.color = Color.red;
         float size = detectionSize;
 
-        Vector3[] offsets = new Vector3[]
-        {
-            Vector3.forward,                    // North
-            new Vector3(1, 0, 1).normalized,    // NorthEast
-            Vector3.right,                      // East
-            new Vector3(1, 0, -1).normalized,   // SouthEast
-            Vector3.back,                       // South
-            new Vector3(-1, 0, -1).normalized,  // SouthWest
-            Vector3.left,                       // West
-            new Vector3(-1, 0, 1).normalized    // NorthWest
-        };
+        // Draw 4 detection spaces
+        Vector3[] offsets = { Vector3.left, Vector3.right, Vector3.up, Vector3.down };
 
         foreach (Vector3 offset in offsets)
         {
@@ -342,7 +258,6 @@ public class BaseBlock : MonoBehaviour
             Gizmos.DrawWireCube(pos, Vector3.one * size * 0.9f);
         }
 
-        // Draw self in green
         Gizmos.color = Color.green;
         Gizmos.DrawWireCube(transform.position, Vector3.one * size);
     }

@@ -123,13 +123,13 @@ public class InventoryUI : MonoBehaviour
         Rect countRect = new Rect(xPos, topMargin + boxSize - 25f, boxSize, 20f);
         GUI.Label(countRect, $"{available}/{total}", textStyle);
 
-        // Draw block type label at top
-        Rect labelRect = new Rect(xPos, topMargin + 5f, boxSize, 15f);
+        // Draw block type label at top (height increased to prevent clipping)
+        Rect labelRect = new Rect(xPos, topMargin + 5f, boxSize, 25f);
         string blockName = GetBlockTypeName(blockType);
         GUI.Label(labelRect, blockName, labelStyle);
 
-        // Draw key hint
-        Rect keyRect = new Rect(xPos, topMargin + boxSize + 2f, boxSize, 15f);
+        // Draw key hint (height increased to prevent clipping)
+        Rect keyRect = new Rect(xPos, topMargin + boxSize + 2f, boxSize, 25f);
         GUI.Label(keyRect, $"[{index + 1}]", labelStyle);
     }
 

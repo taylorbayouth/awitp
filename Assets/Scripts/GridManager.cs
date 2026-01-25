@@ -1,6 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+/// <summary>
+/// Manages the grid system for the puzzle game.
+/// Grid is on the XY plane (viewed as a wall), with Z as depth.
+/// X = horizontal (left/right), Y = vertical (up/down), Z = depth (toward camera)
+/// </summary>
 public class GridManager : MonoBehaviour
 {
     public static GridManager Instance { get; private set; }
@@ -9,7 +14,15 @@ public class GridManager : MonoBehaviour
     public int gridWidth = 10;
     public int gridHeight = 10;
     public float cellSize = 1f;
-    public Vector3 gridOrigin = Vector3.zero;
+
+    [Header("Grid Origin (Auto-Calculated)")]
+    [SerializeField] private Vector3 _gridOrigin = Vector3.zero;
+
+    /// <summary>
+    /// The calculated origin point of the grid (bottom-left corner).
+    /// Auto-calculated to center grid at world origin.
+    /// </summary>
+    public Vector3 gridOrigin => _gridOrigin;
 
     [Header("Cursor Settings")]
     public int currentCursorIndex = 0;
@@ -18,14 +31,29 @@ public class GridManager : MonoBehaviour
     private GridCursor gridCursor;
 
     [Header("Placeable Spaces")]
-    private bool[] placeableSpaces; // Track which grid spaces can have blocks
+    private bool[] placeableSpaces;
 
-    // Track all placed blocks
     private Dictionary<int, BaseBlock> placedBlocks = new Dictionary<int, BaseBlock>();
+    private Dictionary<int, GameObject> placedLems = new Dictionary<int, GameObject>();
+    private Dictionary<int, LemPlacementData> originalLemPlacements = new Dictionary<int, LemPlacementData>();
+
+    /// <summary>
+    /// Stores original Lem placement data for resetting after Play mode
+    /// </summary>
+    private class LemPlacementData
+    {
+        public int gridIndex;
+        public bool facingRight;
+
+        public LemPlacementData(int index, bool facing)
+        {
+            gridIndex = index;
+            facingRight = facing;
+        }
+    }
 
     private void Awake()
     {
-        // Singleton pattern
         if (Instance == null)
         {
             Instance = this;
@@ -36,20 +64,35 @@ public class GridManager : MonoBehaviour
             return;
         }
 
-        // Initialize placeable spaces array
-        InitializePlaceableSpaces();
+        // Calculate grid origin to center grid around world origin (0,0,0)
+        CalculateGridOrigin();
 
-        // Create cursor highlight
+        InitializePlaceableSpaces();
         CreateCursor();
+    }
+
+    /// <summary>
+    /// Calculates grid origin so the grid is perfectly centered around world origin (0,0,0).
+    /// This ensures the camera can be positioned at (0,0,-Z) for perfect centering.
+    /// </summary>
+    private void CalculateGridOrigin()
+    {
+        float totalWidth = gridWidth * cellSize;
+        float totalHeight = gridHeight * cellSize;
+
+        // Position grid so its center is at world origin
+        _gridOrigin = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0);
+
+        Debug.Log($"GridManager: Auto-calculated gridOrigin = {_gridOrigin} for {gridWidth}x{gridHeight} grid");
     }
 
     private void Start()
     {
-        // Initialize visualizer after everything is set up
-        PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
-        if (visualizer != null)
+        // Ensure camera is centered on grid
+        CameraSetup cameraSetup = FindObjectOfType<CameraSetup>();
+        if (cameraSetup != null)
         {
-            visualizer.RefreshVisuals();
+            cameraSetup.SetupCamera();
         }
     }
 
@@ -57,11 +100,15 @@ public class GridManager : MonoBehaviour
     {
         int totalSpaces = gridWidth * gridHeight;
         placeableSpaces = new bool[totalSpaces];
-        // All spaces start as non-placeable (false is default for bool arrays)
+        // All spaces start as NOT placeable (false is default)
+        // Player must explicitly mark spaces as placeable in edit mode
     }
 
     #region Grid Coordinate Conversion
 
+    /// <summary>
+    /// Converts grid index to world position on XY plane.
+    /// </summary>
     public Vector3 IndexToWorldPosition(int index)
     {
         Vector2Int coords = IndexToCoordinates(index);
@@ -85,11 +132,18 @@ public class GridManager : MonoBehaviour
         return y * gridWidth + x;
     }
 
+    /// <summary>
+    /// Converts grid coordinates to world position.
+    /// Grid is on XY plane: X = horizontal, Y = vertical, Z = 0
+    /// </summary>
     public Vector3 CoordinatesToWorldPosition(Vector2Int coords)
     {
-        // Add 0.5 offset to center blocks in grid squares
         float halfCell = cellSize * 0.5f;
-        return gridOrigin + new Vector3((coords.x * cellSize) + halfCell, 0, (coords.y * cellSize) + halfCell);
+        return gridOrigin + new Vector3(
+            (coords.x * cellSize) + halfCell,  // X = horizontal
+            (coords.y * cellSize) + halfCell,  // Y = vertical
+            0                                   // Z = 0 (on the wall)
+        );
     }
 
     public bool IsValidIndex(int index)
@@ -100,6 +154,21 @@ public class GridManager : MonoBehaviour
     public bool IsValidCoordinates(int x, int y)
     {
         return x >= 0 && x < gridWidth && y >= 0 && y < gridHeight;
+    }
+
+    /// <summary>
+    /// Converts world position to grid index.
+    /// </summary>
+    public int WorldToGridIndex(Vector3 worldPos)
+    {
+        Vector3 localPos = worldPos - gridOrigin;
+        int x = Mathf.FloorToInt(localPos.x / cellSize);
+        int y = Mathf.FloorToInt(localPos.y / cellSize);
+
+        if (!IsValidCoordinates(x, y))
+            return -1;
+
+        return CoordinatesToIndex(x, y);
     }
 
     #endregion
@@ -114,14 +183,12 @@ public class GridManager : MonoBehaviour
             return null;
         }
 
-        // Check if space is placeable
         if (!IsSpacePlaceable(gridIndex))
         {
             Debug.LogWarning($"Cannot place block at index {gridIndex}: space is not placeable");
             return null;
         }
 
-        // Check block inventory
         BlockInventory inventory = FindObjectOfType<BlockInventory>();
         if (inventory != null && !inventory.CanPlaceBlock(blockType))
         {
@@ -129,26 +196,20 @@ public class GridManager : MonoBehaviour
             return null;
         }
 
-        // Remove existing block at this position if any
         if (placedBlocks.ContainsKey(gridIndex))
         {
             placedBlocks[gridIndex].DestroyBlock();
         }
 
-        // Use block from inventory
         if (inventory != null)
         {
             inventory.UseBlock(blockType);
         }
 
-        // Create new block
         BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
         newBlock.transform.position = IndexToWorldPosition(gridIndex);
 
-        // Register the block
         placedBlocks[gridIndex] = newBlock;
-
-        // Update cursor state in case cursor is on this space
         UpdateCursorState();
 
         return newBlock;
@@ -168,23 +229,148 @@ public class GridManager : MonoBehaviour
         {
             placedBlocks.Remove(block.gridIndex);
         }
-
-        // Update cursor state in case cursor is on this space
         UpdateCursorState();
     }
 
     public BaseBlock GetBlockAtIndex(int index)
     {
-        if (placedBlocks.ContainsKey(index))
-        {
-            return placedBlocks[index];
-        }
-        return null;
+        return placedBlocks.TryGetValue(index, out BaseBlock block) ? block : null;
     }
 
     public bool IsGridSpaceOccupied(int index)
     {
         return placedBlocks.ContainsKey(index);
+    }
+
+    #endregion
+
+    #region Lem Placement
+
+    /// <summary>
+    /// Places a Lem at the specified grid index.
+    /// If a Lem already exists there, turns it around instead.
+    /// </summary>
+    public GameObject PlaceLem(int gridIndex)
+    {
+        if (!IsValidIndex(gridIndex))
+        {
+            Debug.LogWarning($"Invalid grid index: {gridIndex}");
+            return null;
+        }
+
+        // If Lem already exists at this position, turn it around
+        if (placedLems.TryGetValue(gridIndex, out GameObject existingLem))
+        {
+            LemController lemController = existingLem.GetComponent<LemController>();
+            if (lemController != null)
+            {
+                lemController.TurnAround();
+                // Update original placement data with new facing direction
+                originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, lemController.GetFacingRight());
+                Debug.Log($"Turned Lem around at index {gridIndex}");
+            }
+            return existingLem;
+        }
+
+        // Create new Lem - place on top of block if one exists, otherwise at grid position
+        Vector3 position = IndexToWorldPosition(gridIndex);
+
+        // Check if there's a block at this position
+        BaseBlock blockBelow = GetBlockAtIndex(gridIndex);
+        if (blockBelow != null)
+        {
+            // Place Lem on top of the block
+            // Block center is at blockBelow.transform.position
+            // Block extends cellSize/2 above and below center
+            // Place Lem slightly above block top to avoid clipping into collider
+            position = blockBelow.transform.position;
+            position.y += cellSize / 2f + 0.1f; // Block top surface + small offset
+        }
+
+        GameObject lem = LemController.CreateLem(position);
+        placedLems[gridIndex] = lem;
+
+        // Store original placement data for resetting after Play mode
+        LemController controller = lem.GetComponent<LemController>();
+        if (controller != null)
+        {
+            originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, controller.GetFacingRight());
+        }
+
+        return lem;
+    }
+
+    /// <summary>
+    /// Removes the Lem at the specified grid index.
+    /// </summary>
+    public void RemoveLem(int gridIndex)
+    {
+        if (placedLems.TryGetValue(gridIndex, out GameObject lem))
+        {
+            Destroy(lem);
+            placedLems.Remove(gridIndex);
+            originalLemPlacements.Remove(gridIndex);
+            Debug.Log($"Removed Lem at index {gridIndex}");
+        }
+    }
+
+    /// <summary>
+    /// Resets all Lems to their original placement positions and directions.
+    /// Called when exiting Play mode to restore Lems to Level Editor state.
+    /// </summary>
+    public void ResetAllLems()
+    {
+        // Destroy all current Lems
+        foreach (var lem in placedLems.Values)
+        {
+            if (lem != null)
+            {
+                Destroy(lem);
+            }
+        }
+        placedLems.Clear();
+
+        // Recreate Lems at original positions
+        foreach (var placementData in originalLemPlacements.Values)
+        {
+            Vector3 position = IndexToWorldPosition(placementData.gridIndex);
+
+            // Check if there's a block at this position
+            BaseBlock blockBelow = GetBlockAtIndex(placementData.gridIndex);
+            if (blockBelow != null)
+            {
+                position = blockBelow.transform.position;
+                position.y += cellSize / 2f + 0.1f;
+            }
+
+            GameObject lem = LemController.CreateLem(position);
+            LemController controller = lem.GetComponent<LemController>();
+            if (controller != null)
+            {
+                controller.SetFacingRight(placementData.facingRight);
+                controller.SetFrozen(true); // Frozen in editor mode
+            }
+
+            placedLems[placementData.gridIndex] = lem;
+        }
+
+        Debug.Log($"Reset {originalLemPlacements.Count} Lem(s) to original positions");
+    }
+
+    /// <summary>
+    /// Checks if there is a Lem at the specified grid index.
+    /// </summary>
+    public bool HasLemAtIndex(int index)
+    {
+        return placedLems.ContainsKey(index);
+    }
+
+    /// <summary>
+    /// Gets the Lem at the specified grid index, if any.
+    /// </summary>
+    public GameObject GetLemAtIndex(int index)
+    {
+        return placedLems.TryGetValue(index, out GameObject lem) ? lem : null;
     }
 
     #endregion
@@ -200,12 +386,10 @@ public class GridManager : MonoBehaviour
         }
         else
         {
-            // Create cursor programmatically
             cursorHighlight = new GameObject("GridCursor");
             gridCursor = cursorHighlight.AddComponent<GridCursor>();
         }
 
-        // Initialize the cursor with cell size
         if (gridCursor != null)
         {
             gridCursor.Initialize(cellSize);
@@ -220,7 +404,6 @@ public class GridManager : MonoBehaviour
         Vector2Int currentCoords = IndexToCoordinates(currentCursorIndex);
         Vector2Int newCoords = currentCoords + direction;
 
-        // Clamp to grid bounds
         newCoords.x = Mathf.Clamp(newCoords.x, 0, gridWidth - 1);
         newCoords.y = Mathf.Clamp(newCoords.y, 0, gridHeight - 1);
 
@@ -251,13 +434,9 @@ public class GridManager : MonoBehaviour
     {
         if (gridCursor == null) return;
 
-        // Check if current position is placeable
         bool isPlaceable = IsSpacePlaceable(currentCursorIndex);
-
-        // Check if there's a block at current position
         bool hasBlock = IsGridSpaceOccupied(currentCursorIndex);
 
-        // Determine cursor state
         if (!isPlaceable)
         {
             gridCursor.SetState(GridCursor.CursorState.NonPlaceable);
@@ -289,7 +468,6 @@ public class GridManager : MonoBehaviour
             placeableSpaces[index] = placeable;
             UpdateCursorState();
 
-            // Update visualizer
             PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
             if (visualizer != null)
             {
@@ -300,8 +478,7 @@ public class GridManager : MonoBehaviour
 
     public void SetSpacePlaceable(int x, int y, bool placeable)
     {
-        int index = CoordinatesToIndex(x, y);
-        SetSpacePlaceable(index, placeable);
+        SetSpacePlaceable(CoordinatesToIndex(x, y), placeable);
     }
 
     public void ToggleSpacePlaceable(int index)
@@ -311,7 +488,6 @@ public class GridManager : MonoBehaviour
             placeableSpaces[index] = !placeableSpaces[index];
             UpdateCursorState();
 
-            // Update visualizer
             PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
             if (visualizer != null)
             {
@@ -324,29 +500,20 @@ public class GridManager : MonoBehaviour
 
     #region Grid Refresh
 
-    private void OnValidate()
-    {
-        // Don't refresh during OnValidate - causes Unity errors
-        // Grid will refresh on Start/Play
-    }
-
     public void RefreshGrid()
     {
-        // Refresh grid visualization
         GridVisualizer visualizer = GetComponent<GridVisualizer>();
         if (visualizer != null)
         {
             visualizer.RefreshGrid();
         }
 
-        // Refresh placeable space visualization
         PlaceableSpaceVisualizer spaceVisualizer = GetComponent<PlaceableSpaceVisualizer>();
         if (spaceVisualizer != null)
         {
             spaceVisualizer.RefreshVisuals();
         }
 
-        // Refresh camera setup
         CameraSetup cameraSetup = FindObjectOfType<CameraSetup>();
         if (cameraSetup != null)
         {
@@ -358,24 +525,224 @@ public class GridManager : MonoBehaviour
 
     #endregion
 
+    #region Save/Load System
+
+    /// <summary>
+    /// Creates a LevelData object from the current grid state.
+    /// </summary>
+    public LevelData CaptureLevelData()
+    {
+        LevelData levelData = new LevelData
+        {
+            gridWidth = gridWidth,
+            gridHeight = gridHeight,
+            cellSize = cellSize
+        };
+
+        // Capture all placed blocks
+        foreach (var kvp in placedBlocks)
+        {
+            if (kvp.Value != null)
+            {
+                levelData.blocks.Add(new LevelData.BlockData(kvp.Value.blockType, kvp.Key));
+            }
+        }
+
+        // Capture placeable spaces (only store indices where placeable = true)
+        for (int i = 0; i < placeableSpaces.Length; i++)
+        {
+            if (placeableSpaces[i])
+            {
+                levelData.placeableSpaceIndices.Add(i);
+            }
+        }
+
+        // Capture Lem placements
+        foreach (var kvp in originalLemPlacements)
+        {
+            levelData.lems.Add(new LevelData.LemData(kvp.Value.gridIndex, kvp.Value.facingRight));
+        }
+
+        Debug.Log($"Captured level data: {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+        return levelData;
+    }
+
+    /// <summary>
+    /// Restores grid state from a LevelData object.
+    /// Clears existing state before loading.
+    /// </summary>
+    public void RestoreLevelData(LevelData levelData)
+    {
+        if (levelData == null)
+        {
+            Debug.LogError("Cannot restore null level data");
+            return;
+        }
+
+        // Clear existing state
+        ClearAllBlocks();
+        ClearAllLems();
+        ClearPlaceableSpaces();
+
+        // Restore grid settings (if they changed, we need to reinitialize)
+        bool gridSizeChanged = (gridWidth != levelData.gridWidth || gridHeight != levelData.gridHeight || cellSize != levelData.cellSize);
+
+        if (gridSizeChanged)
+        {
+            gridWidth = levelData.gridWidth;
+            gridHeight = levelData.gridHeight;
+            cellSize = levelData.cellSize;
+            CalculateGridOrigin();
+            InitializePlaceableSpaces();
+            RefreshGrid();
+        }
+
+        // Restore placeable spaces
+        foreach (int index in levelData.placeableSpaceIndices)
+        {
+            if (IsValidIndex(index))
+            {
+                placeableSpaces[index] = true;
+            }
+        }
+
+        // Restore blocks
+        foreach (var blockData in levelData.blocks)
+        {
+            if (IsValidIndex(blockData.gridIndex))
+            {
+                // Temporarily set space as placeable to allow block placement
+                bool wasPlaceable = placeableSpaces[blockData.gridIndex];
+                placeableSpaces[blockData.gridIndex] = true;
+
+                PlaceBlock(blockData.blockType, blockData.gridIndex);
+
+                // Restore original placeable state
+                placeableSpaces[blockData.gridIndex] = wasPlaceable;
+            }
+        }
+
+        // Restore Lems
+        foreach (var lemData in levelData.lems)
+        {
+            if (IsValidIndex(lemData.gridIndex))
+            {
+                GameObject lem = PlaceLem(lemData.gridIndex);
+                if (lem != null)
+                {
+                    LemController controller = lem.GetComponent<LemController>();
+                    if (controller != null)
+                    {
+                        controller.SetFacingRight(lemData.facingRight);
+                        controller.SetFrozen(true); // Start frozen in editor mode
+                    }
+                }
+            }
+        }
+
+        // Refresh visuals
+        PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
+        if (visualizer != null)
+        {
+            visualizer.RefreshVisuals();
+        }
+
+        UpdateCursorState();
+
+        Debug.Log($"Restored level data: {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+    }
+
+    /// <summary>
+    /// Saves the current level to a file.
+    /// </summary>
+    public bool SaveLevel(string levelName = null)
+    {
+        LevelData levelData = CaptureLevelData();
+        return LevelSaveSystem.SaveLevel(levelData, levelName);
+    }
+
+    /// <summary>
+    /// Loads a level from a file.
+    /// </summary>
+    public bool LoadLevel(string levelName = null)
+    {
+        LevelData levelData = LevelSaveSystem.LoadLevel(levelName);
+        if (levelData != null)
+        {
+            RestoreLevelData(levelData);
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Clears all placed blocks.
+    /// </summary>
+    private void ClearAllBlocks()
+    {
+        // Create a copy of the keys to avoid modification during iteration
+        var indices = new System.Collections.Generic.List<int>(placedBlocks.Keys);
+        foreach (int index in indices)
+        {
+            if (placedBlocks.TryGetValue(index, out BaseBlock block))
+            {
+                if (block != null)
+                {
+                    Destroy(block.gameObject);
+                }
+            }
+        }
+        placedBlocks.Clear();
+    }
+
+    /// <summary>
+    /// Clears all placed Lems.
+    /// </summary>
+    private void ClearAllLems()
+    {
+        foreach (var lem in placedLems.Values)
+        {
+            if (lem != null)
+            {
+                Destroy(lem);
+            }
+        }
+        placedLems.Clear();
+        originalLemPlacements.Clear();
+    }
+
+    /// <summary>
+    /// Clears all placeable space markers.
+    /// </summary>
+    private void ClearPlaceableSpaces()
+    {
+        for (int i = 0; i < placeableSpaces.Length; i++)
+        {
+            placeableSpaces[i] = false;
+        }
+    }
+
+    #endregion
+
     #region Debug Visualization
 
     private void OnDrawGizmos()
     {
-        // Draw grid
         Gizmos.color = Color.gray;
 
+        // Draw horizontal lines (along X axis)
         for (int y = 0; y <= gridHeight; y++)
         {
-            Vector3 start = gridOrigin + new Vector3(0, 0, y * cellSize);
-            Vector3 end = gridOrigin + new Vector3(gridWidth * cellSize, 0, y * cellSize);
+            Vector3 start = gridOrigin + new Vector3(0, y * cellSize, 0);
+            Vector3 end = gridOrigin + new Vector3(gridWidth * cellSize, y * cellSize, 0);
             Gizmos.DrawLine(start, end);
         }
 
+        // Draw vertical lines (along Y axis)
         for (int x = 0; x <= gridWidth; x++)
         {
             Vector3 start = gridOrigin + new Vector3(x * cellSize, 0, 0);
-            Vector3 end = gridOrigin + new Vector3(x * cellSize, 0, gridHeight * cellSize);
+            Vector3 end = gridOrigin + new Vector3(x * cellSize, gridHeight * cellSize, 0);
             Gizmos.DrawLine(start, end);
         }
 

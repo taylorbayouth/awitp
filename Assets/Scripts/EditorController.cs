@@ -5,13 +5,16 @@ public class EditorController : MonoBehaviour
     [Header("Block Placement")]
     public BlockType currentBlockType = BlockType.Default;
 
-    [Header("Editor Mode")]
-    public bool isEditingPlaceableSpaces = false;
+    [Header("Game Mode")]
+    public GameMode currentMode = GameMode.Editor;
     private EditorModeManager editorModeManager;
     private BlockInventory blockInventory;
 
     private void Awake()
     {
+        // ALWAYS start in Editor mode
+        currentMode = GameMode.Editor;
+
         editorModeManager = GetComponent<EditorModeManager>();
         if (editorModeManager == null)
         {
@@ -21,7 +24,6 @@ public class EditorController : MonoBehaviour
         // If still not found, add it to this GameObject
         if (editorModeManager == null)
         {
-            Debug.LogWarning("EditorController: EditorModeManager not found, adding it now!");
             editorModeManager = gameObject.AddComponent<EditorModeManager>();
         }
 
@@ -31,19 +33,33 @@ public class EditorController : MonoBehaviour
         {
             blockInventory = FindObjectOfType<BlockInventory>();
         }
-
-        Debug.Log($"EditorController: EditorModeManager reference set: {editorModeManager != null}");
-        Debug.Log($"EditorController: BlockInventory reference set: {blockInventory != null}");
     }
 
     private void Update()
     {
-        HandleCursorMovement();
-        HandleBlockPlacement();
-        HandleBlockRemoval();
-        HandleBlockTypeSwitch();
-        HandlePlaceableSpaceToggle();
-        HandleEditorModeToggle();
+        // Wait for GridManager to be ready
+        if (GridManager.Instance == null) return;
+
+        HandleModeToggle();
+        HandleSaveLoad();
+
+        // Only handle input when not in Play mode
+        if (currentMode != GameMode.Play)
+        {
+            HandleCursorMovement();
+            HandleBlockRemoval();
+            HandleBlockTypeSwitch();
+
+            if (currentMode == GameMode.Editor)
+            {
+                HandleBlockPlacement();
+            }
+            else if (currentMode == GameMode.LevelEditor)
+            {
+                HandlePlaceableSpaceToggle();
+                HandleLemPlacement();
+            }
+        }
     }
 
     private void HandleCursorMovement()
@@ -78,7 +94,7 @@ public class EditorController : MonoBehaviour
 
     private void HandleBlockPlacement()
     {
-        if (GridManager.Instance == null || isEditingPlaceableSpaces) return;
+        if (GridManager.Instance == null) return;
 
         // Space or Enter to place block
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
@@ -93,16 +109,24 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null) return;
 
-        // Delete or Backspace to remove block
+        // Delete or Backspace to remove block AND Lem
         if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
         {
             int cursorIndex = GridManager.Instance.currentCursorIndex;
-            BaseBlock block = GridManager.Instance.GetBlockAtIndex(cursorIndex);
 
+            // Remove block if present
+            BaseBlock block = GridManager.Instance.GetBlockAtIndex(cursorIndex);
             if (block != null)
             {
                 block.DestroyBlock();
                 Debug.Log($"Removed block at index {cursorIndex}");
+            }
+
+            // Remove Lem if present
+            if (GridManager.Instance.HasLemAtIndex(cursorIndex))
+            {
+                GridManager.Instance.RemoveLem(cursorIndex);
+                Debug.Log($"Removed Lem at index {cursorIndex}");
             }
         }
     }
@@ -173,31 +197,81 @@ public class EditorController : MonoBehaviour
         GridManager.Instance.PlaceBlock(newType, gridIndex);
     }
 
-    private void HandleEditorModeToggle()
+    private void HandleLemPlacement()
     {
-        // E key to toggle editor mode (Tab can be problematic in Unity)
+        if (GridManager.Instance == null) return;
+
+        // L key to place Lem or turn it around if already exists
+        if (Input.GetKeyDown(KeyCode.L))
+        {
+            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            GridManager.Instance.PlaceLem(cursorIndex);
+        }
+    }
+
+    private void HandleModeToggle()
+    {
+        // E key toggles between Level Editor and Editor
         if (Input.GetKeyDown(KeyCode.E))
         {
-            isEditingPlaceableSpaces = !isEditingPlaceableSpaces;
-            Debug.Log($"=== E KEY PRESSED === Editor mode toggled to: {isEditingPlaceableSpaces}");
-            Debug.Log($"Editor mode: {(isEditingPlaceableSpaces ? "Editing placeable spaces" : "Placing blocks")}");
-
-            // Directly notify EditorModeManager
-            if (editorModeManager != null)
+            if (currentMode == GameMode.LevelEditor)
             {
-                if (isEditingPlaceableSpaces)
+                currentMode = GameMode.Editor;
+                Debug.Log("=== EDITOR MODE === Place blocks");
+                if (editorModeManager != null) editorModeManager.SetNormalMode();
+            }
+            else if (currentMode == GameMode.Editor)
+            {
+                currentMode = GameMode.LevelEditor;
+                Debug.Log("=== LEVEL EDITOR MODE === Place Lem and mark placeable spaces");
+                if (editorModeManager != null) editorModeManager.SetEditorMode();
+            }
+            else if (currentMode == GameMode.Play)
+            {
+                // Can't toggle modes during play
+                Debug.Log("Exit Play mode first (press P)");
+            }
+        }
+
+        // P key toggles Play mode
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            if (currentMode == GameMode.Play)
+            {
+                // Exit play mode, return to Editor
+                currentMode = GameMode.Editor;
+                Debug.Log("=== EXITED PLAY MODE === Back to Editor");
+                // Reset Lems to original Level Editor positions
+                if (GridManager.Instance != null)
                 {
-                    editorModeManager.SetEditorMode();
-                }
-                else
-                {
-                    editorModeManager.SetNormalMode();
+                    GridManager.Instance.ResetAllLems();
                 }
             }
             else
             {
-                Debug.LogWarning("EditorController: EditorModeManager not found!");
+                // Enter play mode from any editor mode
+                currentMode = GameMode.Play;
+                Debug.Log("=== PLAY MODE === Lem is walking!");
+                UnfreezeAllLems();
             }
+        }
+    }
+
+    private void FreezeAllLems()
+    {
+        LemController[] lems = FindObjectsOfType<LemController>();
+        foreach (LemController lem in lems)
+        {
+            lem.SetFrozen(true);
+        }
+    }
+
+    private void UnfreezeAllLems()
+    {
+        LemController[] lems = FindObjectsOfType<LemController>();
+        foreach (LemController lem in lems)
+        {
+            lem.SetFrozen(false);
         }
     }
 
@@ -205,18 +279,69 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null) return;
 
-        // When in editor mode for placeable spaces
-        if (isEditingPlaceableSpaces)
+        // Space/Enter to toggle placeable state in Level Editor mode
+        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
-            // Space/Enter to toggle placeable state
-            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
-            {
-                int cursorIndex = GridManager.Instance.currentCursorIndex;
-                GridManager.Instance.ToggleSpacePlaceable(cursorIndex);
+            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            GridManager.Instance.ToggleSpacePlaceable(cursorIndex);
 
-                bool isPlaceable = GridManager.Instance.IsSpacePlaceable(cursorIndex);
-                Debug.Log($"Space at index {cursorIndex} is now {(isPlaceable ? "placeable" : "non-placeable")}");
+            bool isPlaceable = GridManager.Instance.IsSpacePlaceable(cursorIndex);
+            Debug.Log($"Space at index {cursorIndex} is now {(isPlaceable ? "placeable" : "non-placeable")}");
+        }
+    }
+
+    private void HandleSaveLoad()
+    {
+        if (GridManager.Instance == null) return;
+
+        // Check for Ctrl/Cmd modifier
+        bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
+                         Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+
+        // Ctrl/Cmd + S to save
+        if (ctrlOrCmd && Input.GetKeyDown(KeyCode.S))
+        {
+            if (GridManager.Instance.SaveLevel())
+            {
+                Debug.Log("=== LEVEL SAVED === Level saved successfully");
             }
+            else
+            {
+                Debug.LogError("Failed to save level");
+            }
+        }
+
+        // Ctrl/Cmd + L to load
+        if (ctrlOrCmd && Input.GetKeyDown(KeyCode.L))
+        {
+            if (LevelSaveSystem.LevelExists())
+            {
+                if (GridManager.Instance.LoadLevel())
+                {
+                    Debug.Log("=== LEVEL LOADED === Level loaded successfully");
+                    // Refresh the visualizer after loading
+                    PlaceableSpaceVisualizer visualizer = FindObjectOfType<PlaceableSpaceVisualizer>();
+                    if (visualizer != null)
+                    {
+                        visualizer.RefreshVisuals();
+                    }
+                }
+                else
+                {
+                    Debug.LogError("Failed to load level");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("No saved level found. Save a level first with Ctrl+S");
+            }
+        }
+
+        // Show save location with Ctrl/Cmd + Shift + S
+        if (ctrlOrCmd && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.S))
+        {
+            string savePath = LevelSaveSystem.GetSavePath();
+            Debug.Log($"Levels are saved to: {savePath}");
         }
     }
 }

@@ -1,16 +1,13 @@
 using UnityEngine;
 
 /// <summary>
-/// Visualizes the grid with horizontal and vertical lines.
-/// Lines are rendered as double-sided meshes to ensure visibility from all angles.
+/// Visualizes the grid with lines on the XY plane using LineRenderer.
 /// </summary>
 [RequireComponent(typeof(GridManager))]
 public class GridVisualizer : MonoBehaviour
 {
     [Header("Grid Line Settings")]
-    public Color gridColor = BlockColors.GridLine;
     public float lineWidth = RenderingConstants.GRID_LINE_WIDTH;
-    public Material lineMaterial;
     public bool showGrid = true;
 
     private GridManager gridManager;
@@ -34,80 +31,58 @@ public class GridVisualizer : MonoBehaviour
         gridLinesParent = new GameObject("GridLines");
         gridLinesParent.transform.parent = transform;
 
-        if (lineMaterial == null)
-        {
-            // Use Sprites/Default for reliable 2D rendering
-            lineMaterial = new Material(Shader.Find("Sprites/Default"));
-            lineMaterial.color = gridColor;
-            lineMaterial.renderQueue = RenderingConstants.GRID_RENDER_QUEUE;
-        }
+        Color gridColor = BlockColors.GridLine;
+        gridColor.a = RenderingConstants.GRID_LINE_OPACITY;
+        float z = RenderingConstants.GRID_DEPTH;
 
-        // Horizontal lines
+        // Horizontal lines (along X axis, at each Y level)
         for (int y = 0; y <= gridManager.gridHeight; y++)
         {
-            Vector3 start = gridManager.gridOrigin + new Vector3(0, RenderingConstants.GRID_HEIGHT, y * gridManager.cellSize);
-            Vector3 end = gridManager.gridOrigin + new Vector3(gridManager.gridWidth * gridManager.cellSize, RenderingConstants.GRID_HEIGHT, y * gridManager.cellSize);
-            CreateGridLine($"HorizontalLine_{y}", start, end);
+            Vector3 start = gridManager.gridOrigin + new Vector3(0, y * gridManager.cellSize, z);
+            Vector3 end = gridManager.gridOrigin + new Vector3(gridManager.gridWidth * gridManager.cellSize, y * gridManager.cellSize, z);
+            CreateGridLine($"HorizontalLine_{y}", start, end, gridColor);
         }
 
-        // Vertical lines
+        // Vertical lines (along Y axis, at each X level)
         for (int x = 0; x <= gridManager.gridWidth; x++)
         {
-            Vector3 start = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, RenderingConstants.GRID_HEIGHT, 0);
-            Vector3 end = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, RenderingConstants.GRID_HEIGHT, gridManager.gridHeight * gridManager.cellSize);
-            CreateGridLine($"VerticalLine_{x}", start, end);
+            Vector3 start = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, 0, z);
+            Vector3 end = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, gridManager.gridHeight * gridManager.cellSize, z);
+            CreateGridLine($"VerticalLine_{x}", start, end, gridColor);
         }
 
-        Debug.Log($"Grid visualization created: {gridManager.gridWidth}x{gridManager.gridHeight}");
+        Debug.Log($"Grid visualization created: {gridManager.gridWidth}x{gridManager.gridHeight}, line color = {gridColor}");
     }
 
-    private void CreateGridLine(string name, Vector3 start, Vector3 end)
+    private void CreateGridLine(string name, Vector3 start, Vector3 end, Color color)
     {
         GameObject lineObj = new GameObject(name);
         lineObj.transform.parent = gridLinesParent.transform;
 
-        MeshFilter meshFilter = lineObj.AddComponent<MeshFilter>();
-        MeshRenderer meshRenderer = lineObj.AddComponent<MeshRenderer>();
+        LineRenderer lr = lineObj.AddComponent<LineRenderer>();
 
-        meshRenderer.material = lineMaterial;
-
-        // Create double-sided quad mesh for the line
-        Vector3 direction = (end - start).normalized;
-        Vector3 perpendicular = Vector3.Cross(direction, Vector3.up).normalized * lineWidth * 0.5f;
-
-        Mesh mesh = new Mesh();
-
-        Vector3[] vertices = new Vector3[8]
+        // Create a unique material instance using Legacy Shaders/Particles/Alpha Blended
+        Shader shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+        if (shader == null)
         {
-            // Top face
-            start - perpendicular,
-            start + perpendicular,
-            end + perpendicular,
-            end - perpendicular,
-            // Bottom face (same positions)
-            start - perpendicular,
-            start + perpendicular,
-            end + perpendicular,
-            end - perpendicular
-        };
+            Debug.LogError("Could not find shader!");
+            shader = Shader.Find("Sprites/Default");
+        }
 
-        // Double-sided: top face CCW from above, bottom face CW from above (CCW from below)
-        int[] triangles = new int[12]
-        {
-            0, 1, 2, 0, 2, 3,  // Top face
-            4, 6, 5, 4, 7, 6   // Bottom face
-        };
+        Material lineMaterial = new Material(shader);
+        lineMaterial.name = name + "_Material";
 
-        Vector2[] uvs = new Vector2[8];
-        for (int i = 0; i < 8; i++) uvs[i] = new Vector2(0.5f, 0.5f);
-
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.uv = uvs;
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
-
-        meshFilter.mesh = mesh;
+        // ONLY set vertex colors, don't set material.color
+        lr.sharedMaterial = lineMaterial;
+        lr.startColor = color;
+        lr.endColor = color;
+        lr.startWidth = lineWidth;
+        lr.endWidth = lineWidth;
+        lr.useWorldSpace = true;
+        lr.positionCount = 2;
+        lr.SetPosition(0, start);
+        lr.SetPosition(1, end);
+        lr.sortingOrder = RenderingConstants.GRID_SORTING;
     }
 
     public void ToggleGrid()

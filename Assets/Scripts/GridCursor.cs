@@ -1,26 +1,22 @@
 using UnityEngine;
 
 /// <summary>
-/// Visual cursor that follows mouse input and changes color based on space state.
-/// Rendered at the highest layer to always be visible above other elements.
+/// Visual cursor that changes color based on space state.
+/// Renders on XY plane with Z depth for layering.
 /// </summary>
 public class GridCursor : MonoBehaviour
 {
     public enum CursorState
     {
-        Placeable,      // White - can place blocks here
-        Editable,       // Green - can toggle placeable state
-        NonPlaceable    // Grey - cannot place blocks here
+        Placeable,
+        Editable,
+        NonPlaceable
     }
 
     [Header("Cursor Colors")]
     public Color placeableColor = BlockColors.CursorPlaceable;
     public Color editableColor = BlockColors.CursorEditable;
     public Color nonPlaceableColor = BlockColors.CursorNonPlaceable;
-
-    [Header("Cursor Settings")]
-    public float lineWidth = RenderingConstants.CURSOR_LINE_WIDTH;
-    public float heightOffset = RenderingConstants.CURSOR_HEIGHT;
 
     private BorderRenderer borderRenderer;
     private CursorState currentState = CursorState.Placeable;
@@ -41,7 +37,7 @@ public class GridCursor : MonoBehaviour
         if (borderRenderer == null) SetupCursor();
 
         Color currentColor = GetColorForState(currentState);
-        borderRenderer.Initialize(currentColor, cellSize, heightOffset, RenderingConstants.CURSOR_SORTING);
+        borderRenderer.Initialize(currentColor, cellSize, RenderingConstants.CURSOR_DEPTH, RenderingConstants.CURSOR_SORTING, RenderingConstants.CURSOR_LINE_WIDTH);
     }
 
     public void SetState(CursorState state)
@@ -50,10 +46,7 @@ public class GridCursor : MonoBehaviour
         UpdateColor();
     }
 
-    public CursorState GetState()
-    {
-        return currentState;
-    }
+    public CursorState GetState() => currentState;
 
     private Color GetColorForState(CursorState state)
     {

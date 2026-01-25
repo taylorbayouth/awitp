@@ -2,20 +2,29 @@
 
 ## Overview
 
-Every block in the game has built-in spatial awareness of its 8 surrounding grid spaces. This system runs continuously and allows blocks to detect and react to nearby objects, players, enemies, and other blocks.
+Every block in the game has built-in spatial awareness of its 4 surrounding grid spaces (Left, Right, Up, Down). This system runs continuously and allows blocks to detect and react to nearby objects, players, enemies, and other blocks.
+
+## Coordinate System
+
+The game uses the XY plane as the primary playing field:
+- **X axis**: Horizontal (left/right)
+- **Y axis**: Vertical (up/down) - gravity pulls down
+- **Z axis**: Depth (camera at -Z looks toward +Z)
+
+This creates a natural 2D side-scrolling platformer feel while using Unity's 3D physics.
 
 ## How It Works
 
 ### Detection Grid
 
-Each block monitors 8 surrounding spaces in cardinal and diagonal directions:
+Each block monitors 4 surrounding spaces in cardinal directions:
 
 ```
-NW    N    NE
-  \   |   /
-W  - [B] - E
-  /   |   \
-SW    S    SE
+      Up
+       |
+Left - [B] - Right
+       |
+     Down
 ```
 
 ### Configuration
@@ -41,7 +50,7 @@ Uses `Physics.OverlapBox` to find all colliders in each direction. Detection run
 Returns all colliders on specified layers:
 
 ```csharp
-List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.North);
+List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.Right);
 ```
 
 **Can detect:**
@@ -57,7 +66,7 @@ List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.North);
 Returns only objects with BaseBlock component:
 
 ```csharp
-List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.East);
+List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.Left);
 ```
 
 **Use for:**
@@ -71,14 +80,10 @@ List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.East);
 ```csharp
 public enum Direction
 {
-    North,
-    NorthEast,
-    East,
-    SouthEast,
-    South,
-    SouthWest,
-    West,
-    NorthWest
+    Left,
+    Right,
+    Up,
+    Down
 }
 ```
 
@@ -87,7 +92,7 @@ public enum Direction
 ### 1. Transporter Block
 ```csharp
 // Check if there's space to push player
-List<Collider> objectsAhead = GetObjectsInDirection(pushDirection);
+List<Collider> objectsAhead = GetObjectsInDirection(Direction.Right);
 bool canPush = objectsAhead.Count == 0;
 ```
 
@@ -96,7 +101,7 @@ bool canPush = objectsAhead.Count == 0;
 // When crumbling, trigger adjacent crumblers
 protected override void OnPlayerReachCenter()
 {
-    List<BaseBlock> adjacentBlocks = GetBlocksInDirection(Direction.North);
+    List<BaseBlock> adjacentBlocks = GetBlocksInDirection(Direction.Down);
     foreach (var block in adjacentBlocks)
     {
         if (block.blockType == BlockType.Crumbler)
@@ -107,27 +112,10 @@ protected override void OnPlayerReachCenter()
 }
 ```
 
-### 3. Teleporter Pair Detection
-```csharp
-// Find paired teleporter in any direction
-foreach (Direction dir in Enum.GetValues(typeof(Direction)))
-{
-    List<BaseBlock> blocks = GetBlocksInDirection(dir);
-    foreach (var block in blocks)
-    {
-        if (block.blockType == BlockType.Teleporter && block != this)
-        {
-            pairedTeleporter = block;
-            break;
-        }
-    }
-}
-```
-
-### 4. Wall Detection
+### 3. Wall Detection
 ```csharp
 // Check if movement is blocked by walls
-List<Collider> objects = GetObjectsInDirection(Direction.East);
+List<Collider> objects = GetObjectsInDirection(Direction.Left);
 bool blockedByWall = objects.Any(c => c.CompareTag("Wall"));
 ```
 
@@ -155,7 +143,7 @@ Visual debugging available in Scene view when block is selected:
 ```csharp
 private void OnDrawGizmosSelected()
 {
-    // Red wireframes show 8 detection zones
+    // Red wireframes show 4 detection zones
     // Green wireframe shows block itself
 }
 ```
@@ -175,13 +163,4 @@ Set `detectionLayerMask` in inspector to control what blocks can "see":
 2. **Check for null/empty**: Always verify results before using
 3. **Configure layers**: Set layer masks appropriately for each block type
 4. **Consider performance**: Heavy per-frame logic should be optimized
-5. **Test edge cases**: Multiple objects in same direction, diagonal detection, etc.
-
-## Future Extensions
-
-Potential enhancements:
-- Distance-based detection (not just adjacent)
-- Directional filtering (cone-shaped detection)
-- Priority-based detection (closest object first)
-- Event-based detection (only on changes, not every frame)
-- Detection history (track what was detected last frame)
+5. **Test edge cases**: Multiple objects in same direction, etc.

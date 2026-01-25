@@ -81,28 +81,25 @@ public class GameInitializer : MonoBehaviour
             Debug.Log("GameInitializer: Added InventoryUI");
         }
 
-        // Setup Lemming Placer
-        if (gridManager.GetComponent<LemmingPlacer>() == null)
-        {
-            LemmingPlacer lemmingPlacer = gridManager.gameObject.AddComponent<LemmingPlacer>();
-            lemmingPlacer.gridManager = gridManager;
-            Debug.Log("GameInitializer: Added LemmingPlacer");
-        }
-
         // Setup camera
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
-            if (mainCamera.GetComponent<CameraSetup>() == null)
+            CameraSetup cameraSetup = mainCamera.GetComponent<CameraSetup>();
+            if (cameraSetup == null)
             {
-                CameraSetup cameraSetup = mainCamera.gameObject.AddComponent<CameraSetup>();
+                cameraSetup = mainCamera.gameObject.AddComponent<CameraSetup>();
                 cameraSetup.gridManager = gridManager;
                 Debug.Log("GameInitializer: Added CameraSetup to Main Camera");
             }
 
-            // Force camera to use solid color
+            // Set basic camera properties (CameraSetup will handle positioning)
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
-            Debug.Log("GameInitializer: Camera set to solid color mode");
+            mainCamera.orthographic = true;
+            mainCamera.nearClipPlane = 0.1f;
+            mainCamera.farClipPlane = 100f;
+
+            Debug.Log("GameInitializer: Camera setup - CameraSetup component will handle positioning");
         }
         else
         {
