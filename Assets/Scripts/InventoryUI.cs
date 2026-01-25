@@ -37,7 +37,7 @@ public class InventoryUI : MonoBehaviour
     private void OnGUI()
     {
         if (inventory == null || editorController == null) return;
-        if (editorController.currentMode != GameMode.Editor) return;
+        if (editorController.currentMode == GameMode.Play) return;
 
         InitializeStyles();
 

@@ -14,6 +14,7 @@ public class LevelData
     {
         public BlockType blockType;
         public int gridIndex;
+        public string[] routeSteps;
 
         public BlockData(BlockType type, int index)
         {
