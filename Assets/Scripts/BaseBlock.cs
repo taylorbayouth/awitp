@@ -86,13 +86,19 @@ public class BaseBlock : MonoBehaviour
     }
 
     // Tracks most recent trigger state for editor labels
+    // Assigned at runtime but only read in editor visualization code
+#pragma warning disable 0414
     private TriggerState lastTriggerState = TriggerState.None;
+#pragma warning restore 0414
 
     // Flag indicating if a player is currently on this block
     private bool isPlayerOnBlock = false;
 
     // Time until which the "Center" label should be displayed
+    // Assigned at runtime but only read in editor visualization code
+#pragma warning disable 0414
     private float centerLabelUntil = 0f;
+#pragma warning restore 0414
 
     [Header("Trigger Timing")]
     [Tooltip("Duration to show 'Center' label in editor after trigger (seconds)")]
