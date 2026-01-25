@@ -81,6 +81,14 @@ public class GameInitializer : MonoBehaviour
             Debug.Log("GameInitializer: Added InventoryUI");
         }
 
+        // Setup Lemming Placer
+        if (gridManager.GetComponent<LemmingPlacer>() == null)
+        {
+            LemmingPlacer lemmingPlacer = gridManager.gameObject.AddComponent<LemmingPlacer>();
+            lemmingPlacer.gridManager = gridManager;
+            Debug.Log("GameInitializer: Added LemmingPlacer");
+        }
+
         // Setup camera
         Camera mainCamera = Camera.main;
         if (mainCamera != null)

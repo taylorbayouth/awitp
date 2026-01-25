@@ -10,11 +10,12 @@ public class LemmingController : MonoBehaviour
     [Header("Movement")]
     public float walkSpeed = 2f;
     public float turnSpeed = 180f;
+    public bool facingRight = true; // Start facing right (+X direction)
 
     [Header("Detection")]
     public float wallDetectionDistance = 0.5f;
     public float edgeDetectionDistance = 0.5f;
-    public float groundCheckDistance = 1.5f;
+    public float groundCheckDistance = 0.3f; // Check slightly below
     public LayerMask detectionMask = ~0; // Detect everything by default
 
     [Header("Debug")]
@@ -31,8 +32,10 @@ public class LemmingController : MonoBehaviour
 
     private void Start()
     {
-        // Start moving forward
-        moveDirection = transform.forward;
+        // Set initial direction based on facingRight
+        // Right = +X, Left = -X (walking on XZ plane, Y is up)
+        transform.rotation = Quaternion.Euler(0, facingRight ? 90 : -90, 0);
+        moveDirection = transform.right; // Walk along X axis
     }
 
     private void Update()
@@ -60,8 +63,8 @@ public class LemmingController : MonoBehaviour
             return;
         }
 
-        // Move forward
-        Vector3 motion = transform.forward * walkSpeed * Time.deltaTime;
+        // Move along X axis (right or left)
+        Vector3 motion = transform.right * walkSpeed * Time.deltaTime;
         motion.y = moveDirection.y * Time.deltaTime;
         controller.Move(motion);
     }
@@ -72,7 +75,7 @@ public class LemmingController : MonoBehaviour
     private bool DetectWall()
     {
         Vector3 rayOrigin = transform.position + Vector3.up * 0.5f; // Check at waist height
-        Vector3 rayDirection = transform.forward;
+        Vector3 rayDirection = transform.right; // Walk direction (along X axis)
 
         bool hitWall = Physics.Raycast(rayOrigin, rayDirection, wallDetectionDistance, detectionMask);
 
@@ -89,7 +92,8 @@ public class LemmingController : MonoBehaviour
     /// </summary>
     private bool DetectEdge()
     {
-        Vector3 rayOrigin = transform.position + transform.forward * edgeDetectionDistance + Vector3.up * 0.1f;
+        // Check ahead in walk direction (along X axis)
+        Vector3 rayOrigin = transform.position + transform.right * edgeDetectionDistance + Vector3.up * 0.1f;
         Vector3 rayDirection = Vector3.down;
 
         bool hasGround = Physics.Raycast(rayOrigin, rayDirection, groundCheckDistance, detectionMask);
@@ -111,12 +115,13 @@ public class LemmingController : MonoBehaviour
 
         isTurning = true;
         transform.Rotate(0, 180, 0);
-        moveDirection = transform.forward;
+        facingRight = !facingRight;
+        moveDirection = transform.right;
 
         // Small delay before resuming movement
         Invoke(nameof(ResumMovement), 0.1f);
 
-        Debug.Log($"Lemming {gameObject.name} turned around");
+        Debug.Log($"Lemming {gameObject.name} turned around (now facing {(facingRight ? "right" : "left")})");
     }
 
     private void ResumMovement()
@@ -139,17 +144,26 @@ public class LemmingController : MonoBehaviour
     {
         if (!Application.isPlaying) return;
 
-        // Draw forward direction
+        // Draw walk direction (along X axis)
         Gizmos.color = Color.blue;
-        Gizmos.DrawLine(transform.position, transform.position + transform.forward * 1f);
+        Gizmos.DrawLine(transform.position, transform.position + transform.right * 1f);
 
         // Draw detection areas
         Gizmos.color = Color.red;
-        Vector3 wallCheck = transform.position + Vector3.up * 0.5f + transform.forward * wallDetectionDistance;
+        Vector3 wallCheck = transform.position + Vector3.up * 0.5f + transform.right * wallDetectionDistance;
         Gizmos.DrawWireSphere(wallCheck, 0.1f);
 
         Gizmos.color = Color.yellow;
-        Vector3 edgeCheck = transform.position + transform.forward * edgeDetectionDistance;
+        Vector3 edgeCheck = transform.position + transform.right * edgeDetectionDistance;
         Gizmos.DrawWireSphere(edgeCheck, 0.1f);
+    }
+
+    /// <summary>
+    /// Public method to set initial direction.
+    /// </summary>
+    public void SetDirection(bool right)
+    {
+        facingRight = right;
+        transform.rotation = Quaternion.Euler(0, right ? 90 : -90, 0);
     }
 }
