@@ -2,6 +2,11 @@ using UnityEngine;
 using System;
 using System.Collections.Generic;
 
+/// <summary>
+/// Base class for all block types in the puzzle game.
+/// Handles placement, spatial awareness (detecting surrounding objects),
+/// player detection, and visual highlighting.
+/// </summary>
 public class BaseBlock : MonoBehaviour
 {
     [Header("Block Identity")]
@@ -20,7 +25,6 @@ public class BaseBlock : MonoBehaviour
     private bool isHighlighted = false;
 
     [Header("Player Detection")]
-    private bool playerOnBlock = false;
     private bool playerAtCenter = false;
 
     // Store what's in each surrounding space
@@ -77,9 +81,12 @@ public class BaseBlock : MonoBehaviour
 
     #region Instantiation and Destruction
 
+    /// <summary>
+    /// Factory method for creating and configuring a new block instance.
+    /// Called by GridManager when placing a block.
+    /// </summary>
     public static BaseBlock Instantiate(BlockType type, int gridIndex)
     {
-        // This will be called by GridManager when placing a block
         GameObject blockObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
         blockObj.name = $"Block_{type}_{gridIndex}";
 
@@ -93,13 +100,37 @@ public class BaseBlock : MonoBehaviour
         rb.isKinematic = true; // Blocks don't fall, but can be moved programmatically
         rb.useGravity = false;
 
+        // Set color based on block type
+        Renderer renderer = blockObj.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            Color blockColor = GetColorForBlockType(type);
+            renderer.material.color = blockColor;
+            // Update the original color reference so highlighting works correctly
+            block.originalColor = blockColor;
+        }
+
         // Position will be set by GridManager
 
         return block;
     }
 
+    private static Color GetColorForBlockType(BlockType type)
+    {
+        return BlockColors.GetColorForBlockType(type);
+    }
+
+    /// <summary>
+    /// Destroys this block and returns it to the inventory.
+    /// </summary>
     public void DestroyBlock()
     {
+        BlockInventory inventory = FindObjectOfType<BlockInventory>();
+        if (inventory != null)
+        {
+            inventory.ReturnBlock(blockType);
+        }
+
         // Unregister from grid manager
         if (GridManager.Instance != null)
         {
@@ -114,9 +145,12 @@ public class BaseBlock : MonoBehaviour
 
     #region Spatial Detection
 
+    /// <summary>
+    /// Continuously detects objects in the 8 surrounding grid spaces.
+    /// Called every frame to maintain awareness of nearby blocks and entities.
+    /// </summary>
     private void DetectSurroundingSpaces()
     {
-        // Clear previous detections
         foreach (var list in surroundingObjects.Values)
         {
             list.Clear();
@@ -150,11 +184,17 @@ public class BaseBlock : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Gets all colliders detected in a specific direction.
+    /// </summary>
     public List<Collider> GetObjectsInDirection(Direction direction)
     {
         return surroundingObjects[direction];
     }
 
+    /// <summary>
+    /// Gets all blocks detected in a specific direction (filters for BaseBlock components).
+    /// </summary>
     public List<BaseBlock> GetBlocksInDirection(Direction direction)
     {
         List<BaseBlock> blocks = new List<BaseBlock>();
@@ -177,7 +217,6 @@ public class BaseBlock : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            playerOnBlock = true;
             OnPlayerEnter();
         }
     }
@@ -186,7 +225,6 @@ public class BaseBlock : MonoBehaviour
     {
         if (other.CompareTag("Player"))
         {
-            playerOnBlock = false;
             playerAtCenter = false;
             OnPlayerExit();
         }

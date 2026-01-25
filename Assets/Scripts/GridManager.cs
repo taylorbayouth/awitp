@@ -15,6 +15,10 @@ public class GridManager : MonoBehaviour
     public int currentCursorIndex = 0;
     public GameObject cursorHighlightPrefab;
     private GameObject cursorHighlight;
+    private GridCursor gridCursor;
+
+    [Header("Placeable Spaces")]
+    private bool[] placeableSpaces; // Track which grid spaces can have blocks
 
     // Track all placed blocks
     private Dictionary<int, BaseBlock> placedBlocks = new Dictionary<int, BaseBlock>();
@@ -32,12 +36,28 @@ public class GridManager : MonoBehaviour
             return;
         }
 
-        // Create cursor highlight if prefab is assigned
-        if (cursorHighlightPrefab != null)
+        // Initialize placeable spaces array
+        InitializePlaceableSpaces();
+
+        // Create cursor highlight
+        CreateCursor();
+    }
+
+    private void Start()
+    {
+        // Initialize visualizer after everything is set up
+        PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
+        if (visualizer != null)
         {
-            cursorHighlight = Instantiate(cursorHighlightPrefab);
-            UpdateCursorPosition();
+            visualizer.RefreshVisuals();
         }
+    }
+
+    private void InitializePlaceableSpaces()
+    {
+        int totalSpaces = gridWidth * gridHeight;
+        placeableSpaces = new bool[totalSpaces];
+        // All spaces start as non-placeable (false is default for bool arrays)
     }
 
     #region Grid Coordinate Conversion
@@ -67,7 +87,9 @@ public class GridManager : MonoBehaviour
 
     public Vector3 CoordinatesToWorldPosition(Vector2Int coords)
     {
-        return gridOrigin + new Vector3(coords.x * cellSize, 0, coords.y * cellSize);
+        // Add 0.5 offset to center blocks in grid squares
+        float halfCell = cellSize * 0.5f;
+        return gridOrigin + new Vector3((coords.x * cellSize) + halfCell, 0, (coords.y * cellSize) + halfCell);
     }
 
     public bool IsValidIndex(int index)
@@ -92,10 +114,31 @@ public class GridManager : MonoBehaviour
             return null;
         }
 
+        // Check if space is placeable
+        if (!IsSpacePlaceable(gridIndex))
+        {
+            Debug.LogWarning($"Cannot place block at index {gridIndex}: space is not placeable");
+            return null;
+        }
+
+        // Check block inventory
+        BlockInventory inventory = FindObjectOfType<BlockInventory>();
+        if (inventory != null && !inventory.CanPlaceBlock(blockType))
+        {
+            Debug.LogWarning($"Cannot place {blockType} block: no blocks remaining in inventory");
+            return null;
+        }
+
         // Remove existing block at this position if any
         if (placedBlocks.ContainsKey(gridIndex))
         {
             placedBlocks[gridIndex].DestroyBlock();
+        }
+
+        // Use block from inventory
+        if (inventory != null)
+        {
+            inventory.UseBlock(blockType);
         }
 
         // Create new block
@@ -104,6 +147,9 @@ public class GridManager : MonoBehaviour
 
         // Register the block
         placedBlocks[gridIndex] = newBlock;
+
+        // Update cursor state in case cursor is on this space
+        UpdateCursorState();
 
         return newBlock;
     }
@@ -122,6 +168,9 @@ public class GridManager : MonoBehaviour
         {
             placedBlocks.Remove(block.gridIndex);
         }
+
+        // Update cursor state in case cursor is on this space
+        UpdateCursorState();
     }
 
     public BaseBlock GetBlockAtIndex(int index)
@@ -142,6 +191,30 @@ public class GridManager : MonoBehaviour
 
     #region Cursor Movement
 
+    private void CreateCursor()
+    {
+        if (cursorHighlightPrefab != null)
+        {
+            cursorHighlight = Instantiate(cursorHighlightPrefab);
+            gridCursor = cursorHighlight.GetComponent<GridCursor>();
+        }
+        else
+        {
+            // Create cursor programmatically
+            cursorHighlight = new GameObject("GridCursor");
+            gridCursor = cursorHighlight.AddComponent<GridCursor>();
+        }
+
+        // Initialize the cursor with cell size
+        if (gridCursor != null)
+        {
+            gridCursor.Initialize(cellSize);
+        }
+
+        UpdateCursorPosition();
+        UpdateCursorState();
+    }
+
     public void MoveCursor(Vector2Int direction)
     {
         Vector2Int currentCoords = IndexToCoordinates(currentCursorIndex);
@@ -153,7 +226,7 @@ public class GridManager : MonoBehaviour
 
         currentCursorIndex = CoordinatesToIndex(newCoords);
         UpdateCursorPosition();
-        HighlightCurrentCursor();
+        UpdateCursorState();
     }
 
     public void SetCursorIndex(int index)
@@ -162,7 +235,7 @@ public class GridManager : MonoBehaviour
         {
             currentCursorIndex = index;
             UpdateCursorPosition();
-            HighlightCurrentCursor();
+            UpdateCursorState();
         }
     }
 
@@ -174,20 +247,113 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    private void HighlightCurrentCursor()
+    private void UpdateCursorState()
     {
-        // Unhighlight all blocks first
-        foreach (var block in placedBlocks.Values)
+        if (gridCursor == null) return;
+
+        // Check if current position is placeable
+        bool isPlaceable = IsSpacePlaceable(currentCursorIndex);
+
+        // Check if there's a block at current position
+        bool hasBlock = IsGridSpaceOccupied(currentCursorIndex);
+
+        // Determine cursor state
+        if (!isPlaceable)
         {
-            block.Unhighlight();
+            gridCursor.SetState(GridCursor.CursorState.NonPlaceable);
+        }
+        else if (hasBlock)
+        {
+            gridCursor.SetState(GridCursor.CursorState.Editable);
+        }
+        else
+        {
+            gridCursor.SetState(GridCursor.CursorState.Placeable);
+        }
+    }
+
+    #endregion
+
+    #region Placeable Space Management
+
+    public bool IsSpacePlaceable(int index)
+    {
+        if (!IsValidIndex(index)) return false;
+        return placeableSpaces[index];
+    }
+
+    public void SetSpacePlaceable(int index, bool placeable)
+    {
+        if (IsValidIndex(index))
+        {
+            placeableSpaces[index] = placeable;
+            UpdateCursorState();
+
+            // Update visualizer
+            PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
+            if (visualizer != null)
+            {
+                visualizer.UpdateMarkerAtIndex(index);
+            }
+        }
+    }
+
+    public void SetSpacePlaceable(int x, int y, bool placeable)
+    {
+        int index = CoordinatesToIndex(x, y);
+        SetSpacePlaceable(index, placeable);
+    }
+
+    public void ToggleSpacePlaceable(int index)
+    {
+        if (IsValidIndex(index))
+        {
+            placeableSpaces[index] = !placeableSpaces[index];
+            UpdateCursorState();
+
+            // Update visualizer
+            PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
+            if (visualizer != null)
+            {
+                visualizer.UpdateMarkerAtIndex(index);
+            }
+        }
+    }
+
+    #endregion
+
+    #region Grid Refresh
+
+    private void OnValidate()
+    {
+        // Don't refresh during OnValidate - causes Unity errors
+        // Grid will refresh on Start/Play
+    }
+
+    public void RefreshGrid()
+    {
+        // Refresh grid visualization
+        GridVisualizer visualizer = GetComponent<GridVisualizer>();
+        if (visualizer != null)
+        {
+            visualizer.RefreshGrid();
         }
 
-        // Highlight block at cursor position if exists
-        BaseBlock currentBlock = GetBlockAtIndex(currentCursorIndex);
-        if (currentBlock != null)
+        // Refresh placeable space visualization
+        PlaceableSpaceVisualizer spaceVisualizer = GetComponent<PlaceableSpaceVisualizer>();
+        if (spaceVisualizer != null)
         {
-            currentBlock.Highlight();
+            spaceVisualizer.RefreshVisuals();
         }
+
+        // Refresh camera setup
+        CameraSetup cameraSetup = FindObjectOfType<CameraSetup>();
+        if (cameraSetup != null)
+        {
+            cameraSetup.RefreshCamera();
+        }
+
+        Debug.Log($"Grid refreshed: {gridWidth}x{gridHeight}");
     }
 
     #endregion
