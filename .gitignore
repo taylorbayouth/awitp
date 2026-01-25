@@ -77,3 +77,43 @@ crashlytics-build.properties
 # Claude
 .claude/
 mono_crash.*.json
+
+# Backup files
+*.bak
+*.backup
+*~
+*.swp
+*.swo
+*~.nib
+
+# Log files
+*.log
+
+# Security - Never commit credentials
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
+credentials.json
+secrets.json
+apikeys.json
+
+# Editor temporary files
+*.autosave
+*.[Cc]ache
+
+# OS Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Package managers
+node_modules/
+.npm/
+.yarn/
+
+# IDE specific
+*.code-workspace
+.vscode/
+.idea/

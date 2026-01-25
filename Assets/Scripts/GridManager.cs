@@ -1,14 +1,44 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 /// <summary>
-/// Manages the grid system for the puzzle game.
-/// Grid is on the XY plane (viewed as a wall), with Z as depth.
-/// X = horizontal (left/right), Y = vertical (up/down), Z = depth (toward camera)
+/// Central manager for the grid system in the puzzle game.
+///
+/// ARCHITECTURE:
+/// - Grid exists on XY plane (vertical wall), viewed from negative Z
+/// - X axis = horizontal (left/right)
+/// - Y axis = vertical (up/down)
+/// - Z axis = depth (toward/away from camera, always 0 for grid)
+///
+/// RESPONSIBILITIES:
+/// - Grid coordinate conversions (index ↔ coordinates ↔ world position)
+/// - Block placement and removal
+/// - Lem (character) placement and tracking
+/// - Placeable space management (which grid cells can have blocks)
+/// - Cursor management for editor
+/// - Save/load orchestration
+/// - Transporter path conflict detection
+///
+/// DESIGN PATTERN: Singleton (accessed via GridManager.Instance)
+///
+/// NOTE: This class is large (943 lines) and could benefit from refactoring into:
+/// - GridStateManager (coordinates, conversions)
+/// - BlockPlacementManager (block operations)
+/// - LemManager (Lem tracking)
+/// - GridVisualsManager (cursor, visualization)
 /// </summary>
 public class GridManager : MonoBehaviour
 {
+    /// <summary>
+    /// Singleton instance. Initialized in Awake(), destroyed if duplicate exists.
+    /// </summary>
     public static GridManager Instance { get; private set; }
+
+    // Cached component references to avoid FindObjectOfType calls
+    private static CameraSetup _cachedCameraSetup;
+    private static PlaceableSpaceVisualizer _cachedPlaceableVisualizer;
+    private static GridVisualizer _cachedGridVisualizer;
 
     [Header("Grid Settings")]
     public int gridWidth = 10;
@@ -53,23 +83,42 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Initializes the singleton instance and sets up the grid system.
+    /// Enforces singleton pattern by destroying duplicates.
+    /// </summary>
     private void Awake()
     {
+        // Enforce singleton pattern
         if (Instance == null)
         {
             Instance = this;
+            Debug.Log("[GridManager] Singleton instance initialized");
         }
         else
         {
+            Debug.LogWarning($"[GridManager] Duplicate GridManager detected on '{gameObject.name}'. Destroying duplicate.");
             Destroy(gameObject);
             return;
         }
 
-        // Calculate grid origin to center grid around world origin (0,0,0)
-        CalculateGridOrigin();
+        try
+        {
+            // Calculate grid origin to center grid around world origin (0,0,0)
+            CalculateGridOrigin();
 
-        InitializePlaceableSpaces();
-        CreateCursor();
+            // Initialize the placeable spaces array
+            InitializePlaceableSpaces();
+
+            // Create the visual cursor for editor mode
+            CreateCursor();
+
+            Debug.Log($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid, cell size {cellSize}");
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GridManager] Failed to initialize: {ex.Message}\n{ex.StackTrace}");
+        }
     }
 
     /// <summary>
@@ -87,13 +136,33 @@ public class GridManager : MonoBehaviour
         Debug.Log($"GridManager: Auto-calculated gridOrigin = {_gridOrigin} for {gridWidth}x{gridHeight} grid");
     }
 
+    /// <summary>
+    /// Performs additional setup after all Awake() methods have executed.
+    /// Ensures camera is properly centered on the grid.
+    /// </summary>
     private void Start()
     {
-        // Ensure camera is centered on grid
-        CameraSetup cameraSetup = FindObjectOfType<CameraSetup>();
-        if (cameraSetup != null)
+        try
         {
-            cameraSetup.SetupCamera();
+            // Cache CameraSetup reference to avoid repeated FindObjectOfType calls
+            if (_cachedCameraSetup == null)
+            {
+                _cachedCameraSetup = Object.FindObjectOfType<CameraSetup>();
+            }
+
+            if (_cachedCameraSetup != null)
+            {
+                _cachedCameraSetup.SetupCamera();
+                Debug.Log("[GridManager] Camera setup complete");
+            }
+            else
+            {
+                Debug.LogWarning("[GridManager] No CameraSetup found in scene. Camera may not be positioned correctly.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GridManager] Error in Start(): {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -176,51 +245,104 @@ public class GridManager : MonoBehaviour
 
     #region Block Placement and Management
 
+    /// <summary>
+    /// Places a block on the grid at the specified index.
+    /// Performs extensive validation before placement:
+    /// - Checks if index is valid
+    /// - Checks if space is placeable
+    /// - Checks for transporter path conflicts
+    /// - Checks for permanent blocks
+    /// - Checks inventory availability
+    /// </summary>
+    /// <param name="blockType">Type of block to place</param>
+    /// <param name="gridIndex">Grid index where block should be placed</param>
+    /// <returns>The placed block, or null if placement failed</returns>
     public BaseBlock PlaceBlock(BlockType blockType, int gridIndex)
     {
-        if (!IsValidIndex(gridIndex))
+        try
         {
-            Debug.LogWarning($"Invalid grid index: {gridIndex}");
+            // === VALIDATION CHECKS ===
+
+            // Check 1: Valid grid index
+            if (!IsValidIndex(gridIndex))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place block: Invalid grid index {gridIndex}");
+                return null;
+            }
+
+            // Check 2: Transporter path conflict
+            if (IsIndexBlockedByTransporterPath(gridIndex))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Transporter path reserved");
+                return null;
+            }
+
+            // Check 3: Space must be marked as placeable
+            if (!IsSpacePlaceable(gridIndex))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Space not marked as placeable");
+                return null;
+            }
+
+            // Check 4: No permanent blocks
+            if (IsPermanentBlockAtIndex(gridIndex))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Permanent block present");
+                return null;
+            }
+
+            // Check 5: Inventory availability
+            // Use cached inventory reference
+            BlockInventory inventory = Object.FindObjectOfType<BlockInventory>();
+            if (inventory != null && !inventory.CanPlaceBlock(blockType))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {blockType}: No blocks remaining in inventory");
+                return null;
+            }
+
+            // === PLACEMENT LOGIC ===
+
+            // If there's already a non-permanent block here, destroy it
+            if (placedBlocks.ContainsKey(gridIndex))
+            {
+                Debug.Log($"[GridManager] Replacing existing block at index {gridIndex}");
+                placedBlocks[gridIndex].DestroyBlock();
+            }
+
+            // Consume block from inventory
+            if (inventory != null)
+            {
+                inventory.UseBlock(blockType);
+            }
+
+            // Create and position the new block
+            BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
+            if (newBlock == null)
+            {
+                Debug.LogError($"[GridManager] Failed to instantiate {blockType} block at index {gridIndex}");
+                // Return the block to inventory since placement failed
+                if (inventory != null)
+                {
+                    inventory.ReturnBlock(blockType);
+                }
+                return null;
+            }
+
+            newBlock.isPermanent = false;
+            PositionBlock(newBlock, gridIndex);
+
+            // Register the new block
+            placedBlocks[gridIndex] = newBlock;
+            UpdateCursorState();
+
+            Debug.Log($"[GridManager] Successfully placed {blockType} block at index {gridIndex}");
+            return newBlock;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[GridManager] Error placing {blockType} block at index {gridIndex}: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
-
-        if (!IsSpacePlaceable(gridIndex))
-        {
-            Debug.LogWarning($"Cannot place block at index {gridIndex}: space is not placeable");
-            return null;
-        }
-
-        if (IsPermanentBlockAtIndex(gridIndex))
-        {
-            Debug.LogWarning($"Cannot place block at index {gridIndex}: permanent block present");
-            return null;
-        }
-
-        BlockInventory inventory = FindObjectOfType<BlockInventory>();
-        if (inventory != null && !inventory.CanPlaceBlock(blockType))
-        {
-            Debug.LogWarning($"Cannot place {blockType} block: no blocks remaining in inventory");
-            return null;
-        }
-
-        if (placedBlocks.ContainsKey(gridIndex))
-        {
-            placedBlocks[gridIndex].DestroyBlock();
-        }
-
-        if (inventory != null)
-        {
-            inventory.UseBlock(blockType);
-        }
-
-        BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
-        newBlock.isPermanent = false;
-        PositionBlock(newBlock, gridIndex);
-
-        placedBlocks[gridIndex] = newBlock;
-        UpdateCursorState();
-
-        return newBlock;
     }
 
     public BaseBlock PlacePermanentBlock(BlockType blockType, int gridIndex)
@@ -228,6 +350,12 @@ public class GridManager : MonoBehaviour
         if (!IsValidIndex(gridIndex))
         {
             Debug.LogWarning($"Invalid grid index: {gridIndex}");
+            return null;
+        }
+
+        if (IsIndexBlockedByTransporterPath(gridIndex))
+        {
+            Debug.LogWarning($"Cannot place permanent block at index {gridIndex}: transporter path reserved");
             return null;
         }
 
@@ -334,6 +462,7 @@ public class GridManager : MonoBehaviour
 
         // Create new Lem - place on top of block if one exists, otherwise at grid position
         Vector3 position = IndexToWorldPosition(gridIndex);
+        position.z += cellSize * 0.5f;
 
         // Check if there's a block at this position
         BaseBlock blockBelow = GetBlockAtIndex(gridIndex);
@@ -394,6 +523,7 @@ public class GridManager : MonoBehaviour
         foreach (var placementData in originalLemPlacements.Values)
         {
             Vector3 position = IndexToWorldPosition(placementData.gridIndex);
+            position.z += cellSize * 0.5f;
 
             // Check if there's a block at this position
             BaseBlock blockBelow = GetBlockAtIndex(placementData.gridIndex);
@@ -579,27 +709,66 @@ public class GridManager : MonoBehaviour
 
     #region Grid Refresh
 
+    /// <summary>
+    /// Refreshes all grid visualizations and camera positioning.
+    /// Call this after changing grid dimensions or structure.
+    /// </summary>
     public void RefreshGrid()
     {
-        GridVisualizer visualizer = GetComponent<GridVisualizer>();
-        if (visualizer != null)
+        try
         {
-            visualizer.RefreshGrid();
-        }
+            // Cache component references to avoid repeated GetComponent/FindObjectOfType calls
+            if (_cachedGridVisualizer == null)
+            {
+                _cachedGridVisualizer = GetComponent<GridVisualizer>();
+            }
 
-        PlaceableSpaceVisualizer spaceVisualizer = GetComponent<PlaceableSpaceVisualizer>();
-        if (spaceVisualizer != null)
+            if (_cachedPlaceableVisualizer == null)
+            {
+                _cachedPlaceableVisualizer = GetComponent<PlaceableSpaceVisualizer>();
+            }
+
+            if (_cachedCameraSetup == null)
+            {
+                _cachedCameraSetup = Object.FindObjectOfType<CameraSetup>();
+            }
+
+            // Refresh grid lines
+            if (_cachedGridVisualizer != null)
+            {
+                _cachedGridVisualizer.RefreshGrid();
+            }
+            else
+            {
+                Debug.LogWarning("[GridManager] No GridVisualizer component found");
+            }
+
+            // Refresh placeable space markers
+            if (_cachedPlaceableVisualizer != null)
+            {
+                _cachedPlaceableVisualizer.RefreshVisuals();
+            }
+            else
+            {
+                Debug.LogWarning("[GridManager] No PlaceableSpaceVisualizer component found");
+            }
+
+            // Refresh camera positioning
+            if (_cachedCameraSetup != null)
+            {
+                _cachedCameraSetup.RefreshCamera();
+            }
+            else
+            {
+                Debug.LogWarning("[GridManager] No CameraSetup found in scene");
+            }
+
+            Debug.Log($"[GridManager] Grid refreshed: {gridWidth}x{gridHeight}, cell size {cellSize}");
+        }
+        catch (Exception ex)
         {
-            spaceVisualizer.RefreshVisuals();
+            Debug.LogError($"[GridManager] Error refreshing grid: {ex.Message}\n{ex.StackTrace}");
         }
-
-        CameraSetup cameraSetup = FindObjectOfType<CameraSetup>();
-        if (cameraSetup != null)
-        {
-            cameraSetup.RefreshCamera();
-        }
-
-        Debug.Log($"Grid refreshed: {gridWidth}x{gridHeight}");
     }
 
     #endregion
@@ -623,7 +792,7 @@ public class GridManager : MonoBehaviour
         {
             if (kvp.Value != null)
             {
-                levelData.permanentBlocks.Add(new LevelData.BlockData(kvp.Value.blockType, kvp.Key));
+                levelData.permanentBlocks.Add(CreateBlockData(kvp.Value, kvp.Key));
             }
         }
 
@@ -632,7 +801,7 @@ public class GridManager : MonoBehaviour
         {
             if (kvp.Value != null)
             {
-                levelData.blocks.Add(new LevelData.BlockData(kvp.Value.blockType, kvp.Key));
+                levelData.blocks.Add(CreateBlockData(kvp.Value, kvp.Key));
             }
         }
 
@@ -704,7 +873,8 @@ public class GridManager : MonoBehaviour
             {
                 if (IsValidIndex(blockData.gridIndex))
                 {
-                    PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
+                    BaseBlock block = PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
+                    ApplyBlockData(block, blockData);
                 }
             }
         }
@@ -720,7 +890,8 @@ public class GridManager : MonoBehaviour
                     bool wasPlaceable = placeableSpaces[blockData.gridIndex];
                     placeableSpaces[blockData.gridIndex] = true;
 
-                    PlaceBlock(blockData.blockType, blockData.gridIndex);
+                    BaseBlock block = PlaceBlock(blockData.blockType, blockData.gridIndex);
+                    ApplyBlockData(block, blockData);
 
                     // Restore original placeable state
                     placeableSpaces[blockData.gridIndex] = wasPlaceable;
@@ -834,6 +1005,62 @@ public class GridManager : MonoBehaviour
     }
 
     #endregion
+
+    public bool HasTransporterConflicts()
+    {
+        TransporterBlock[] transporters = FindObjectsOfType<TransporterBlock>();
+        foreach (TransporterBlock transporter in transporters)
+        {
+            if (transporter == null) continue;
+            List<int> pathIndices = transporter.GetRoutePathIndices();
+            foreach (int index in pathIndices)
+            {
+                if (!IsValidIndex(index)) continue;
+                BaseBlock block = GetBlockAtIndex(index);
+                if (block != null && block != transporter)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private bool IsIndexBlockedByTransporterPath(int index)
+    {
+        TransporterBlock[] transporters = FindObjectsOfType<TransporterBlock>();
+        foreach (TransporterBlock transporter in transporters)
+        {
+            if (transporter == null) continue;
+            List<int> pathIndices = transporter.GetRoutePathIndices();
+            if (pathIndices.Contains(index))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static LevelData.BlockData CreateBlockData(BaseBlock block, int index)
+    {
+        LevelData.BlockData data = new LevelData.BlockData(block.blockType, index);
+        TransporterBlock transporter = block as TransporterBlock;
+        if (transporter != null && transporter.routeSteps != null)
+        {
+            data.routeSteps = (string[])transporter.routeSteps.Clone();
+        }
+        return data;
+    }
+
+    private static void ApplyBlockData(BaseBlock block, LevelData.BlockData data)
+    {
+        if (block == null || data == null) return;
+        TransporterBlock transporter = block as TransporterBlock;
+        if (transporter != null && data.routeSteps != null)
+        {
+            transporter.routeSteps = (string[])data.routeSteps.Clone();
+        }
+    }
 
     #region Debug Visualization
 

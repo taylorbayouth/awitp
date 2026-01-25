@@ -275,6 +275,11 @@ public class EditorController : MonoBehaviour
             else
             {
                 // Enter play mode from any editor mode
+                if (GridManager.Instance != null && GridManager.Instance.HasTransporterConflicts())
+                {
+                    Debug.LogWarning("Cannot enter Play mode: transporter route blocked by another block.");
+                    return;
+                }
                 currentMode = GameMode.Play;
                 Debug.Log("=== PLAY MODE === Lem is walking!");
                 UnfreezeAllLems();

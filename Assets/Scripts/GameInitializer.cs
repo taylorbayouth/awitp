@@ -9,6 +9,10 @@ public class GameInitializer : MonoBehaviour
     [Header("Auto-Setup")]
     public bool autoSetupOnStart = true;
 
+    [Header("Skybox")]
+    public Material skyboxMaterial;
+    public bool useDefaultSkyboxIfNone = true;
+
     private void Start()
     {
         if (autoSetupOnStart)
@@ -110,6 +114,22 @@ public class GameInitializer : MonoBehaviour
         else
         {
             Debug.LogWarning("GameInitializer: Main Camera not found!");
+        }
+
+        // Setup skybox
+        if (skyboxMaterial != null)
+        {
+            RenderSettings.skybox = skyboxMaterial;
+            Debug.Log("GameInitializer: Skybox set from assigned material");
+        }
+        else if (useDefaultSkyboxIfNone && RenderSettings.skybox == null)
+        {
+            Material defaultSkybox = Resources.GetBuiltinResource<Material>("Default-Skybox.mat");
+            if (defaultSkybox != null)
+            {
+                RenderSettings.skybox = defaultSkybox;
+                Debug.Log("GameInitializer: Default skybox applied");
+            }
         }
 
         // Force refresh of all visualizations

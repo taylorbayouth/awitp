@@ -1,30 +1,71 @@
 using UnityEngine;
+using System;
 
 /// <summary>
-/// Autonomous walking character for side-scrolling gameplay on XY plane.
-/// Walks until hitting a wall, then turns around. Falls through gaps.
+/// Autonomous walking character ("Lem") for side-scrolling puzzle gameplay.
+///
+/// BEHAVIOR:
+/// - Walks continuously in facing direction until hitting wall or edge
+/// - Turns around when hitting walls (detected via raycast)
+/// - Falls through gaps (no edge detection by design - like classic Lemmings)
+/// - Dies when falling outside camera bounds
+/// - Can be frozen/unfrozen for editor vs play mode
+///
+/// PHYSICS:
+/// - Uses Rigidbody with continuous collision detection
+/// - Custom PhysicMaterial with zero friction to prevent sticking
+/// - Constrained to XY plane (Z position and rotation frozen)
+/// - Half-scale (0.5x) to fit grid better
+///
+/// DESIGN NOTES:
+/// - Raycasts use QueryTriggerInteraction.Ignore to avoid detecting block trigger zones
+/// - Ground check starts slightly above center to avoid missing ground
+/// - Wall/ground check distances are tuned for half-scale Lem
 /// </summary>
 public class LemController : MonoBehaviour
 {
+    #region Inspector Fields
+
     [Header("Movement")]
+    [Tooltip("Horizontal movement speed in units per second")]
     [SerializeField] private float walkSpeed = 1f;
 
     [Header("Detection")]
-    [SerializeField] private float wallCheckDistance = 0.3f; // Smaller for half-sized Lem
-    [SerializeField] private float groundCheckDistance = 1.0f; // Increased for better detection
-    [SerializeField] private LayerMask solidLayerMask = ~0; // Default: everything
+    [Tooltip("Raycast distance for wall detection (tuned for half-scale Lem)")]
+    [SerializeField] private float wallCheckDistance = 0.3f;
+
+    [Tooltip("Raycast distance for ground detection")]
+    [SerializeField] private float groundCheckDistance = 1.0f;
+
+    [Tooltip("Layer mask for solid objects (blocks). Default: everything")]
+    [SerializeField] private LayerMask solidLayerMask = ~0;
 
     [Header("State")]
+    [Tooltip("True if facing right, false if facing left")]
     [SerializeField] private bool facingRight = true;
-    [SerializeField] private bool isGrounded = false;
-    [SerializeField] private bool isAlive = true;
-    [SerializeField] private bool isFrozen = true; // Start frozen in editor mode
 
+    [Tooltip("True if Lem is standing on solid ground")]
+    [SerializeField] private bool isGrounded = false;
+
+    [Tooltip("False if Lem has died (fell off screen)")]
+    [SerializeField] private bool isAlive = true;
+
+    [Tooltip("True = no movement (editor mode), False = active walking (play mode)")]
+    [SerializeField] private bool isFrozen = true;
+
+    // Cached component references
     private Rigidbody rb;
     private Transform hatTransform;
 
+    #endregion
+
     void Awake()
     {
+        if (gameObject.tag != "Player")
+        {
+            gameObject.tag = "Player";
+        }
+
         rb = GetComponent<Rigidbody>();
         if (rb == null)
         {
@@ -169,7 +210,7 @@ public class LemController : MonoBehaviour
     public void SetFrozen(bool frozen)
     {
         isFrozen = frozen;
-        if (rb != null && frozen)
+        if (rb != null && frozen && !rb.isKinematic)
         {
             rb.velocity = Vector3.zero; // Stop movement when frozen
         }
@@ -199,6 +240,7 @@ public class LemController : MonoBehaviour
         GameObject lem = new GameObject("Lem");
         lem.transform.position = position;
         lem.transform.localScale = Vector3.one * 0.5f; // Half size!
+        lem.tag = "Player";
 
         // Body (capsule)
         GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);

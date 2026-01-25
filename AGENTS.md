@@ -1,166 +1,353 @@
-# Block Spatial Detection System
+# Block Detection and Trigger System
 
 ## Overview
 
-Every block in the game has built-in spatial awareness of its 4 surrounding grid spaces (Left, Right, Up, Down). This system runs continuously and allows blocks to detect and react to nearby objects, players, enemies, and other blocks.
+The game uses a sophisticated dual-detection system for tracking when Lems (player characters) interact with blocks. This system combines Unity's physics events with a custom CenterTrigger component for precise position detection.
+
+## Architecture
+
+### Dual Detection System
+
+Every block uses **two complementary detection methods**:
+
+1. **Trigger/Collision Events** - Broad detection when Lem is anywhere on/near the block
+2. **CenterTrigger Component** - Precise detection when Lem reaches the center/top of the block
+
+This redundancy ensures reliable detection even with fast-moving characters or edge cases.
 
 ## Coordinate System
 
 The game uses the XY plane as the primary playing field:
 - **X axis**: Horizontal (left/right)
 - **Y axis**: Vertical (up/down) - gravity pulls down
-- **Z axis**: Depth (camera at -Z looks toward +Z)
+- **Z axis**: Depth (camera at -Z looks toward +Z, blocks at Z=0)
 
-This creates a natural 2D side-scrolling platformer feel while using Unity's 3D physics.
+Blocks exist on the XY plane forming a vertical wall that Lems walk on.
 
-## How It Works
+## Detection Components
 
-### Detection Grid
+### 1. BaseBlock Trigger Detection
 
-Each block monitors 4 surrounding spaces in cardinal directions:
-
-```
-      Up
-       |
-Left - [B] - Right
-       |
-     Down
-```
-
-### Configuration
-
-Detection is configured per-block via public fields:
+BaseBlock implements Unity's physics callbacks to detect broad player presence:
 
 ```csharp
-[Header("Detection Settings")]
-public float detectionSize = 1f;           // Size of detection box (1 unit cube)
-public LayerMask detectionLayerMask;       // What layers to detect
+// Trigger-based detection (soft detection)
+void OnTriggerEnter(Collider other)   // Player enters block area
+void OnTriggerStay(Collider other)    // Player remains on block
+void OnTriggerExit(Collider other)    // Player leaves block
+
+// Collision-based detection (hard physical contact)
+void OnCollisionEnter(Collision collision)   // Player collides with block
+void OnCollisionStay(Collision collision)    // Player stays in contact
+void OnCollisionExit(Collision collision)    // Player stops touching
 ```
 
-### Detection Method
+**Why both triggers and collisions?**
+- Triggers provide soft detection for proximity-based logic
+- Collisions provide solid physical contact detection
+- Redundancy ensures reliable detection in all scenarios
 
-Uses `Physics.OverlapBox` to find all colliders in each direction. Detection runs every frame via `Update()`.
+### 2. CenterTrigger System
 
-## API
+`CenterTrigger` is a specialized component that detects when a Lem's feet reach the center point of a block's top surface.
 
-### Two Levels of Access
-
-#### 1. Generic Detection (All Objects)
-
-Returns all colliders on specified layers:
-
-```csharp
-List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.Right);
-```
-
-**Can detect:**
-- Other blocks
-- Player character
-- Enemies
-- Walls
-- Triggers/pressure plates
-- Any GameObject with a collider on the detection layer
-
-#### 2. Block-Only Detection
-
-Returns only objects with BaseBlock component:
+#### Component Structure
 
 ```csharp
-List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.Left);
-```
-
-**Use for:**
-- Block-to-block interactions
-- Chain reactions
-- Connectivity checks
-- Block-specific logic
-
-### Available Directions
-
-```csharp
-public enum Direction
+public class CenterTrigger : MonoBehaviour
 {
-    Left,
-    Right,
-    Up,
-    Down
+    private BaseBlock owner;              // Parent block
+    private SphereCollider sphere;        // Detection collider
+    private bool isActive;                // Current trigger state
+
+    public void Initialize(BaseBlock baseBlock);
+    public void UpdateShape();
+    public void SetEnabled(bool enabled);
 }
 ```
 
-## Use Cases
+#### How It Works
 
-### 1. Transporter Block
+1. **Automatic Creation**: Each BaseBlock automatically creates a CenterTrigger child GameObject in `Start()`
+2. **Sphere Collider**: Uses a small sphere collider positioned at the block's top center
+3. **Foot Point Detection**: Tracks the Lem's foot position (bottom of collider bounds)
+4. **Precise Triggering**: Only fires when foot point enters the sphere radius
+
+#### Configuration
+
+Configure in Inspector on any BaseBlock:
+
 ```csharp
-// Check if there's space to push player
-List<Collider> objectsAhead = GetObjectsInDirection(Direction.Right);
-bool canPush = objectsAhead.Count == 0;
+[Header("Editor Visualization")]
+public float centerTriggerRadius = 0.02f;           // Sphere radius
+public float centerTriggerYOffset = 0.5f;           // Y offset (block scale)
+public float centerTriggerWorldYOffset = 0f;        // Additional world offset
 ```
 
-### 2. Crumbler Chain Reaction
+#### Visual Debugging
+
+In Unity Editor:
+- **Yellow wireframe sphere** shows the CenterTrigger detection zone
+- **"Center" label** appears when Lem enters the trigger
+- Gizmos visible when block is selected or during play
+
+## Template Methods for Subclasses
+
+BaseBlock provides three virtual methods that subclasses can override:
+
 ```csharp
-// When crumbling, trigger adjacent crumblers
-protected override void OnPlayerReachCenter()
+// Called when Lem enters block (trigger or collision)
+protected virtual void OnPlayerEnter() { }
+
+// Called when Lem exits block (trigger or collision)
+protected virtual void OnPlayerExit() { }
+
+// Called when Lem reaches the center point (CenterTrigger)
+protected virtual void OnPlayerReachCenter() { }
+```
+
+## Implementation Examples
+
+### Example 1: CrumblerBlock
+
+Crumbles and darkens when player exits:
+
+```csharp
+public class CrumblerBlock : BaseBlock
 {
-    List<BaseBlock> adjacentBlocks = GetBlocksInDirection(Direction.Down);
-    foreach (var block in adjacentBlocks)
+    protected override void OnPlayerExit()
     {
-        if (block.blockType == BlockType.Crumbler)
+        // Darken color
+        Renderer renderer = GetComponent<Renderer>();
+        if (renderer != null)
         {
-            block.DestroyBlock();
+            renderer.material.color = Color.Lerp(
+                renderer.material.color,
+                Color.black,
+                0.5f
+            );
+        }
+
+        // Schedule destruction
+        Destroy(gameObject, 1f);
+    }
+}
+```
+
+### Example 2: TransporterBlock
+
+Moves along a route when player reaches center:
+
+```csharp
+public class TransporterBlock : BaseBlock
+{
+    protected override void OnPlayerReachCenter()
+    {
+        if (isTransporting || !isArmed) return;
+
+        LemController lem = currentPlayer;
+        if (lem == null) return;
+
+        // Build movement path
+        List<Vector2Int> steps = BuildSteps();
+
+        // Start transport coroutine
+        isArmed = false;
+        SetCenterTriggerEnabled(false);
+        StartCoroutine(TransportRoutine(lem, steps));
+    }
+}
+```
+
+### Example 3: Custom Teleporter Block
+
+```csharp
+public class TeleporterBlock : BaseBlock
+{
+    public Transform destinationTransform;
+
+    protected override void OnPlayerReachCenter()
+    {
+        if (currentPlayer != null && destinationTransform != null)
+        {
+            // Teleport player
+            currentPlayer.transform.position = destinationTransform.position;
+
+            // Optional: Play effect, sound, etc.
+            Debug.Log($"Teleported Lem to {destinationTransform.position}");
         }
     }
 }
 ```
 
-### 3. Wall Detection
+## CenterTrigger Management
+
+### Enabling/Disabling
+
+Subclasses can control when center detection is active:
+
 ```csharp
-// Check if movement is blocked by walls
-List<Collider> objects = GetObjectsInDirection(Direction.Left);
-bool blockedByWall = objects.Any(c => c.CompareTag("Wall"));
+// Disable center trigger (e.g., during cooldown)
+SetCenterTriggerEnabled(false);
+
+// Re-enable after some condition
+SetCenterTriggerEnabled(true);
 ```
 
-## Implementation Details
+### Updating Shape
 
-### Performance
-- Detection runs every frame (`Update()`)
-- Uses `Physics.OverlapBox` with layer masking for efficiency
-- Results are cached in dictionary until next frame
+If you change trigger parameters at runtime:
 
-### Data Structure
 ```csharp
-private Dictionary<Direction, List<Collider>> surroundingObjects;
+// Change radius
+centerTriggerRadius = 0.05f;
+
+// Update the trigger shape
+UpdateCenterTrigger();
 ```
 
-### Detection Size
-- Default: 1 unit cube (matches grid cell size)
-- Slightly smaller (0.9f) to avoid overlap with self
-- Configurable via `detectionSize` field
+## Trigger State Visualization
 
-## Debugging
-
-Visual debugging available in Scene view when block is selected:
+BaseBlock tracks trigger states for editor debugging:
 
 ```csharp
-private void OnDrawGizmosSelected()
+private enum TriggerState
 {
-    // Red wireframes show 4 detection zones
-    // Green wireframe shows block itself
+    None,    // No player interaction
+    On,      // Player is on the block
+    Center,  // Player reached center point
+    Off      // Player just left
 }
 ```
 
-## Layer Mask Configuration
+During play mode, labels show current state:
+- **"On"** - Player anywhere on block
+- **"Center"** - Player at center point (brief flash)
+- **"Off"** - Player just exited
 
-Set `detectionLayerMask` in inspector to control what blocks can "see":
+## Performance Notes
 
-- **Everything**: All layers
-- **Blocks Only**: Only block layer
-- **Blocks + Player**: Detect blocks and player
-- **Custom**: Mix and match for specific behaviors
+### Efficient Detection
+- Trigger/collision callbacks only fire on state changes (not every frame)
+- CenterTrigger uses sphere collider (very efficient)
+- Static caching eliminates repeated FindObjectOfType calls
+
+### Layer Masks
+Configure colliders to use appropriate layers:
+- Blocks should be on "Default" or custom "Blocks" layer
+- Lems should be tagged "Player" for CompareTag checks
+- Use Physics Layer Collision Matrix to control interactions
 
 ## Best Practices
 
-1. **Use appropriate detection level**: Generic for mixed objects, Block-only for block logic
-2. **Check for null/empty**: Always verify results before using
-3. **Configure layers**: Set layer masks appropriately for each block type
-4. **Consider performance**: Heavy per-frame logic should be optimized
-5. **Test edge cases**: Multiple objects in same direction, etc.
+### 1. Always Check for Null
+```csharp
+protected override void OnPlayerReachCenter()
+{
+    if (currentPlayer == null) return;
+
+    // Safe to use currentPlayer here
+}
+```
+
+### 2. Use SetCenterTriggerEnabled for Cooldowns
+```csharp
+// Disable during special state
+SetCenterTriggerEnabled(false);
+
+// Re-enable when ready
+yield return new WaitForSeconds(cooldownTime);
+SetCenterTriggerEnabled(true);
+```
+
+### 3. Leverage State Tracking
+```csharp
+protected override void OnPlayerEnter()
+{
+    // currentPlayer is automatically set by BaseBlock
+    Debug.Log($"Player entered: {currentPlayer.name}");
+}
+```
+
+### 4. Consider Edge Cases
+- Multiple Lems (game currently limits to one, but architecture supports more)
+- Rapid trigger enter/exit cycles
+- Lem destroyed while on block
+
+## Debugging Tips
+
+### Enable Visual Gizmos
+In Inspector on BaseBlock:
+- ☑ Show Trigger Labels In Editor
+- ☑ Show Trigger Gizmos
+
+### Console Logging
+Recent improvements added comprehensive logging:
+```
+[BaseBlock] Player entered trigger on Crumbler block at index 42
+[BaseBlock] Player reached center of Transporter block at index 15
+[BaseBlock] Player exited trigger on Default block at index 8
+```
+
+### Scene View Visualization
+- Select any block to see trigger zones
+- Watch labels update in real-time during play mode
+- Yellow sphere = CenterTrigger zone
+- Cyan box = OnTrigger zone
+
+## Technical Implementation Details
+
+### Why Dual Detection?
+1. **Reliability**: If one system fails, the other catches it
+2. **Different Use Cases**: Broad detection vs precise positioning
+3. **Physics Edge Cases**: Fast-moving objects might miss one but not both
+
+### Foot Point Calculation
+```csharp
+private static Vector3 GetFootPoint(Collider collider)
+{
+    Bounds bounds = collider.bounds;
+    Vector3 center = bounds.center;
+    return new Vector3(center.x, bounds.min.y, center.z);
+}
+```
+Uses collider bounds minimum Y to find the bottom point.
+
+### Trigger Update Logic
+```csharp
+private void UpdateCenterState(Collider other)
+{
+    Vector3 footPoint = GetFootPoint(other);
+    float distance = Vector3.Distance(footPoint, transform.position);
+    bool inside = distance <= sphere.radius;
+
+    if (inside && !isActive)
+    {
+        isActive = true;
+        owner.NotifyCenterTriggerEnter(other.GetComponent<LemController>());
+    }
+    else if (!inside && isActive)
+    {
+        isActive = false;
+        owner.NotifyCenterTriggerExit();
+    }
+}
+```
+
+## Future Enhancements
+
+Potential improvements to the detection system:
+
+1. **Direction Detection**: Detect which direction player entered from
+2. **Velocity Tracking**: React differently based on player speed
+3. **Multi-Point Detection**: Multiple trigger zones (corners, edges, center)
+4. **Event System**: Observable events instead of virtual methods
+5. **Pooled Triggers**: Reuse CenterTrigger instances for performance
+
+## Related Files
+
+- **BaseBlock.cs** - Main block class with detection logic
+- **CenterTrigger.cs** - Precise center detection component
+- **LemController.cs** - Player character with physics and collision
+- **TransporterBlock.cs** - Example using OnPlayerReachCenter
+- **CrumblerBlock.cs** - Example using OnPlayerExit

@@ -21,9 +21,9 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 
 ### Block System
 - **4 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow)
-- **Spatial Awareness**: Blocks detect surrounding objects in 4 directions (see [AGENTS.md](AGENTS.md))
-- **Player Detection**: Trigger-based detection when Lem enters/reaches center
-- **Inventory Management**: Per-level constraints on block counts
+- **CenterTrigger System**: Precise detection when Lem reaches center/top of block
+- **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
+- **Inventory Management**: Per-level constraints on block counts with cached references
 
 ### Character System
 - **Lem Controller**: Walking AI with gravity, collision detection, and turning logic
@@ -105,18 +105,8 @@ See [LEVEL_EDITOR.md](LEVEL_EDITOR.md) for a complete user guide on creating lev
 - **[PROJECT.md](PROJECT.md)** - Complete project architecture and technical overview
 - **[LEVEL_EDITOR.md](LEVEL_EDITOR.md)** - User guide for the level editor
 - **[SAVE_SYSTEM.md](SAVE_SYSTEM.md)** - Technical details on save/load system
-- **[AGENTS.md](AGENTS.md)** - Block spatial detection system documentation
 
 ### API Examples
-
-**Block Detection:**
-```csharp
-// Get all objects in a direction
-List<Collider> objects = block.GetObjectsInDirection(BaseBlock.Direction.Right);
-
-// Get only blocks in a direction
-List<BaseBlock> blocks = block.GetBlocksInDirection(BaseBlock.Direction.Left);
-```
 
 **Save/Load:**
 ```csharp
@@ -139,10 +129,13 @@ Assets/
 │   ├── GridVisualizer.cs           # Grid line rendering
 │   ├── GridCursor.cs               # Interactive cursor
 │   ├── PlaceableSpaceVisualizer.cs # Placeable space borders
-│   ├── BaseBlock.cs                # Base block class
+│   ├── BaseBlock.cs                # Base block class with error handling
+│   ├── CenterTrigger.cs            # Precise center detection system
 │   ├── BlockType.cs                # Block type enum
 │   ├── BlockColors.cs              # Centralized color definitions
 │   ├── BlockInventory.cs           # Block count management
+│   ├── CrumblerBlock.cs            # Crumbling block implementation
+│   ├── TransporterBlock.cs         # Moving platform block
 │   ├── LemController.cs            # Lem AI and movement
 │   ├── LemSpawner.cs               # Lem spawning utility
 │   ├── EditorController.cs         # Editor input handling
@@ -155,6 +148,7 @@ Assets/
 │   ├── CameraSetup.cs              # Camera positioning
 │   ├── GameInitializer.cs          # Game initialization
 │   ├── InventoryUI.cs              # Inventory display
+│   ├── ControlsUI.cs               # Controls help display
 │   └── Editor/
 │       └── LightmapperFix.cs       # Unity lightmapper fix
 └── Master.unity                     # Main scene
@@ -216,6 +210,23 @@ Built with Unity 2022+ using C# scripting.
 - **Event-Driven**: Lem placement tracking for reset functionality
 - **Separation of Concerns**: Visualization separated from logic
 - **Centralized Constants**: BlockColors and RenderingConstants utilities
+- **Performance Optimization**: Cached component references to avoid FindObjectOfType
+- **Error Handling**: Comprehensive try-catch blocks with detailed logging
+
+## Recent Improvements
+
+### Code Quality (v1.1)
+- **Comprehensive Comments**: All major classes now have detailed developer comments explaining architecture, responsibilities, and design decisions
+- **Error Handling**: Try-catch blocks added to critical operations with detailed error logging
+- **Performance Optimization**: Cached component references eliminate expensive FindObjectOfType calls
+- **Enhanced Logging**: Debug.Log statements added to track system behavior during development
+- **Input Validation**: All public methods validate parameters before execution
+- **Code Documentation**: XML summary comments on all public methods and properties
+
+### Bug Fixes
+- Fixed FindObjectOfType performance issues by implementing static caching
+- Improved error messages to include context (class name, grid index, block type)
+- Added null checks throughout GridManager and BaseBlock
 
 ## Contributing
 
@@ -224,7 +235,10 @@ When adding new features:
 2. Update relevant .md files
 3. Add constants to RenderingConstants.cs or BlockColors.cs
 4. Use regions to organize code
-5. Test in all three game modes
+5. Add comprehensive error handling with try-catch blocks
+6. Include Debug.Log statements for critical operations
+7. Cache component references instead of using FindObjectOfType
+8. Test in all three game modes
 
 ## Future Enhancements
 
