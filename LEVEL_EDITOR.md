@@ -17,7 +17,8 @@
 - **Arrow Keys / WASD** - Move cursor
 - **Space / Enter** - Place block at cursor
 - **Delete / Backspace** - Remove block at cursor
-- **1-4 Keys** - Switch block type
+- **1-9 Keys** - Switch block entry (first 9 slots)
+- **[ / ]** - Cycle block entries
   - 1 = Default (cyan platform)
   - 2 = Teleporter (magenta)
   - 3 = Crumbler (orange)
@@ -30,7 +31,8 @@
 **Controls**:
 - **Arrow Keys / WASD** - Move cursor
 - **Space / Enter** - Toggle placeable space (shows black border)
-- **1-4 Keys** - Select block type for permanent blocks
+- **1-9 Keys** - Select block entry for permanent blocks
+- **[ / ]** - Cycle block entries
 - **B** - Place permanent block (uses selected block type)
 - **L** - Place Lem (press again to flip direction)
 - **Delete / Backspace** - Remove Lem at cursor
@@ -83,7 +85,7 @@ The console will show you the full path to where levels are saved.
 ### Step 1: Design the Structure (Editor Mode)
 1. Start in Editor Mode (default when you press Play)
 2. Move the cursor with arrow keys or WASD
-3. Press 1-4 to select the block type you want to place
+3. Press 1-9 to select the block entry you want to place (use [ / ] to cycle)
 4. Press Space/Enter to place blocks
 5. Build the basic structure of your level
    - Create platforms for Lems to walk on
@@ -171,7 +173,8 @@ The console will show you the full path to where levels are saved.
 
 ### Level Editor Mode
 - **Space / Enter** - Toggle placeable space marking
-- **1-4** - Select block type for permanent blocks
+- **1-9** - Select block entry for permanent blocks
+- **[ / ]** - Cycle block entries
 - **B** - Place permanent block (uses selected block type)
 - **L** - Place/flip Lem
 - **Delete / Backspace** - Remove block or Lem
@@ -195,6 +198,10 @@ The console will show you the full path to where levels are saved.
 **Solution**: You're in Editor Mode but trying to place a block in a non-placeable space. Either:
 - Switch to Level Editor Mode (press E) and mark the space as placeable
 - Move to a different space that's already marked as placeable
+
+### "Cannot remove permanent block in Editor mode"
+**Cause**: Permanent blocks are locked while in Editor Mode
+**Solution**: Press E to switch to Level Editor Mode, then delete the block
 
 ### Cursor is red and I can't place anything
 **Cause**: The current space is marked as non-placeable
@@ -231,6 +238,14 @@ Edit `RenderingConstants.cs` to adjust:
 - **Line depths** - Z-position layering
 - **Opacity** - Transparency of grid lines
 
+### Inventory Configuration
+Add a **LevelBlockInventoryConfig** component to an empty GameObject to define:
+- Block entries (type + optional flavor)
+- Inventory counts per entry or shared `inventoryGroupId`
+- Transporter routes via `routeSteps` (placement is blocked if a route intersects existing blocks)
+
+Block inventory is saved with the level and restored on load.
+
 ### Color Customization
 Edit `BlockColors.cs` to change:
 - Block type colors
@@ -246,9 +261,21 @@ Levels are saved as JSON files with this structure:
   "gridWidth": 10,
   "gridHeight": 10,
   "cellSize": 1.0,
+  "inventoryEntries": [
+    {
+      "entryId": "Default",
+      "blockType": 0,
+      "displayName": "Default",
+      "inventoryGroupId": "",
+      "flavorId": "",
+      "routeSteps": null,
+      "maxCount": 999,
+      "currentCount": 999
+    }
+  ],
   "blocks": [
-    {"blockType": 0, "gridIndex": 45},
-    {"blockType": 1, "gridIndex": 46}
+    {"blockType": 0, "gridIndex": 45, "inventoryKey": "Default", "flavorId": ""},
+    {"blockType": 1, "gridIndex": 46, "inventoryKey": "Teleporter", "flavorId": "A"}
   ],
   "placeableSpaceIndices": [44, 45, 46, 54, 55, 56],
   "lems": [

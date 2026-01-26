@@ -23,7 +23,8 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 - **4 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow)
 - **CenterTrigger System**: Precise detection when Lem reaches center/top of block
 - **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
-- **Inventory Management**: Per-level constraints on block counts with cached references
+- **Inventory Management**: Per-level inventory entries with optional flavors and shared groups
+- **Placement Validation**: Transporter placement is blocked if its route intersects existing blocks
 
 ### Character System
 - **Lem Controller**: Walking AI with gravity, collision detection, and turning logic
@@ -74,7 +75,8 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 ### Editor Mode (Default)
 - **Space / Enter**: Place selected block type
 - **Delete / Backspace**: Remove block
-- **1-4**: Select block type (1=Default, 2=Teleporter, 3=Crumbler, 4=Transporter)
+- **1-9**: Select block entry (first 9 slots)
+- **[ / ]**: Cycle block entries
 - **E**: Switch to Level Editor Mode
 
 ### Level Editor Mode
@@ -185,7 +187,7 @@ Assets/
 1. Open Unity and load the Master.unity scene
 2. Press Play to enter the level editor
 3. Use arrow keys or WASD to move the cursor
-4. Press 1-4 to select block types and Space to place
+4. Press 1-9 to select block entries (use [ / ] to cycle) and Space to place
 5. Press E to enter Level Editor Mode and mark placeable spaces
 6. Press L to place Lems
 7. Press P to test your level in Play Mode
