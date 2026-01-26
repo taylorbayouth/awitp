@@ -14,7 +14,7 @@ public class CrumblerBlock : BaseBlock
     protected override void Awake()
     {
         base.Awake();
-        blockRenderer = GetComponent<Renderer>();
+        blockRenderer = GetComponentInChildren<Renderer>();
     }
 
     protected override void OnPlayerReachCenter()

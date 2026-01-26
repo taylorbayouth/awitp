@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: c82a334cf5a5e47978749c210cee72a7, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 73324b55f67f54c7bbf43204788b8bbe, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.13014346, g: 0.09454123, b: 0.12482851, a: 1}
+  m_IndirectSpecularColor: {r: 0.37577146, g: 0.61430764, b: 0.8670608, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -267,73 +267,42 @@ MonoBehaviour:
   entries:
   - entryId: 
     blockType: 0
-    displayName: Grass Block
+    displayName: Block
     inventoryGroupId: 
     flavorId: 
     routeSteps: []
     isPairInventory: 0
     pairSize: 0
-    maxCount: 5
-    currentCount: 0
-  - entryId: 
-    blockType: 2
-    displayName: Crumbler
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 2
-    currentCount: 0
-  - entryId: 
-    blockType: 3
-    displayName: Transporter
-    inventoryGroupId: 
-    flavorId: R3
-    routeSteps:
-    - R3
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 3
-    displayName: Transporter
-    inventoryGroupId: 
-    flavorId: R3,U1
-    routeSteps:
-    - R3
-    - U1
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
+    maxCount: 10
     currentCount: 0
   - entryId: 
     blockType: 1
-    displayName: Teleporter
-    inventoryGroupId: 
-    flavorId: A
+    displayName: 
+    inventoryGroupId: A
+    flavorId: 
     routeSteps: []
     isPairInventory: 1
     pairSize: 2
     maxCount: 1
     currentCount: 0
   - entryId: 
-    blockType: 4
-    displayName: Key
-    inventoryGroupId: 
+    blockType: 1
+    displayName: 
+    inventoryGroupId: B
     flavorId: 
     routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
+    isPairInventory: 1
+    pairSize: 2
     maxCount: 1
     currentCount: 0
   - entryId: 
-    blockType: 5
-    displayName: Lock
+    blockType: 3
+    displayName: 
     inventoryGroupId: 
     flavorId: 
-    routeSteps: []
+    routeSteps:
+    - R2
+    - U1
     isPairInventory: 0
     pairSize: 0
     maxCount: 1
@@ -352,6 +321,57 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &323621398
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 323621400}
+  - component: {fileID: 323621399}
+  m_Layer: 0
+  m_Name: InventoryUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &323621399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 323621398}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 76bed5a81ea6d41eeb92832b3cff398a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  inventory: {fileID: 1602858733}
+  editorController: {fileID: 1602858729}
+  boxSize: 110
+  spacing: 20
+  itemPadding: 6
+  topMargin: 24
+  leftMargin: 24
+--- !u!4 &323621400
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 323621398}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &756764136
 GameObject:
@@ -459,6 +479,7 @@ GameObject:
   - component: {fileID: 1602858731}
   - component: {fileID: 1602858730}
   - component: {fileID: 1602858729}
+  - component: {fileID: 1602858733}
   m_Layer: 0
   m_Name: GridManager
   m_TagString: Untagged
@@ -538,6 +559,51 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1602858733
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1602858728}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5d5e2c49bcdc44e9ba4b9426c804b2d1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  configSource: {fileID: 285017512}
+  autoFindConfig: 1
+  entries:
+  - entryId: Default
+    blockType: 0
+    displayName: Block
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 10
+    currentCount: 10
+  - entryId: Teleporter
+    blockType: 1
+    displayName: 
+    inventoryGroupId: A
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 1
+    pairSize: 2
+    maxCount: 1
+    currentCount: 1
+  - entryId: Teleporter_1
+    blockType: 1
+    displayName: 
+    inventoryGroupId: B
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 1
+    pairSize: 2
+    maxCount: 1
+    currentCount: 1
 --- !u!1 &1728154825
 GameObject:
   m_ObjectHideFlags: 0

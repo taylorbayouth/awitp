@@ -4,6 +4,7 @@ using System.Collections.Generic;
 /// <summary>
 /// Displays block inventory counts and current selection using OnGUI
 /// </summary>
+[ExecuteAlways]
 public class InventoryUI : MonoBehaviour
 {
     [Header("References")]
@@ -41,22 +42,51 @@ public class InventoryUI : MonoBehaviour
 
     private void OnGUI()
     {
-        if (Event.current.type != EventType.Repaint) return;
-        if (inventory == null || editorController == null) return;
+        if (inventory == null)
+        {
+            inventory = FindObjectOfType<BlockInventory>();
+        }
+
+        if (Application.isPlaying && editorController == null)
+        {
+            editorController = FindObjectOfType<EditorController>();
+        }
 
         InitializeStyles();
 
-        DrawLockStatus();
+        if (inventory == null)
+        {
+            DrawStatusLabel("InventoryUI: No BlockInventory found");
+            return;
+        }
 
-        if (editorController.currentMode != GameMode.Play)
+        if (Application.isPlaying && editorController == null)
+        {
+            DrawStatusLabel("InventoryUI: No EditorController found");
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            DrawLockStatus();
+        }
+
+        if (!Application.isPlaying || editorController.currentMode != GameMode.Play)
         {
             IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntries();
             int drawIndex = 0;
             for (int i = 0; i < entries.Count; i++)
             {
                 if (ShouldHideFromInventory(entries[i])) continue;
-                DrawBlockSlot(entries[i], i, drawIndex);
+                bool isSelected = editorController != null && editorController.CurrentInventoryIndex == i;
+                bool showKeyHint = editorController != null;
+                DrawBlockSlot(entries[i], i, drawIndex, isSelected, showKeyHint);
                 drawIndex++;
+            }
+
+            if (drawIndex == 0)
+            {
+                DrawStatusLabel("InventoryUI: No visible inventory entries");
             }
         }
     }
@@ -120,16 +150,13 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex)
+    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex, bool isSelected, bool showKeyHint)
     {
         if (entry == null) return;
 
-        float xPos = leftMargin;
+        float xPos = GetViewLeft() + leftMargin;
         float yPos = topMargin + (drawIndex * (boxSize + spacing));
         Rect boxRect = new Rect(xPos, yPos, boxSize, boxSize);
-
-        // Determine if this block is selected
-        bool isSelected = editorController.CurrentInventoryIndex == index;
 
         // Draw background box
         GUI.Box(boxRect, "", isSelected ? selectedStyle : normalStyle);
@@ -175,8 +202,11 @@ public class InventoryUI : MonoBehaviour
 
         // Draw key hint
         Rect keyRect = new Rect(xPos, yPos + boxSize + 4f, boxSize, 20f);
-        string keyHint = index < 9 ? $"[{index + 1}]" : string.Empty;
-        GUI.Label(keyRect, keyHint, labelStyle);
+        string keyHint = showKeyHint && index < 9 ? $"[{index + 1}]" : string.Empty;
+        if (!string.IsNullOrEmpty(keyHint))
+        {
+            GUI.Label(keyRect, keyHint, labelStyle);
+        }
     }
 
     private bool ShouldHideFromInventory(BlockInventoryEntry entry)
@@ -208,6 +238,30 @@ public class InventoryUI : MonoBehaviour
             Rect winRect = new Rect(0f, topOffset + 26f, Screen.width - rightMargin, 24f);
             GUI.Label(winRect, "You win", winStyle);
         }
+    }
+
+    private void DrawStatusLabel(string text)
+    {
+        if (labelStyle == null)
+        {
+            labelStyle = new GUIStyle(GUI.skin.label)
+            {
+                alignment = TextAnchor.UpperLeft,
+                fontSize = 14,
+                fontStyle = FontStyle.Bold,
+                normal = { textColor = Color.yellow }
+            };
+        }
+
+        Rect rect = new Rect(GetViewLeft() + leftMargin, topMargin, 520f, 24f);
+        GUI.Label(rect, text, labelStyle);
+    }
+
+    private float GetViewLeft()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return 0f;
+        return cam.ViewportToScreenPoint(new Vector3(0f, 0f, 0f)).x;
     }
 
     private Color GetColorForBlockType(BlockType blockType)

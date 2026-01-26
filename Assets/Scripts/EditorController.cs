@@ -232,8 +232,8 @@ public class EditorController : MonoBehaviour
                 }
             }
 
-            // Remove Lem if present
-            if (GridManager.Instance.HasLemAtIndex(cursorIndex))
+            // Remove Lem only in Level Editor mode
+            if (currentMode == GameMode.LevelEditor && GridManager.Instance.HasLemAtIndex(cursorIndex))
             {
                 GridManager.Instance.RemoveLem(cursorIndex);
                 Debug.Log($"Removed Lem at index {cursorIndex}");

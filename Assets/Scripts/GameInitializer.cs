@@ -4,6 +4,7 @@ using UnityEngine;
 /// Ensures all game systems are properly initialized in the correct order.
 /// Add this to any GameObject in the scene to auto-setup everything.
 /// </summary>
+[ExecuteAlways]
 public class GameInitializer : MonoBehaviour
 {
     [Header("Auto-Setup")]
@@ -15,9 +16,40 @@ public class GameInitializer : MonoBehaviour
 
     private void Start()
     {
-        if (autoSetupOnStart)
+        if (autoSetupOnStart && Application.isPlaying)
         {
             SetupGame();
+        }
+    }
+
+    private void OnEnable()
+    {
+        if (!Application.isPlaying)
+        {
+            EnsureEditorInventorySetup();
+        }
+    }
+
+    private void EnsureEditorInventorySetup()
+    {
+        GridManager gridManager = FindObjectOfType<GridManager>();
+        if (gridManager == null) return;
+
+        if (gridManager.GetComponent<BlockInventory>() == null)
+        {
+            gridManager.gameObject.AddComponent<BlockInventory>();
+        }
+
+        InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
+        if (inventoryUI == null)
+        {
+            GameObject uiObj = new GameObject("InventoryUI");
+            inventoryUI = uiObj.AddComponent<InventoryUI>();
+        }
+
+        if (inventoryUI != null)
+        {
+            inventoryUI.inventory = gridManager.GetComponent<BlockInventory>();
         }
     }
 
