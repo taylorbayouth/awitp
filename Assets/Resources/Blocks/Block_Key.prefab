@@ -60,8 +60,61 @@ PrefabInstance:
       propertyPath: uniqueID
       value: d45b0f2f-f3ba-41f5-b422-0d15977de6a8
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    - target: {fileID: 7058394587207660318, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: -4614289458419098355, guid: 0e9a8285924405b43963ad52cc13e558, type: 3}
+    - target: {fileID: 2329549792764308390, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 3cd972dd761e85e41ae854dbf7319b50, type: 2}
+    m_RemovedComponents:
+    - {fileID: 7215074762794049176, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 634973474784941246, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7215074762794049176}
   m_SourcePrefab: {fileID: 100100000, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+--- !u!1 &7369758115676728088 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 634973474784941246, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+  m_PrefabInstance: {fileID: 9153704991193599515}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &7215074762794049176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7369758115676728088}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 908a05e4896241cf942a6e13f65d7e12, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  uniqueID: 
+  blockType: 4
+  gridIndex: -1
+  inventoryKey: 
+  flavorId: 
+  isPermanent: 0
+  detectionSize: 1
+  detectionLayerMask:
+    serializedVersion: 2
+    m_Bits: 0
+  highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  showTriggerLabelsInEditor: 1
+  showTriggerGizmos: 1
+  onTriggerBoxSize: {x: 1, y: 1, z: 1}
+  onTriggerYOffset: 1
+  centerTriggerRadius: 0.02
+  centerTriggerYOffset: 0.5
+  centerTriggerWorldYOffset: 0
+  centerLabelDuration: 0.15
+  keyColor: {r: 0, g: 1, b: 0, a: 1}
+  keyVisualPrefab: {fileID: 100100000, guid: fa186174f8c185c4ca69b3977dc19196, type: 3}
+  keyScale: 0.2
+  keyLocalYOffset: 0.6
+  keyCarryYOffset: 0.6

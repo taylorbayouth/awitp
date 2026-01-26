@@ -10,6 +10,9 @@ public class KeyBlock : BaseBlock
     [Tooltip("Color of the key sphere")]
     [SerializeField] private Color keyColor = Color.green;
 
+    [Tooltip("Optional prefab to use for the key visual (falls back to a sphere if null)")]
+    [SerializeField] private GameObject keyVisualPrefab;
+
     [Tooltip("Key scale relative to grid cell size")]
     [SerializeField] private float keyScale = 0.2f;
 
@@ -22,6 +25,7 @@ public class KeyBlock : BaseBlock
     private Transform keyTransform;
     private KeyItem keyItem;
     private bool keyClaimed = false;
+    private float keyVisualScaleMultiplier = 1f;
 
     protected override void Start()
     {
@@ -40,20 +44,42 @@ public class KeyBlock : BaseBlock
     {
         if (keyTransform != null) return;
 
-        GameObject keyObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        GameObject keyObj;
+        if (keyVisualPrefab != null)
+        {
+            keyObj = Instantiate(keyVisualPrefab);
+        }
+        else
+        {
+            keyObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        }
         keyObj.name = "Key";
-        Destroy(keyObj.GetComponent<Collider>());
+        foreach (Collider collider in keyObj.GetComponentsInChildren<Collider>())
+        {
+            Destroy(collider);
+        }
         keyObj.transform.SetParent(transform, false);
 
-        Renderer keyRenderer = keyObj.GetComponent<Renderer>();
-        if (keyRenderer != null)
+        MeshFilter meshFilter = keyObj.GetComponentInChildren<MeshFilter>();
+        if (meshFilter != null && meshFilter.sharedMesh != null)
+        {
+            Bounds bounds = meshFilter.sharedMesh.bounds;
+            float maxSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            if (maxSize > 0f)
+            {
+                keyVisualScaleMultiplier = 1f / maxSize;
+            }
+        }
+
+        Renderer keyRenderer = keyObj.GetComponentInChildren<Renderer>();
+        if (keyRenderer != null && keyVisualPrefab == null)
         {
             keyRenderer.material.color = keyColor;
         }
 
         keyTransform = keyObj.transform;
         keyItem = keyObj.AddComponent<KeyItem>();
-        keyItem.ConfigureSource(gridIndex, keyLocalYOffset, keyScale, keyCarryYOffset);
+        keyItem.ConfigureSource(gridIndex, keyLocalYOffset, keyScale * keyVisualScaleMultiplier, keyCarryYOffset);
         ApplyKeyTransform(keyTransform, Vector3.up * keyLocalYOffset, GetKeyWorldScale());
     }
 
@@ -94,7 +120,7 @@ public class KeyBlock : BaseBlock
     private float GetKeyWorldScale()
     {
         float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
-        return cellSize * keyScale;
+        return cellSize * keyScale * keyVisualScaleMultiplier;
     }
 
     private static void ApplyKeyTransform(Transform key, Vector3 localPosition, float worldScale)

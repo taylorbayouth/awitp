@@ -899,10 +899,6 @@ public class GridManager : MonoBehaviour
         };
 
         BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
-        if (inventory != null)
-        {
-            levelData.inventoryEntries = inventory.GetSerializableEntries();
-        }
 
         // Capture permanent blocks
         foreach (var kvp in permanentBlocks)
@@ -975,14 +971,7 @@ public class GridManager : MonoBehaviour
         BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
         if (inventory != null)
         {
-            if (levelData.inventoryEntries != null && levelData.inventoryEntries.Count > 0)
-            {
-                inventory.ApplyInventoryEntries(levelData.inventoryEntries);
-            }
-            else
-            {
-                inventory.ResetInventory();
-            }
+            inventory.ResetInventory();
         }
 
         // Restore grid settings (if they changed, we need to reinitialize)
@@ -1023,7 +1012,7 @@ public class GridManager : MonoBehaviour
                     BaseBlock block = entry != null
                         ? PlacePermanentBlock(entry, blockData.gridIndex)
                         : PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
-                    ApplyBlockData(block, blockData);
+                    ApplyBlockData(block, blockData, inventory);
                 }
             }
         }
@@ -1045,7 +1034,7 @@ public class GridManager : MonoBehaviour
                     BaseBlock block = entry != null
                         ? PlaceBlock(entry, blockData.gridIndex)
                         : PlaceBlock(blockData.blockType, blockData.gridIndex);
-                    ApplyBlockData(block, blockData);
+                    ApplyBlockData(block, blockData, inventory);
 
                     // Restore original placeable state
                     placeableSpaces[blockData.gridIndex] = wasPlaceable;
@@ -1289,16 +1278,27 @@ public class GridManager : MonoBehaviour
         return data;
     }
 
-    private static void ApplyBlockData(BaseBlock block, LevelData.BlockData data)
+    private static void ApplyBlockData(BaseBlock block, LevelData.BlockData data, BlockInventory inventory)
     {
         if (block == null || data == null) return;
-        block.inventoryKey = data.inventoryKey;
         block.flavorId = data.flavorId;
         TransporterBlock transporter = block as TransporterBlock;
         if (transporter != null && data.routeSteps != null)
         {
             transporter.routeSteps = (string[])data.routeSteps.Clone();
         }
+
+        if (block.blockType == BlockType.Transporter && inventory != null)
+        {
+            BlockInventoryEntry entry = inventory.FindEntry(block.blockType, block.flavorId, transporter != null ? transporter.routeSteps : data.routeSteps, data.inventoryKey);
+            if (entry != null)
+            {
+                block.inventoryKey = inventory.GetInventoryKey(entry);
+                return;
+            }
+        }
+
+        block.inventoryKey = data.inventoryKey;
     }
 
     private List<LevelData.KeyStateData> CaptureKeyStates()

@@ -96,6 +96,7 @@ public class BlockInventoryEntry
 /// Manages per-level block inventory constraints.
 /// Supports multiple flavored entries with shared inventory groups.
 /// </summary>
+[ExecuteAlways]
 public class BlockInventory : MonoBehaviour
 {
     [Header("Inventory Source")]
@@ -107,7 +108,20 @@ public class BlockInventory : MonoBehaviour
 
     private readonly Dictionary<string, int> pairCredits = new Dictionary<string, int>();
 
+    private void OnEnable()
+    {
+        if (!Application.isPlaying)
+        {
+            InitializeInventory();
+        }
+    }
+
     private void Awake()
+    {
+        InitializeInventory();
+    }
+
+    private void InitializeInventory()
     {
         LoadFromConfigIfAvailable();
 
@@ -118,15 +132,6 @@ public class BlockInventory : MonoBehaviour
 
         NormalizeEntries();
         ResetInventory();
-    }
-
-    private void Start()
-    {
-        if (LoadFromConfigIfAvailable())
-        {
-            NormalizeEntries();
-            ResetInventory();
-        }
     }
 
     public IReadOnlyList<BlockInventoryEntry> GetEntries()
@@ -180,29 +185,43 @@ public class BlockInventory : MonoBehaviour
             ? flavorId
             : (routeSteps != null && routeSteps.Length > 0 ? string.Join(",", routeSteps) : string.Empty);
 
+        BlockInventoryEntry fallback = null;
         foreach (BlockInventoryEntry entry in entries)
         {
             if (entry == null || entry.blockType != blockType) continue;
-
-            if (!string.IsNullOrEmpty(inventoryKey) && GetInventoryKey(entry) != inventoryKey)
-            {
-                continue;
-            }
 
             if (!string.IsNullOrEmpty(resolvedFlavor))
             {
                 if (entry.GetResolvedFlavorId() != resolvedFlavor) continue;
             }
 
+            if (!string.IsNullOrEmpty(inventoryKey))
+            {
+                if (GetInventoryKey(entry) == inventoryKey)
+                {
+                    return entry;
+                }
+
+                if (entry.blockType == BlockType.Transporter && fallback == null)
+                {
+                    fallback = entry;
+                }
+                continue;
+            }
+
             return entry;
         }
 
-        return null;
+        return fallback;
     }
 
     public string GetInventoryKey(BlockInventoryEntry entry)
     {
         if (entry == null) return string.Empty;
+        if (entry.blockType == BlockType.Transporter)
+        {
+            return GetTransporterInventoryKey(entry);
+        }
         if (!string.IsNullOrEmpty(entry.inventoryGroupId)) return entry.inventoryGroupId;
         return entry.GetEntryId();
     }
@@ -426,55 +445,6 @@ public class BlockInventory : MonoBehaviour
         Debug.Log("[BlockInventory] Inventory reset");
     }
 
-    public void ApplyInventoryEntries(List<BlockInventoryEntry> newEntries)
-    {
-        entries.Clear();
-        if (newEntries != null)
-        {
-            foreach (BlockInventoryEntry entry in newEntries)
-            {
-                if (entry != null)
-                {
-                    entries.Add(entry.Clone());
-                }
-            }
-        }
-        NormalizeEntries();
-        ResetInventory();
-    }
-
-    public List<BlockInventoryEntry> GetSerializableEntries()
-    {
-        if (configSource != null && configSource.entries != null && configSource.entries.Count > 0)
-        {
-            List<BlockInventoryEntry> configured = new List<BlockInventoryEntry>();
-            foreach (BlockInventoryEntry entry in configSource.entries)
-            {
-                if (entry != null)
-                {
-                    BlockInventoryEntry clone = entry.Clone();
-                    clone.entryId = entry.GetEntryId();
-                    clone.currentCount = clone.maxCount;
-                    configured.Add(clone);
-                }
-            }
-            return configured;
-        }
-
-        List<BlockInventoryEntry> result = new List<BlockInventoryEntry>();
-        foreach (BlockInventoryEntry entry in entries)
-        {
-            if (entry != null)
-            {
-                BlockInventoryEntry clone = entry.Clone();
-                clone.entryId = entry.GetEntryId();
-                clone.currentCount = clone.maxCount;
-                result.Add(clone);
-            }
-        }
-        return result;
-    }
-
     private bool LoadFromConfigIfAvailable()
     {
         if (configSource == null && autoFindConfig)
@@ -513,6 +483,10 @@ public class BlockInventory : MonoBehaviour
 
     private void NormalizeEntries()
     {
+        if (entries == null || entries.Count == 0) return;
+
+        ConsolidateTransporterEntries();
+
         HashSet<string> usedIds = new HashSet<string>();
         foreach (BlockInventoryEntry entry in entries)
         {
@@ -609,5 +583,96 @@ public class BlockInventory : MonoBehaviour
     {
         if (string.IsNullOrEmpty(key)) return;
         pairCredits[key] = Mathf.Max(0, credits);
+    }
+
+    private static bool IsTransporterEntry(BlockInventoryEntry entry)
+    {
+        return entry != null && entry.blockType == BlockType.Transporter;
+    }
+
+    private static string GetTransporterRouteKey(BlockInventoryEntry entry)
+    {
+        if (entry == null) return string.Empty;
+        string normalized = NormalizeRouteSteps(entry.routeSteps);
+        if (!string.IsNullOrEmpty(normalized)) return normalized;
+        return string.IsNullOrEmpty(entry.flavorId) ? string.Empty : entry.flavorId.Trim();
+    }
+
+    private static string GetTransporterInventoryKey(BlockInventoryEntry entry)
+    {
+        string routeKey = GetTransporterRouteKey(entry);
+        return string.IsNullOrEmpty(routeKey) ? BlockType.Transporter.ToString() : $"{BlockType.Transporter}_{routeKey}";
+    }
+
+    private static string NormalizeRouteSteps(string[] routeSteps)
+    {
+        if (routeSteps == null || routeSteps.Length == 0) return string.Empty;
+        List<string> tokens = new List<string>();
+        foreach (string raw in routeSteps)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            tokens.Add(raw.Trim().ToUpperInvariant());
+        }
+        return tokens.Count > 0 ? string.Join(",", tokens) : string.Empty;
+    }
+
+    private void ConsolidateTransporterEntries()
+    {
+        Dictionary<string, BlockInventoryEntry> grouped = new Dictionary<string, BlockInventoryEntry>();
+        List<BlockInventoryEntry> consolidated = new List<BlockInventoryEntry>(entries.Count);
+
+        foreach (BlockInventoryEntry entry in entries)
+        {
+            if (entry == null) continue;
+
+            if (!IsTransporterEntry(entry))
+            {
+                consolidated.Add(entry);
+                continue;
+            }
+
+            string key = GetTransporterInventoryKey(entry);
+            if (!grouped.TryGetValue(key, out BlockInventoryEntry existing))
+            {
+                consolidated.Add(entry);
+                grouped[key] = entry;
+                continue;
+            }
+
+            MergeTransporterEntry(existing, entry);
+        }
+
+        if (consolidated.Count != entries.Count)
+        {
+            entries = consolidated;
+        }
+    }
+
+    private static void MergeTransporterEntry(BlockInventoryEntry target, BlockInventoryEntry source)
+    {
+        if (target == null || source == null) return;
+
+        int added = Mathf.Max(0, source.maxCount);
+        target.maxCount += added;
+
+        if (string.IsNullOrEmpty(target.displayName) && !string.IsNullOrEmpty(source.displayName))
+        {
+            target.displayName = source.displayName;
+        }
+
+        if ((target.routeSteps == null || target.routeSteps.Length == 0) && source.routeSteps != null && source.routeSteps.Length > 0)
+        {
+            target.routeSteps = (string[])source.routeSteps.Clone();
+        }
+
+        if (string.IsNullOrEmpty(target.flavorId) && !string.IsNullOrEmpty(source.flavorId))
+        {
+            target.flavorId = source.flavorId;
+        }
+
+        if (target.isPairInventory != source.isPairInventory || target.pairSize != source.pairSize)
+        {
+            Debug.LogWarning("[BlockInventory] Transporter entries with matching routes have different pair settings. Using the first entry's values.");
+        }
     }
 }

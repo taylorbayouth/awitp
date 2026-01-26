@@ -50,6 +50,13 @@ public class BaseBlock : MonoBehaviour
     // Cached original color for restoring after highlight
     private Color originalColor;
 
+    [Header("Visuals")]
+    [Tooltip("Optional visual root for mesh rendering (created automatically if missing)")]
+    [SerializeField] private Transform visualRoot;
+
+    [Tooltip("Auto-normalize visual mesh to fit within one grid cell")]
+    [SerializeField] private bool autoNormalizeVisualScale = true;
+
     // Cached renderer component for performance
     private Renderer blockRenderer;
 
@@ -137,16 +144,7 @@ public class BaseBlock : MonoBehaviour
             Debug.Log($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
-        // Cache renderer component for highlighting
-        blockRenderer = GetComponent<Renderer>();
-        if (blockRenderer != null)
-        {
-            originalColor = blockRenderer.material.color;
-        }
-        else
-        {
-            Debug.LogWarning($"[BaseBlock] No Renderer component found on block {gameObject.name}. Highlighting will not work.");
-        }
+        EnsureVisualRoot();
     }
 
     /// <summary>
@@ -232,7 +230,7 @@ public class BaseBlock : MonoBehaviour
             rb.useGravity = false;  // No gravity for wall blocks
 
             // Apply color based on block type
-            Renderer renderer = blockObj.GetComponent<Renderer>();
+            Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
                 Color blockColor = BlockColors.GetColorForBlockType(type);
@@ -350,6 +348,70 @@ public class BaseBlock : MonoBehaviour
 
         Debug.Log($"[BaseBlock] Loaded prefab from Resources/{prefabName}");
         return Instantiate(prefab);
+    }
+
+    private void EnsureVisualRoot()
+    {
+        if (visualRoot == null)
+        {
+            visualRoot = transform.Find("Visual");
+        }
+
+        if (visualRoot == null)
+        {
+            GameObject visualObj = new GameObject("Visual");
+            visualObj.transform.SetParent(transform, false);
+            visualRoot = visualObj.transform;
+        }
+
+        MeshFilter rootMesh = GetComponent<MeshFilter>();
+        MeshRenderer rootRenderer = GetComponent<MeshRenderer>();
+
+        MeshFilter visualMesh = visualRoot.GetComponent<MeshFilter>();
+        MeshRenderer visualRenderer = visualRoot.GetComponent<MeshRenderer>();
+
+        if (visualMesh == null && rootMesh != null)
+        {
+            visualMesh = visualRoot.gameObject.AddComponent<MeshFilter>();
+            visualMesh.sharedMesh = rootMesh.sharedMesh;
+        }
+
+        if (visualRenderer == null && rootRenderer != null)
+        {
+            visualRenderer = visualRoot.gameObject.AddComponent<MeshRenderer>();
+            visualRenderer.sharedMaterials = rootRenderer.sharedMaterials;
+            visualRenderer.enabled = rootRenderer.enabled;
+        }
+
+        if (rootRenderer != null && visualRenderer != null)
+        {
+            rootRenderer.enabled = false;
+        }
+
+        if (autoNormalizeVisualScale && visualMesh != null && visualMesh.sharedMesh != null)
+        {
+            Bounds bounds = visualMesh.sharedMesh.bounds;
+            float maxSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            if (maxSize > 0f)
+            {
+                visualRoot.localScale = Vector3.one * (1f / maxSize);
+            }
+        }
+
+        blockRenderer = visualRoot.GetComponentInChildren<Renderer>();
+        if (blockRenderer == null)
+        {
+            blockRenderer = GetComponent<Renderer>();
+        }
+
+        if (blockRenderer != null)
+        {
+            originalColor = blockRenderer.material.color;
+        }
+        else
+        {
+            Debug.LogWarning($"[BaseBlock] No Renderer component found on block {gameObject.name}. Highlighting will not work.");
+        }
     }
 
     /// <summary>

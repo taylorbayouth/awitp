@@ -17,6 +17,16 @@
 # Asset meta data should only be ignored when the corresponding asset is also ignored
 !/[Aa]ssets/**/*.meta
 
+# AllSkyFree assets (local-only)
+/Assets/AllSkyFree/
+/Assets/AllSkyFree.meta
+/Assets/AllSkyFree/**/*.meta
+
+# KayKit assets (local-only)
+/Assets/KayKit/
+/Assets/KayKit.meta
+/Assets/KayKit/**/*.meta
+
 # Uncomment this line if you wish to ignore the asset store tools plugin
 # /[Aa]ssets/AssetStoreTools*
 
