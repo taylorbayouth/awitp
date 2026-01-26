@@ -24,5 +24,15 @@ public enum BlockType
     /// <summary>
     /// Transporter block - moves player or objects (yellow)
     /// </summary>
-    Transporter
+    Transporter,
+
+    /// <summary>
+    /// Key block - holds a collectible key (green)
+    /// </summary>
+    Key,
+
+    /// <summary>
+    /// Lock block - accepts and holds keys (black)
+    /// </summary>
+    Lock
 }

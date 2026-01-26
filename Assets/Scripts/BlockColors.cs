@@ -10,6 +10,8 @@ public static class BlockColors
     public static readonly Color Teleporter = new Color(0.5f, 0f, 1f);      // Purple
     public static readonly Color Crumbler = new Color(1f, 0.5f, 0f);        // Orange
     public static readonly Color Transporter = Color.cyan;
+    public static readonly Color Key = new Color(0.75f, 0.95f, 0.75f);      // Pale green
+    public static readonly Color Lock = Color.black;
 
     // Grid and UI colors
     public static readonly Color GridLine = new Color(0.8f, 0.8f, 0.8f, 1f); // Light gray (solid)
@@ -31,6 +33,8 @@ public static class BlockColors
             BlockType.Teleporter => Teleporter,
             BlockType.Crumbler => Crumbler,
             BlockType.Transporter => Transporter,
+            BlockType.Key => Key,
+            BlockType.Lock => Lock,
             _ => Color.gray
         };
     }
@@ -46,6 +50,8 @@ public static class BlockColors
             BlockType.Teleporter => "TELEPORT",
             BlockType.Crumbler => "CRUMBLE",
             BlockType.Transporter => "TRANSPORT",
+            BlockType.Key => "KEY",
+            BlockType.Lock => "LOCK",
             _ => "UNKNOWN"
         };
     }

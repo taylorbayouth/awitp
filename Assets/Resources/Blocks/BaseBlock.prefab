@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 7058394587207660318}
   - component: {fileID: 6247551411429688999}
   - component: {fileID: 2329549792764308390}
-  - component: {fileID: 7215074762794049176}
   m_Layer: 0
   m_Name: BaseBlock
   m_TagString: Untagged
@@ -106,32 +105,3 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &7215074762794049176
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 634973474784941246}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 15caeb14e94fa4dfeb7cbdb6acf4d2f6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  uniqueID: 
-  blockType: 0
-  gridIndex: -1
-  isPermanent: 0
-  detectionSize: 1
-  detectionLayerMask:
-    serializedVersion: 2
-    m_Bits: 0
-  highlightColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
-  showTriggerLabelsInEditor: 1
-  showTriggerGizmos: 1
-  onTriggerBoxSize: {x: 1, y: 1, z: 1}
-  onTriggerYOffset: 1
-  centerTriggerRadius: 0.05
-  centerTriggerYOffset: 0.5
-  centerTriggerWorldYOffset: 0
-  centerLabelDuration: 0.15

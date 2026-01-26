@@ -1,14 +1,19 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 public class EditorController : MonoBehaviour
 {
     [Header("Block Placement")]
     public BlockType currentBlockType = BlockType.Default;
+    public BlockInventoryEntry currentInventoryEntry;
 
     [Header("Game Mode")]
     public GameMode currentMode = GameMode.Editor;
     private EditorModeManager editorModeManager;
     private BlockInventory blockInventory;
+    private int currentInventoryIndex = 0;
+
+    public int CurrentInventoryIndex => currentInventoryIndex;
 
     private void Awake()
     {
@@ -33,12 +38,80 @@ public class EditorController : MonoBehaviour
         {
             blockInventory = FindObjectOfType<BlockInventory>();
         }
+
+        InitializeInventorySelection();
+    }
+
+    private void InitializeInventorySelection()
+    {
+        if (blockInventory == null) return;
+
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        if (entries == null || entries.Count == 0) return;
+
+        currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
+        currentInventoryEntry = entries[currentInventoryIndex];
+        if (currentInventoryEntry != null)
+        {
+            currentBlockType = currentInventoryEntry.blockType;
+        }
+    }
+
+    private void EnsureInventoryReference()
+    {
+        if (blockInventory != null) return;
+
+        blockInventory = GetComponent<BlockInventory>();
+        if (blockInventory == null)
+        {
+            blockInventory = FindObjectOfType<BlockInventory>();
+        }
+
+        if (blockInventory != null)
+        {
+            InitializeInventorySelection();
+        }
+    }
+
+    private void EnsureInventorySelectionValid()
+    {
+        if (blockInventory == null) return;
+
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        if (entries == null || entries.Count == 0)
+        {
+            currentInventoryEntry = null;
+            return;
+        }
+
+        bool found = false;
+        foreach (BlockInventoryEntry entry in entries)
+        {
+            if (entry == currentInventoryEntry)
+            {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
+            currentInventoryEntry = entries[currentInventoryIndex];
+            if (currentInventoryEntry != null)
+            {
+                currentBlockType = currentInventoryEntry.blockType;
+            }
+        }
     }
 
     private void Update()
     {
         // Wait for GridManager to be ready
         if (GridManager.Instance == null) return;
+
+        EnsureInventoryReference();
+        EnsureInventorySelectionValid();
 
         HandleModeToggle();
         HandleSaveLoad();
@@ -48,7 +121,7 @@ public class EditorController : MonoBehaviour
         {
             HandleCursorMovement();
             HandleBlockRemoval();
-            HandleBlockTypeSwitch();
+            HandleInventorySelection();
 
             if (currentMode == GameMode.Editor)
             {
@@ -101,8 +174,16 @@ public class EditorController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
             int cursorIndex = GridManager.Instance.currentCursorIndex;
-            GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
-            Debug.Log($"Placed {currentBlockType} block at index {cursorIndex}");
+            if (currentInventoryEntry != null)
+            {
+                GridManager.Instance.PlaceBlock(currentInventoryEntry, cursorIndex);
+                Debug.Log($"Placed {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
+            }
+            else
+            {
+                GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
+                Debug.Log($"Placed {currentBlockType} block at index {cursorIndex}");
+            }
         }
     }
 
@@ -114,8 +195,16 @@ public class EditorController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.B))
         {
             int cursorIndex = GridManager.Instance.currentCursorIndex;
-            GridManager.Instance.PlacePermanentBlock(currentBlockType, cursorIndex);
-            Debug.Log($"Placed permanent {currentBlockType} block at index {cursorIndex}");
+            if (currentInventoryEntry != null)
+            {
+                GridManager.Instance.PlacePermanentBlock(currentInventoryEntry, cursorIndex);
+                Debug.Log($"Placed permanent {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
+            }
+            else
+            {
+                GridManager.Instance.PlacePermanentBlock(currentBlockType, cursorIndex);
+                Debug.Log($"Placed permanent {currentBlockType} block at index {cursorIndex}");
+            }
         }
     }
 
@@ -132,8 +221,15 @@ public class EditorController : MonoBehaviour
             BaseBlock block = GridManager.Instance.GetBlockAtIndex(cursorIndex);
             if (block != null)
             {
-                block.DestroyBlock();
-                Debug.Log($"Removed block at index {cursorIndex}");
+                if (block.isPermanent && currentMode != GameMode.LevelEditor)
+                {
+                    Debug.LogWarning("Cannot remove permanent block in Editor mode");
+                }
+                else
+                {
+                    block.DestroyBlock();
+                    Debug.Log($"Removed block at index {cursorIndex}");
+                }
             }
 
             // Remove Lem if present
@@ -142,64 +238,108 @@ public class EditorController : MonoBehaviour
                 GridManager.Instance.RemoveLem(cursorIndex);
                 Debug.Log($"Removed Lem at index {cursorIndex}");
             }
+
+            // Remove placeable space marker in Level Editor mode
+            if (currentMode == GameMode.LevelEditor && GridManager.Instance.IsSpacePlaceable(cursorIndex))
+            {
+                GridManager.Instance.SetSpacePlaceable(cursorIndex, false);
+                Debug.Log($"Removed placeable space at index {cursorIndex}");
+            }
         }
     }
 
-    private void HandleBlockTypeSwitch()
+    private void HandleInventorySelection()
     {
-        if (GridManager.Instance == null) return;
+        if (GridManager.Instance == null || blockInventory == null) return;
 
-        BlockType? newBlockType = null;
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        if (entries == null || entries.Count == 0) return;
 
-        // Number keys to switch block type
-        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
+        int? requestedIndex = GetInventoryIndexFromKeys();
+        if (requestedIndex.HasValue)
         {
-            newBlockType = BlockType.Default;
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2))
-        {
-            newBlockType = BlockType.Teleporter;
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3))
-        {
-            newBlockType = BlockType.Crumbler;
-        }
-        else if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4))
-        {
-            newBlockType = BlockType.Transporter;
-        }
-
-        if (newBlockType.HasValue)
-        {
-            // Check if this block type is available in inventory (Editor mode only)
-            if (currentMode == GameMode.Editor && blockInventory != null && !blockInventory.CanPlaceBlock(newBlockType.Value))
+            if (requestedIndex.Value >= 0 && requestedIndex.Value < entries.Count)
             {
-                Debug.LogWarning($"Cannot switch to {newBlockType.Value} - no blocks remaining in inventory");
-                return;
-            }
-
-            currentBlockType = newBlockType.Value;
-
-            // Check if cursor is on an existing block
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
-            BaseBlock existingBlock = GridManager.Instance.GetBlockAtIndex(cursorIndex);
-
-            if (existingBlock != null)
-            {
-                // Change the block type of existing block
-                ChangeBlockType(existingBlock, currentBlockType);
-                Debug.Log($"Changed block at index {cursorIndex} to {currentBlockType}");
+                SelectInventoryIndex(requestedIndex.Value, entries);
             }
             else
             {
-                Debug.Log($"Switched to {currentBlockType} block");
+                Debug.LogWarning("No inventory entry assigned to that number key");
             }
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftBracket))
+        {
+            int prevIndex = currentInventoryIndex - 1;
+            if (prevIndex < 0) prevIndex = entries.Count - 1;
+            SelectInventoryIndex(prevIndex, entries);
+        }
+        else if (Input.GetKeyDown(KeyCode.RightBracket))
+        {
+            int nextIndex = currentInventoryIndex + 1;
+            if (nextIndex >= entries.Count) nextIndex = 0;
+            SelectInventoryIndex(nextIndex, entries);
         }
     }
 
-    private void ChangeBlockType(BaseBlock block, BlockType newType)
+    private int? GetInventoryIndexFromKeys()
     {
-        if (block == null) return;
+        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) return 0;
+        if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) return 1;
+        if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) return 2;
+        if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4)) return 3;
+        if (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) return 4;
+        if (Input.GetKeyDown(KeyCode.Alpha6) || Input.GetKeyDown(KeyCode.Keypad6)) return 5;
+        if (Input.GetKeyDown(KeyCode.Alpha7) || Input.GetKeyDown(KeyCode.Keypad7)) return 6;
+        if (Input.GetKeyDown(KeyCode.Alpha8) || Input.GetKeyDown(KeyCode.Keypad8)) return 7;
+        if (Input.GetKeyDown(KeyCode.Alpha9) || Input.GetKeyDown(KeyCode.Keypad9)) return 8;
+        return null;
+    }
+
+    private void SelectInventoryIndex(int index, IReadOnlyList<BlockInventoryEntry> entries)
+    {
+        if (entries == null || entries.Count == 0) return;
+
+        if (index < 0 || index >= entries.Count) return;
+
+        BlockInventoryEntry entry = entries[index];
+        if (entry == null) return;
+
+        if (currentMode == GameMode.Editor && !blockInventory.CanPlaceEntry(entry))
+        {
+            Debug.LogWarning($"Cannot switch to {entry.GetDisplayName()} - no blocks remaining in inventory");
+            return;
+        }
+
+        currentInventoryIndex = index;
+        currentInventoryEntry = entry;
+        currentBlockType = entry.blockType;
+
+        // Check if cursor is on an existing block
+        int cursorIndex = GridManager.Instance.currentCursorIndex;
+        BaseBlock existingBlock = GridManager.Instance.GetBlockAtIndex(cursorIndex);
+
+        if (existingBlock != null)
+        {
+            if (existingBlock.isPermanent && currentMode != GameMode.LevelEditor)
+            {
+                Debug.LogWarning("Cannot change permanent block in Editor mode");
+                return;
+            }
+
+            ChangeBlockType(existingBlock, entry);
+            Debug.Log($"Changed block at index {cursorIndex} to {entry.GetDisplayName()}");
+        }
+        else
+        {
+            Debug.Log($"Switched to {entry.GetDisplayName()} block");
+        }
+    }
+
+    private void ChangeBlockType(BaseBlock block, BlockInventoryEntry entry)
+    {
+        if (block == null || entry == null) return;
 
         // Store position and index
         int gridIndex = block.gridIndex;
@@ -211,11 +351,11 @@ public class EditorController : MonoBehaviour
         // Place new block of different type at same position
         if (wasPermanent)
         {
-            GridManager.Instance.PlacePermanentBlock(newType, gridIndex);
+            GridManager.Instance.PlacePermanentBlock(entry, gridIndex);
         }
         else
         {
-            GridManager.Instance.PlaceBlock(newType, gridIndex);
+            GridManager.Instance.PlaceBlock(entry, gridIndex);
         }
     }
 
@@ -269,6 +409,7 @@ public class EditorController : MonoBehaviour
                 if (GridManager.Instance != null)
                 {
                     GridManager.Instance.ResetAllLems();
+                    GridManager.Instance.RestoreOriginalKeyStates();
                 }
                 UpdateCursorVisibility();
             }
@@ -279,6 +420,10 @@ public class EditorController : MonoBehaviour
                 {
                     Debug.LogWarning("Cannot enter Play mode: transporter route blocked by another block.");
                     return;
+                }
+                if (GridManager.Instance != null)
+                {
+                    GridManager.Instance.CaptureOriginalKeyStates();
                 }
                 currentMode = GameMode.Play;
                 Debug.Log("=== PLAY MODE === Lem is walking!");
@@ -292,6 +437,12 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null) return;
         GridManager.Instance.SetCursorVisible(currentMode != GameMode.Play);
+
+        PlaceableSpaceVisualizer visualizer = GridManager.Instance.GetComponent<PlaceableSpaceVisualizer>();
+        if (visualizer != null)
+        {
+            visualizer.SetVisible(currentMode != GameMode.Play);
+        }
     }
 
     private void FreezeAllLems()
@@ -316,14 +467,15 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null) return;
 
-        // Space/Enter to toggle placeable state in Level Editor mode
+        // Space/Enter to mark space as placeable in Level Editor mode
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
             int cursorIndex = GridManager.Instance.currentCursorIndex;
-            GridManager.Instance.ToggleSpacePlaceable(cursorIndex);
-
-            bool isPlaceable = GridManager.Instance.IsSpacePlaceable(cursorIndex);
-            Debug.Log($"Space at index {cursorIndex} is now {(isPlaceable ? "placeable" : "non-placeable")}");
+            if (!GridManager.Instance.IsSpacePlaceable(cursorIndex))
+            {
+                GridManager.Instance.SetSpacePlaceable(cursorIndex, true);
+                Debug.Log($"Marked space at index {cursorIndex} as placeable");
+            }
         }
     }
 

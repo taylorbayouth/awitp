@@ -55,7 +55,9 @@ public class LemController : MonoBehaviour
 
     // Cached component references
     private Rigidbody rb;
+    private CapsuleCollider capsuleCollider;
     private Transform hatTransform;
+    private Transform footPoint;
 
     #endregion
 
@@ -71,6 +73,8 @@ public class LemController : MonoBehaviour
         {
             rb = gameObject.AddComponent<Rigidbody>();
         }
+
+        capsuleCollider = GetComponent<CapsuleCollider>();
 
         rb.useGravity = true;
         rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionZ;
@@ -90,6 +94,11 @@ public class LemController : MonoBehaviour
             collider.material = physicsMaterial;
         }
 
+        footPoint = transform.Find("FootPoint");
+        if (footPoint == null)
+        {
+            footPoint = transform;
+        }
         hatTransform = transform.Find("Hat");
     }
 
@@ -156,18 +165,18 @@ public class LemController : MonoBehaviour
 
     private void CheckGround()
     {
-        // Start raycast from center of Lem (not bottom) to avoid missing ground
-        // Lem is scaled 0.5x, so everything is half-sized
-        Vector3 origin = transform.position + Vector3.up * 0.1f; // Start slightly above center
+        // Raycast from just above the foot point for precise ground detection
+        Vector3 origin = GetFootPointPosition() + Vector3.up * 0.01f;
         RaycastHit hit;
         // IMPORTANT: Use QueryTriggerInteraction.Ignore to ignore trigger colliders (like BaseBlock detection zones)
         isGrounded = Physics.Raycast(origin, Vector3.down, out hit, groundCheckDistance, solidLayerMask, QueryTriggerInteraction.Ignore);
+
     }
 
     private void CheckWallAhead()
     {
-        // Check at center height - adjusted for smaller Lem
-        Vector3 origin = transform.position + Vector3.up * 0.25f;
+        float checkHeight = GetLemHeight() * 0.5f;
+        Vector3 origin = GetFootPointPosition() + Vector3.up * checkHeight;
         Vector3 direction = facingRight ? Vector3.right : Vector3.left;
 
         // Ignore triggers to avoid detecting BaseBlock detection zones
@@ -214,6 +223,7 @@ public class LemController : MonoBehaviour
         {
             rb.velocity = Vector3.zero; // Stop movement when frozen
         }
+
     }
 
     private void UpdateFacingVisuals()
@@ -231,23 +241,64 @@ public class LemController : MonoBehaviour
         Destroy(gameObject, 2f);
     }
 
+    public Vector3 GetFootPointPosition()
+    {
+        return footPoint != null ? footPoint.position : transform.position;
+    }
+
+    public void SetFootPointPosition(Vector3 position)
+    {
+        if (rb != null && rb.isKinematic == false)
+        {
+            rb.position = position;
+        }
+        else
+        {
+            transform.position = position;
+        }
+    }
+
+    private float GetLemHeight()
+    {
+        if (capsuleCollider == null)
+        {
+            capsuleCollider = GetComponent<CapsuleCollider>();
+        }
+
+        if (capsuleCollider != null)
+        {
+            return capsuleCollider.height * transform.localScale.y;
+        }
+
+        return 1f;
+    }
+
+
     /// <summary>
-    /// Creates a Lem character at the specified position.
-    /// Lem is half the size (scale 0.5) to fit better in the grid.
+    /// Creates a Lem character with its foot point placed at the specified position.
+    /// Lem height is exactly 50% of the current grid cell size.
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
     {
         GameObject lem = new GameObject("Lem");
         lem.transform.position = position;
-        lem.transform.localScale = Vector3.one * 0.5f; // Half size!
+        lem.transform.localScale = Vector3.one;
         lem.tag = "Player";
+
+        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        float lemHeight = cellSize * 0.5f;
+        float lemRadius = lemHeight * 0.25f;
+
+        GameObject foot = new GameObject("FootPoint");
+        foot.transform.SetParent(lem.transform);
+        foot.transform.localPosition = Vector3.zero;
 
         // Body (capsule)
         GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         body.name = "Body";
         body.transform.SetParent(lem.transform);
-        body.transform.localPosition = Vector3.up * 0.5f;
-        body.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
+        body.transform.localPosition = Vector3.up * (lemHeight * 0.5f);
+        body.transform.localScale = new Vector3(lemHeight * 0.5f, lemHeight * 0.5f, lemHeight * 0.5f);
         Destroy(body.GetComponent<Collider>());
 
         Renderer bodyRenderer = body.GetComponent<Renderer>();
@@ -260,8 +311,8 @@ public class LemController : MonoBehaviour
         GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Cube);
         hat.name = "Hat";
         hat.transform.SetParent(lem.transform);
-        hat.transform.localPosition = new Vector3(0.35f, 1.15f, 0);
-        hat.transform.localScale = new Vector3(0.5f, 0.12f, 0.35f);
+        hat.transform.localPosition = new Vector3(lemRadius * 1.5f, lemHeight * 0.9f, 0);
+        hat.transform.localScale = new Vector3(lemRadius * 1.5f, lemHeight * 0.12f, lemRadius);
         hat.transform.localRotation = Quaternion.Euler(0, 0, -90f);
         Destroy(hat.GetComponent<Collider>());
 
@@ -273,9 +324,9 @@ public class LemController : MonoBehaviour
 
         // Collider on parent - smaller and centered
         CapsuleCollider collider = lem.AddComponent<CapsuleCollider>();
-        collider.height = 1f;
-        collider.radius = 0.2f; // Slightly smaller radius to avoid getting stuck
-        collider.center = Vector3.up * 0.5f;
+        collider.height = lemHeight;
+        collider.radius = lemRadius;
+        collider.center = Vector3.up * (lemHeight * 0.5f);
 
         // Controller
         LemController controller = lem.AddComponent<LemController>();
@@ -292,20 +343,22 @@ public class LemController : MonoBehaviour
         if (!isAlive) return;
 
         float direction = facingRight ? 1f : -1f;
+        Vector3 foot = GetFootPointPosition();
+        float halfHeight = GetLemHeight() * 0.5f;
 
         // Ground check - starts from 0.1 above center
         Gizmos.color = isGrounded ? Color.green : Color.red;
-        Vector3 groundOrigin = transform.position + Vector3.up * 0.1f;
+        Vector3 groundOrigin = foot + Vector3.up * 0.01f;
         Gizmos.DrawLine(groundOrigin, groundOrigin + Vector3.down * groundCheckDistance);
 
         // Wall check - starts from 0.25 above center
         Gizmos.color = Color.yellow;
-        Vector3 wallStart = transform.position + Vector3.up * 0.25f;
+        Vector3 wallStart = foot + Vector3.up * halfHeight;
         Gizmos.DrawLine(wallStart, wallStart + Vector3.right * direction * wallCheckDistance);
 
         // Cliff check - starts from 0.3 ahead + 0.1 up
         Gizmos.color = Color.cyan;
-        Vector3 cliffStart = transform.position + Vector3.right * direction * 0.3f + Vector3.up * 0.1f;
+        Vector3 cliffStart = foot + Vector3.right * direction * 0.3f + Vector3.up * 0.1f;
         Gizmos.DrawLine(cliffStart, cliffStart + Vector3.down * groundCheckDistance);
     }
 

@@ -8,6 +8,7 @@ public class CenterTrigger : MonoBehaviour
     private BaseBlock owner;
     private SphereCollider sphere;
     private bool isActive = false;
+    private static EditorController _cachedEditorController;
 
     public void Initialize(BaseBlock baseBlock)
     {
@@ -43,6 +44,11 @@ public class CenterTrigger : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         if (owner == null) return;
+        if (!IsPlayModeActive())
+        {
+            isActive = false;
+            return;
+        }
         if (other.CompareTag("Player"))
         {
             UpdateCenterState(other);
@@ -52,6 +58,11 @@ public class CenterTrigger : MonoBehaviour
     private void OnTriggerStay(Collider other)
     {
         if (owner == null) return;
+        if (!IsPlayModeActive())
+        {
+            isActive = false;
+            return;
+        }
         if (other.CompareTag("Player"))
         {
             UpdateCenterState(other);
@@ -61,6 +72,11 @@ public class CenterTrigger : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         if (owner == null) return;
+        if (!IsPlayModeActive())
+        {
+            isActive = false;
+            return;
+        }
         if (other.CompareTag("Player"))
         {
             if (isActive)
@@ -94,6 +110,16 @@ public class CenterTrigger : MonoBehaviour
         Bounds bounds = collider.bounds;
         Vector3 center = bounds.center;
         return new Vector3(center.x, bounds.min.y, center.z);
+    }
+
+    private static bool IsPlayModeActive()
+    {
+        if (_cachedEditorController == null)
+        {
+            _cachedEditorController = UnityEngine.Object.FindObjectOfType<EditorController>();
+        }
+
+        return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;
     }
 
 #if UNITY_EDITOR

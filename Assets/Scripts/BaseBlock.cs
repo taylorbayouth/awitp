@@ -27,6 +27,12 @@ public class BaseBlock : MonoBehaviour
     [Tooltip("Linear index in GridManager's coordinate system")]
     public int gridIndex = -1;
 
+    [Tooltip("Inventory key used to return blocks to inventory")]
+    public string inventoryKey;
+
+    [Tooltip("Optional flavor id for this block (e.g., A, L3,U1)")]
+    public string flavorId;
+
     [Tooltip("If true, block cannot be removed in Editor mode and doesn't return to inventory")]
     public bool isPermanent = false;
 
@@ -39,7 +45,7 @@ public class BaseBlock : MonoBehaviour
 
     [Header("Highlight Settings")]
     [Tooltip("Color when block is highlighted in editor")]
-    public Color highlightColor = Color.yellow;
+    public Color highlightColor = Color.black;
 
     // Cached original color for restoring after highlight
     private Color originalColor;
@@ -112,6 +118,7 @@ public class BaseBlock : MonoBehaviour
 
     // Cached reference to BlockInventory to avoid repeated FindObjectOfType calls
     private static BlockInventory _cachedInventory;
+    private static EditorController _cachedEditorController;
 
     #endregion
 
@@ -201,8 +208,12 @@ public class BaseBlock : MonoBehaviour
 
             // Get or add appropriate block component
             BaseBlock block = blockObj.GetComponent<BaseBlock>();
-            if (block == null)
+            if (block == null || !IsBlockComponentCompatible(block, type))
             {
+                if (block != null)
+                {
+                    Destroy(block);
+                }
                 block = AddBlockComponent(blockObj, type);
             }
 
@@ -266,10 +277,19 @@ public class BaseBlock : MonoBehaviour
                 Debug.Log($"[BaseBlock] Added TransporterBlock component to {blockObj.name}");
                 break;
 
+            case BlockType.Key:
+                block = blockObj.AddComponent<KeyBlock>();
+                Debug.Log($"[BaseBlock] Added KeyBlock component to {blockObj.name}");
+                break;
+
+            case BlockType.Lock:
+                block = blockObj.AddComponent<LockBlock>();
+                Debug.Log($"[BaseBlock] Added LockBlock component to {blockObj.name}");
+                break;
+
             case BlockType.Teleporter:
-                // TODO: Implement TeleporterBlock class
-                Debug.LogWarning($"[BaseBlock] Teleporter block type not yet implemented, using BaseBlock");
-                block = blockObj.AddComponent<BaseBlock>();
+                block = blockObj.AddComponent<TeleporterBlock>();
+                Debug.Log($"[BaseBlock] Added TeleporterBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Default:
@@ -280,6 +300,28 @@ public class BaseBlock : MonoBehaviour
         }
 
         return block;
+    }
+
+    private static bool IsBlockComponentCompatible(BaseBlock block, BlockType type)
+    {
+        if (block == null) return false;
+
+        switch (type)
+        {
+            case BlockType.Crumbler:
+                return block is CrumblerBlock;
+            case BlockType.Transporter:
+                return block is TransporterBlock;
+            case BlockType.Key:
+                return block is KeyBlock;
+            case BlockType.Lock:
+                return block is LockBlock;
+            case BlockType.Teleporter:
+                return block is TeleporterBlock;
+            case BlockType.Default:
+            default:
+                return block.GetType() == typeof(BaseBlock);
+        }
     }
 
     /// <summary>
@@ -295,8 +337,15 @@ public class BaseBlock : MonoBehaviour
 
         if (prefab == null)
         {
-            Debug.Log($"[BaseBlock] No prefab found at Resources/{prefabName}, will use primitive");
-            return null;
+            prefab = Resources.Load<GameObject>("Blocks/BaseBlock");
+            if (prefab == null)
+            {
+                Debug.Log($"[BaseBlock] No prefab found at Resources/{prefabName} or Resources/Blocks/BaseBlock, will use primitive");
+                return null;
+            }
+
+            Debug.Log($"[BaseBlock] Loaded base prefab from Resources/Blocks/BaseBlock for {type}");
+            return Instantiate(prefab);
         }
 
         Debug.Log($"[BaseBlock] Loaded prefab from Resources/{prefabName}");
@@ -322,7 +371,14 @@ public class BaseBlock : MonoBehaviour
 
                 if (_cachedInventory != null)
                 {
-                    _cachedInventory.ReturnBlock(blockType);
+                    if (!string.IsNullOrEmpty(inventoryKey))
+                    {
+                        _cachedInventory.ReturnBlock(inventoryKey, blockType);
+                    }
+                    else
+                    {
+                        _cachedInventory.ReturnBlock(blockType);
+                    }
                     Debug.Log($"[BaseBlock] Returned {blockType} block at index {gridIndex} to inventory");
                 }
                 else
@@ -367,6 +423,8 @@ public class BaseBlock : MonoBehaviour
     /// <param name="other">The collider that entered</param>
     private void OnTriggerEnter(Collider other)
     {
+        if (!IsPlayModeActive()) return;
+
         if (other.CompareTag("Player"))
         {
             currentPlayer = other.GetComponent<LemController>();
@@ -385,6 +443,8 @@ public class BaseBlock : MonoBehaviour
     /// <param name="other">The collider that exited</param>
     private void OnTriggerExit(Collider other)
     {
+        if (!IsPlayModeActive()) return;
+
         if (other.CompareTag("Player"))
         {
             isPlayerOnBlock = false;
@@ -403,8 +463,17 @@ public class BaseBlock : MonoBehaviour
     /// <param name="other">The collider staying in trigger</param>
     private void OnTriggerStay(Collider other)
     {
+        if (!IsPlayModeActive()) return;
+
         if (other.CompareTag("Player"))
         {
+            if (!isPlayerOnBlock)
+            {
+                currentPlayer = other.GetComponent<LemController>();
+                isPlayerOnBlock = true;
+                Debug.Log($"[BaseBlock] Player entered trigger on {blockType} block at index {gridIndex} (stay)");
+                OnPlayerEnter();
+            }
             lastTriggerState = TriggerState.On;
         }
     }
@@ -416,6 +485,8 @@ public class BaseBlock : MonoBehaviour
     /// <param name="collision">Collision data</param>
     private void OnCollisionEnter(Collision collision)
     {
+        if (!IsPlayModeActive()) return;
+
         if (collision.collider.CompareTag("Player"))
         {
             currentPlayer = collision.collider.GetComponent<LemController>();
@@ -433,6 +504,8 @@ public class BaseBlock : MonoBehaviour
     /// <param name="collision">Collision data</param>
     private void OnCollisionExit(Collision collision)
     {
+        if (!IsPlayModeActive()) return;
+
         if (collision.collider.CompareTag("Player"))
         {
             isPlayerOnBlock = false;
@@ -450,8 +523,17 @@ public class BaseBlock : MonoBehaviour
     /// <param name="collision">Collision data</param>
     private void OnCollisionStay(Collision collision)
     {
+        if (!IsPlayModeActive()) return;
+
         if (collision.collider.CompareTag("Player"))
         {
+            if (!isPlayerOnBlock)
+            {
+                currentPlayer = collision.collider.GetComponent<LemController>();
+                isPlayerOnBlock = true;
+                Debug.Log($"[BaseBlock] Player collision enter on {blockType} block at index {gridIndex} (stay)");
+                OnPlayerEnter();
+            }
             lastTriggerState = TriggerState.On;
         }
     }
@@ -710,6 +792,8 @@ public class BaseBlock : MonoBehaviour
     /// <param name="lem">The Lem that entered the center</param>
     public void NotifyCenterTriggerEnter(LemController lem)
     {
+        if (!IsPlayModeActive()) return;
+
         if (lem != null)
         {
             currentPlayer = lem;
@@ -728,11 +812,23 @@ public class BaseBlock : MonoBehaviour
     /// </summary>
     public void NotifyCenterTriggerExit()
     {
+        if (!IsPlayModeActive()) return;
+
         if (isPlayerOnBlock)
         {
             lastTriggerState = TriggerState.On;
             Debug.Log($"[BaseBlock] Player exited center of {blockType} block");
         }
+    }
+
+    private static bool IsPlayModeActive()
+    {
+        if (_cachedEditorController == null)
+        {
+            _cachedEditorController = UnityEngine.Object.FindObjectOfType<EditorController>();
+        }
+
+        return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;
     }
 
     #endregion

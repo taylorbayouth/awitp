@@ -94,6 +94,19 @@ public class GridVisualizer : MonoBehaviour
         }
     }
 
+    public void SetGridVisible(bool visible)
+    {
+        showGrid = visible;
+        if (gridLinesParent != null)
+        {
+            gridLinesParent.SetActive(visible);
+        }
+        else if (visible)
+        {
+            CreateGridLines();
+        }
+    }
+
     public void RefreshGrid()
     {
         CreateGridLines();

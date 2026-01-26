@@ -14,6 +14,8 @@ public class LevelData
     {
         public BlockType blockType;
         public int gridIndex;
+        public string inventoryKey;
+        public string flavorId;
         public string[] routeSteps;
 
         public BlockData(BlockType type, int index)
@@ -28,12 +30,32 @@ public class LevelData
     {
         public int gridIndex;
         public bool facingRight;
+        public Vector3 worldPosition;
+        public bool hasWorldPosition;
 
         public LemData(int index, bool facing)
         {
             gridIndex = index;
             facingRight = facing;
         }
+    }
+
+    public enum KeyLocation
+    {
+        KeyBlock,
+        LockBlock,
+        Lem,
+        World
+    }
+
+    [Serializable]
+    public class KeyStateData
+    {
+        public int sourceKeyBlockIndex;
+        public KeyLocation location;
+        public int targetIndex;
+        public Vector3 worldPosition;
+        public bool hasWorldPosition;
     }
 
     // Grid settings
@@ -47,11 +69,17 @@ public class LevelData
     // Permanent blocks (designer-placed, non-placeable)
     public List<BlockData> permanentBlocks = new List<BlockData>();
 
+    // Inventory configuration for this level
+    public List<BlockInventoryEntry> inventoryEntries = new List<BlockInventoryEntry>();
+
     // Placeable spaces (stored as indices where placeable = true)
     public List<int> placeableSpaceIndices = new List<int>();
 
     // Placed Lems
     public List<LemData> lems = new List<LemData>();
+
+    // Key states (source block + current location)
+    public List<KeyStateData> keyStates = new List<KeyStateData>();
 
     // Metadata
     public string levelName;
