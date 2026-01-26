@@ -18,7 +18,9 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **BaseBlock** - Base class for all block types with collision detection
 - **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter)
 - **BlockColors** - Centralized color management for all visual elements
-- **BlockInventory** - Manages block counts per type during gameplay
+- **BlockInventory** - Manages block counts per entry (supports flavors and shared groups)
+- **LevelBlockInventoryConfig** - Optional scene config for inventory entries
+- **Transporter Validation** - Prevents placement if route intersects existing blocks
 
 #### Character System
 - **LemController** - Controls Lem movement, physics, and AI
@@ -100,6 +102,7 @@ Assets/
 - **Teleporter** - Transport blocks (magenta)
 - **Crumbler** - Breakable blocks (orange)
 - **Transporter** - Moving blocks (yellow)
+  - Placement is blocked if the route path intersects existing blocks
 
 ### Rendering Features
 - Configurable line widths for grid, borders, and cursor
