@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 
 /// <summary>
 /// Displays block inventory counts and current selection using OnGUI
@@ -10,15 +11,19 @@ public class InventoryUI : MonoBehaviour
     public EditorController editorController;
 
     [Header("UI Settings")]
-    public float boxSize = 160f;  // Doubled from 80f
-    public float spacing = 20f;   // Doubled from 10f
-    public float topMargin = 40f; // Doubled from 20f
-    public float leftMargin = 40f; // Doubled from 20f
+    public float boxSize = 110f;
+    public float spacing = 20f;
+    public float itemPadding = 6f;
+    public float topMargin = 24f;
+    public float leftMargin = 24f;
 
     private GUIStyle normalStyle;
     private GUIStyle selectedStyle;
     private GUIStyle textStyle;
     private GUIStyle labelStyle;
+    private GUIStyle subLabelStyle;
+    private GUIStyle cornerStyle;
+    private GUIStyle winStyle;
 
     private void Awake()
     {
@@ -36,22 +41,23 @@ public class InventoryUI : MonoBehaviour
 
     private void OnGUI()
     {
+        if (Event.current.type != EventType.Repaint) return;
         if (inventory == null || editorController == null) return;
-        if (editorController.currentMode == GameMode.Play) return;
 
         InitializeStyles();
 
-        BlockType[] blockTypes = new BlockType[]
-        {
-            BlockType.Default,
-            BlockType.Teleporter,
-            BlockType.Crumbler,
-            BlockType.Transporter
-        };
+        DrawLockStatus();
 
-        for (int i = 0; i < blockTypes.Length; i++)
+        if (editorController.currentMode != GameMode.Play)
         {
-            DrawBlockSlot(blockTypes[i], i);
+            IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntries();
+            int drawIndex = 0;
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (ShouldHideFromInventory(entries[i])) continue;
+                DrawBlockSlot(entries[i], i, drawIndex);
+                drawIndex++;
+            }
         }
     }
 
@@ -66,8 +72,7 @@ public class InventoryUI : MonoBehaviour
         if (selectedStyle == null)
         {
             selectedStyle = new GUIStyle(GUI.skin.box);
-            selectedStyle.normal.background = MakeTex(2, 2, new Color(1f, 1f, 0f, 0.9f));
-            selectedStyle.border = new RectOffset(3, 3, 3, 3);
+            selectedStyle.normal.background = MakeTex(2, 2, new Color(0f, 0f, 0f, 0.9f));            selectedStyle.border = new RectOffset(3, 3, 3, 3);
         }
 
         if (textStyle == null)
@@ -75,7 +80,7 @@ public class InventoryUI : MonoBehaviour
             textStyle = new GUIStyle(GUI.skin.label);
             textStyle.alignment = TextAnchor.MiddleCenter;
             textStyle.normal.textColor = Color.white;
-            textStyle.fontSize = 28;  // Doubled from 14
+            textStyle.fontSize = 18;
             textStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -84,27 +89,57 @@ public class InventoryUI : MonoBehaviour
             labelStyle = new GUIStyle(GUI.skin.label);
             labelStyle.alignment = TextAnchor.MiddleCenter;
             labelStyle.normal.textColor = Color.white;
-            labelStyle.fontSize = 20;  // Doubled from 10
+            labelStyle.fontSize = 14;
+            labelStyle.fontStyle = FontStyle.Bold;
+        }
+
+        if (subLabelStyle == null)
+        {
+            subLabelStyle = new GUIStyle(GUI.skin.label);
+            subLabelStyle.alignment = TextAnchor.MiddleCenter;
+            subLabelStyle.normal.textColor = new Color(1f, 1f, 1f, 0.75f);
+            subLabelStyle.fontSize = 12;
+        }
+
+        if (cornerStyle == null)
+        {
+            cornerStyle = new GUIStyle(GUI.skin.label);
+            cornerStyle.alignment = TextAnchor.UpperRight;
+            cornerStyle.normal.textColor = Color.white;
+            cornerStyle.fontSize = 16;
+            cornerStyle.fontStyle = FontStyle.Bold;
+        }
+
+        if (winStyle == null)
+        {
+            winStyle = new GUIStyle(GUI.skin.label);
+            winStyle.alignment = TextAnchor.UpperRight;
+            winStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
+            winStyle.fontSize = 18;
+            winStyle.fontStyle = FontStyle.Bold;
         }
     }
 
-    private void DrawBlockSlot(BlockType blockType, int index)
+    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex)
     {
-        float xPos = leftMargin + (index * (boxSize + spacing));
-        Rect boxRect = new Rect(xPos, topMargin, boxSize, boxSize);
+        if (entry == null) return;
+
+        float xPos = leftMargin;
+        float yPos = topMargin + (drawIndex * (boxSize + spacing));
+        Rect boxRect = new Rect(xPos, yPos, boxSize, boxSize);
 
         // Determine if this block is selected
-        bool isSelected = editorController.currentBlockType == blockType;
+        bool isSelected = editorController.CurrentInventoryIndex == index;
 
         // Draw background box
         GUI.Box(boxRect, "", isSelected ? selectedStyle : normalStyle);
 
         // Get inventory counts
-        int available = inventory.GetAvailableCount(blockType);
-        int total = inventory.GetTotalCount(blockType);
+        int available = inventory.GetDisplayAvailableCount(entry);
+        int total = inventory.GetDisplayTotalCount(entry);
 
         // Draw colored block preview in the center
-        Color blockColor = GetColorForBlockType(blockType);
+        Color blockColor = GetColorForBlockType(entry.blockType);
         if (available == 0)
         {
             blockColor.a = 0.3f; // Dim if unavailable
@@ -112,7 +147,7 @@ public class InventoryUI : MonoBehaviour
 
         float previewSize = boxSize * 0.4f;
         float previewX = xPos + (boxSize - previewSize) * 0.5f;
-        float previewY = topMargin + (boxSize - previewSize) * 0.5f - 5f;
+        float previewY = yPos + (boxSize - previewSize) * 0.5f - 4f;
         Rect previewRect = new Rect(previewX, previewY, previewSize, previewSize);
 
         Color oldColor = GUI.color;
@@ -121,17 +156,58 @@ public class InventoryUI : MonoBehaviour
         GUI.color = oldColor;
 
         // Draw count text at bottom
-        Rect countRect = new Rect(xPos, topMargin + boxSize - 25f, boxSize, 20f);
+        Rect countRect = new Rect(xPos, yPos + boxSize - (18f + itemPadding), boxSize, 18f);
         GUI.Label(countRect, $"{available}/{total}", textStyle);
 
         // Draw block type label at top (height increased to prevent clipping)
-        Rect labelRect = new Rect(xPos, topMargin + 5f, boxSize, 25f);
-        string blockName = GetBlockTypeName(blockType);
+        Rect labelRect = new Rect(xPos, yPos + itemPadding, boxSize, 18f);
+        string blockName = entry.GetDisplayName();
         GUI.Label(labelRect, blockName, labelStyle);
 
-        // Draw key hint (height increased to prevent clipping)
-        Rect keyRect = new Rect(xPos, topMargin + boxSize + 2f, boxSize, 25f);
-        GUI.Label(keyRect, $"[{index + 1}]", labelStyle);
+        // Draw sublabel for pair inventories
+        BlockInventoryEntry groupEntry = entry;
+        bool isPair = groupEntry != null && groupEntry.isPairInventory;
+        if (isPair)
+        {
+            Rect pairRect = new Rect(xPos, yPos + itemPadding + 18f, boxSize, 16f);
+            GUI.Label(pairRect, "(pairs)", subLabelStyle);
+        }
+
+        // Draw key hint
+        Rect keyRect = new Rect(xPos, yPos + boxSize + 4f, boxSize, 20f);
+        string keyHint = index < 9 ? $"[{index + 1}]" : string.Empty;
+        GUI.Label(keyRect, keyHint, labelStyle);
+    }
+
+    private bool ShouldHideFromInventory(BlockInventoryEntry entry)
+    {
+        if (entry == null) return true;
+        return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
+    }
+
+    private void DrawLockStatus()
+    {
+        LockBlock[] locks = FindObjectsOfType<LockBlock>();
+        int totalLocks = locks.Length;
+        int lockedCount = 0;
+        foreach (LockBlock lockBlock in locks)
+        {
+            if (lockBlock != null && lockBlock.HasKeyLocked())
+            {
+                lockedCount++;
+            }
+        }
+
+        float rightMargin = 24f;
+        float topOffset = 20f;
+        Rect statusRect = new Rect(0f, topOffset, Screen.width - rightMargin, 24f);
+        GUI.Label(statusRect, $"{lockedCount} of {totalLocks}", cornerStyle);
+
+        if (editorController != null && editorController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
+        {
+            Rect winRect = new Rect(0f, topOffset + 26f, Screen.width - rightMargin, 24f);
+            GUI.Label(winRect, "You win", winStyle);
+        }
     }
 
     private Color GetColorForBlockType(BlockType blockType)

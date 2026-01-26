@@ -67,6 +67,7 @@ public class GridManager : MonoBehaviour
     private Dictionary<int, BaseBlock> permanentBlocks = new Dictionary<int, BaseBlock>();
     private Dictionary<int, GameObject> placedLems = new Dictionary<int, GameObject>();
     private Dictionary<int, LemPlacementData> originalLemPlacements = new Dictionary<int, LemPlacementData>();
+    private List<LevelData.KeyStateData> originalKeyStates = new List<LevelData.KeyStateData>();
 
     /// <summary>
     /// Stores original Lem placement data for resetting after Play mode
@@ -257,7 +258,7 @@ public class GridManager : MonoBehaviour
     /// <param name="blockType">Type of block to place</param>
     /// <param name="gridIndex">Grid index where block should be placed</param>
     /// <returns>The placed block, or null if placement failed</returns>
-    public BaseBlock PlaceBlock(BlockType blockType, int gridIndex)
+    public BaseBlock PlaceBlock(BlockType blockType, int gridIndex, BlockInventoryEntry entry = null)
     {
         try
         {
@@ -277,6 +278,34 @@ public class GridManager : MonoBehaviour
                 return null;
             }
 
+            // Check 2b: Transporter-specific placement constraints
+            if (blockType == BlockType.Transporter)
+            {
+                if (IsGridSpaceOccupied(gridIndex))
+                {
+                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Space already occupied");
+                    return null;
+                }
+
+                BlockInventoryEntry resolvedForRoute = entry;
+                if (resolvedForRoute == null)
+                {
+                    BlockInventory routeInventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+                    if (routeInventory != null)
+                    {
+                        resolvedForRoute = routeInventory.GetDefaultEntryForBlockType(blockType);
+                    }
+                }
+
+                string[] routeSteps = resolvedForRoute != null ? resolvedForRoute.routeSteps : null;
+                List<int> routeIndices = BuildTransporterPathIndices(gridIndex, routeSteps);
+                if (routeIndices.Count > 0 && HasBlocksOnIndices(routeIndices))
+                {
+                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Route path blocked by existing block");
+                    return null;
+                }
+            }
+
             // Check 3: Space must be marked as placeable
             if (!IsSpacePlaceable(gridIndex))
             {
@@ -292,11 +321,22 @@ public class GridManager : MonoBehaviour
             }
 
             // Check 5: Inventory availability
-            // Use cached inventory reference
             BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
-            if (inventory != null && !inventory.CanPlaceBlock(blockType))
+            BlockInventoryEntry resolvedEntry = entry;
+            if (inventory != null && resolvedEntry == null)
             {
-                Debug.LogWarning($"[GridManager] Cannot place {blockType}: No blocks remaining in inventory");
+                resolvedEntry = inventory.GetDefaultEntryForBlockType(blockType);
+            }
+
+            if (inventory != null && resolvedEntry == null)
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {blockType}: No inventory entry configured");
+                return null;
+            }
+
+            if (inventory != null && resolvedEntry != null && !inventory.CanPlaceEntry(resolvedEntry))
+            {
+                Debug.LogWarning($"[GridManager] Cannot place {resolvedEntry.GetDisplayName()}: No blocks remaining in inventory");
                 return null;
             }
 
@@ -312,7 +352,14 @@ public class GridManager : MonoBehaviour
             // Consume block from inventory
             if (inventory != null)
             {
-                inventory.UseBlock(blockType);
+                if (resolvedEntry != null)
+                {
+                    inventory.UseBlock(resolvedEntry);
+                }
+                else
+                {
+                    inventory.UseBlock(blockType);
+                }
             }
 
             // Create and position the new block
@@ -329,6 +376,7 @@ public class GridManager : MonoBehaviour
             }
 
             newBlock.isPermanent = false;
+            ApplyEntryMetadata(newBlock, resolvedEntry, inventory);
             PositionBlock(newBlock, gridIndex);
 
             // Register the new block
@@ -345,7 +393,18 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    public BaseBlock PlacePermanentBlock(BlockType blockType, int gridIndex)
+    public BaseBlock PlaceBlock(BlockInventoryEntry entry, int gridIndex)
+    {
+        if (entry == null)
+        {
+            Debug.LogWarning("[GridManager] Cannot place block: inventory entry is null");
+            return null;
+        }
+
+        return PlaceBlock(entry.blockType, gridIndex, entry);
+    }
+
+    public BaseBlock PlacePermanentBlock(BlockType blockType, int gridIndex, BlockInventoryEntry entry = null)
     {
         if (!IsValidIndex(gridIndex))
         {
@@ -367,6 +426,7 @@ public class GridManager : MonoBehaviour
 
         BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
         newBlock.isPermanent = true;
+        ApplyEntryMetadata(newBlock, entry, UnityEngine.Object.FindObjectOfType<BlockInventory>());
         PositionBlock(newBlock, gridIndex);
 
         permanentBlocks[gridIndex] = newBlock;
@@ -375,12 +435,38 @@ public class GridManager : MonoBehaviour
         return newBlock;
     }
 
+    public BaseBlock PlacePermanentBlock(BlockInventoryEntry entry, int gridIndex)
+    {
+        if (entry == null)
+        {
+            Debug.LogWarning("[GridManager] Cannot place permanent block: inventory entry is null");
+            return null;
+        }
+
+        return PlacePermanentBlock(entry.blockType, gridIndex, entry);
+    }
+
     private void PositionBlock(BaseBlock block, int gridIndex)
     {
         Vector3 position = IndexToWorldPosition(gridIndex);
         position.z += cellSize * 0.5f; // Center block so front face is flush with grid (z=0)
         block.transform.position = position;
         block.transform.localScale = Vector3.one * cellSize;
+    }
+
+    private static void ApplyEntryMetadata(BaseBlock block, BlockInventoryEntry entry, BlockInventory inventory)
+    {
+        if (block == null || entry == null) return;
+
+        string inventoryKey = inventory != null ? inventory.GetInventoryKey(entry) : entry.GetEntryId();
+        block.inventoryKey = inventoryKey;
+        block.flavorId = entry.GetResolvedFlavorId();
+
+        TransporterBlock transporter = block as TransporterBlock;
+        if (transporter != null && entry.routeSteps != null && entry.routeSteps.Length > 0)
+        {
+            transporter.routeSteps = (string[])entry.routeSteps.Clone();
+        }
     }
 
     public void RegisterBlock(BaseBlock block)
@@ -460,29 +546,21 @@ public class GridManager : MonoBehaviour
             ClearAllLems();
         }
 
-        // Create new Lem - place on top of block if one exists, otherwise at grid position
-        Vector3 position = IndexToWorldPosition(gridIndex);
-        position.z += cellSize * 0.5f;
-
-        // Check if there's a block at this position
-        BaseBlock blockBelow = GetBlockAtIndex(gridIndex);
-        if (blockBelow != null)
+        if (!TryGetLemFootPosition(gridIndex, out Vector3 footPosition))
         {
-            // Place Lem on top of the block
-            // Block center is at blockBelow.transform.position
-            // Block extends cellSize/2 above and below center
-            // Place Lem slightly above block top to avoid clipping into collider
-            position = blockBelow.transform.position;
-            position.y += cellSize / 2f + 0.1f; // Block top surface + small offset
+            Debug.LogWarning($"Cannot place Lem at index {gridIndex}: no ground block.");
+            return null;
         }
 
-        GameObject lem = LemController.CreateLem(position);
+        GameObject lem = LemController.CreateLem(footPosition);
         placedLems[gridIndex] = lem;
 
         // Store original placement data for resetting after Play mode
         LemController controller = lem.GetComponent<LemController>();
         if (controller != null)
         {
+            controller.SetFootPointPosition(footPosition);
+            controller.SetFrozen(true);
             originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, controller.GetFacingRight());
         }
 
@@ -522,21 +600,17 @@ public class GridManager : MonoBehaviour
         // Recreate Lems at original positions
         foreach (var placementData in originalLemPlacements.Values)
         {
-            Vector3 position = IndexToWorldPosition(placementData.gridIndex);
-            position.z += cellSize * 0.5f;
-
-            // Check if there's a block at this position
-            BaseBlock blockBelow = GetBlockAtIndex(placementData.gridIndex);
-            if (blockBelow != null)
+            if (!TryGetLemFootPosition(placementData.gridIndex, out Vector3 footPosition))
             {
-                position = blockBelow.transform.position;
-                position.y += cellSize / 2f + 0.1f;
+                Debug.LogWarning($"Cannot reset Lem at index {placementData.gridIndex}: no ground block.");
+                continue;
             }
 
-            GameObject lem = LemController.CreateLem(position);
+            GameObject lem = LemController.CreateLem(footPosition);
             LemController controller = lem.GetComponent<LemController>();
             if (controller != null)
             {
+                controller.SetFootPointPosition(footPosition);
                 controller.SetFacingRight(placementData.facingRight);
                 controller.SetFrozen(true); // Frozen in editor mode
             }
@@ -545,6 +619,16 @@ public class GridManager : MonoBehaviour
         }
 
         Debug.Log($"Reset {originalLemPlacements.Count} Lem(s) to original positions");
+    }
+
+    public void CaptureOriginalKeyStates()
+    {
+        originalKeyStates = CaptureKeyStates();
+    }
+
+    public void RestoreOriginalKeyStates()
+    {
+        ApplyKeyStates(originalKeyStates);
     }
 
     /// <summary>
@@ -561,6 +645,33 @@ public class GridManager : MonoBehaviour
     public GameObject GetLemAtIndex(int index)
     {
         return placedLems.TryGetValue(index, out GameObject lem) ? lem : null;
+    }
+
+    private bool TryGetLemFootPosition(int gridIndex, out Vector3 footPosition)
+    {
+        footPosition = Vector3.zero;
+
+        if (!IsValidIndex(gridIndex))
+        {
+            return false;
+        }
+
+        Vector2Int coords = IndexToCoordinates(gridIndex);
+        for (int y = coords.y; y >= 0; y--)
+        {
+            int candidateIndex = CoordinatesToIndex(coords.x, y);
+            BaseBlock blockBelow = GetBlockAtIndex(candidateIndex);
+            if (blockBelow == null)
+            {
+                continue;
+            }
+
+            footPosition = blockBelow.transform.position;
+            footPosition.y += cellSize * 0.5f;
+            return true;
+        }
+
+        return false;
     }
 
     #endregion
@@ -787,6 +898,12 @@ public class GridManager : MonoBehaviour
             cellSize = cellSize
         };
 
+        BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+        if (inventory != null)
+        {
+            levelData.inventoryEntries = inventory.GetSerializableEntries();
+        }
+
         // Capture permanent blocks
         foreach (var kvp in permanentBlocks)
         {
@@ -817,8 +934,22 @@ public class GridManager : MonoBehaviour
         // Capture Lem placements
         foreach (var kvp in originalLemPlacements)
         {
-            levelData.lems.Add(new LevelData.LemData(kvp.Value.gridIndex, kvp.Value.facingRight));
+            LevelData.LemData lemData = new LevelData.LemData(kvp.Value.gridIndex, kvp.Value.facingRight);
+            if (placedLems.TryGetValue(kvp.Key, out GameObject lem) && lem != null)
+            {
+                lemData.worldPosition = lem.transform.position;
+                lemData.hasWorldPosition = true;
+            }
+            else
+            {
+                lemData.worldPosition = IndexToWorldPosition(kvp.Value.gridIndex);
+                lemData.hasWorldPosition = true;
+            }
+            levelData.lems.Add(lemData);
         }
+
+        // Capture key states
+        levelData.keyStates = CaptureKeyStates();
 
         Debug.Log($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
         return levelData;
@@ -840,6 +971,19 @@ public class GridManager : MonoBehaviour
         ClearAllBlocks();
         ClearAllLems();
         ClearPlaceableSpaces();
+
+        BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+        if (inventory != null)
+        {
+            if (levelData.inventoryEntries != null && levelData.inventoryEntries.Count > 0)
+            {
+                inventory.ApplyInventoryEntries(levelData.inventoryEntries);
+            }
+            else
+            {
+                inventory.ResetInventory();
+            }
+        }
 
         // Restore grid settings (if they changed, we need to reinitialize)
         bool gridSizeChanged = (gridWidth != levelData.gridWidth || gridHeight != levelData.gridHeight || cellSize != levelData.cellSize);
@@ -873,7 +1017,12 @@ public class GridManager : MonoBehaviour
             {
                 if (IsValidIndex(blockData.gridIndex))
                 {
-                    BaseBlock block = PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
+                    BlockInventoryEntry entry = inventory != null
+                        ? inventory.FindEntry(blockData.blockType, blockData.flavorId, blockData.routeSteps, blockData.inventoryKey)
+                        : null;
+                    BaseBlock block = entry != null
+                        ? PlacePermanentBlock(entry, blockData.gridIndex)
+                        : PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
                     ApplyBlockData(block, blockData);
                 }
             }
@@ -890,7 +1039,12 @@ public class GridManager : MonoBehaviour
                     bool wasPlaceable = placeableSpaces[blockData.gridIndex];
                     placeableSpaces[blockData.gridIndex] = true;
 
-                    BaseBlock block = PlaceBlock(blockData.blockType, blockData.gridIndex);
+                    BlockInventoryEntry entry = inventory != null
+                        ? inventory.FindEntry(blockData.blockType, blockData.flavorId, blockData.routeSteps, blockData.inventoryKey)
+                        : null;
+                    BaseBlock block = entry != null
+                        ? PlaceBlock(entry, blockData.gridIndex)
+                        : PlaceBlock(blockData.blockType, blockData.gridIndex);
                     ApplyBlockData(block, blockData);
 
                     // Restore original placeable state
@@ -916,11 +1070,18 @@ public class GridManager : MonoBehaviour
                             controller.SetFacingRight(lemData.facingRight);
                             controller.SetFrozen(true); // Start frozen in editor mode
                         }
+                        if (lemData.hasWorldPosition)
+                        {
+                            lem.transform.position = lemData.worldPosition;
+                        }
                         lemPlaced = true;
                     }
                 }
             }
         }
+
+        // Restore key states
+        ApplyKeyStates(levelData.keyStates);
 
         // Refresh visuals
         PlaceableSpaceVisualizer visualizer = GetComponent<PlaceableSpaceVisualizer>();
@@ -1041,9 +1202,85 @@ public class GridManager : MonoBehaviour
         return false;
     }
 
+    private bool HasBlocksOnIndices(List<int> indices)
+    {
+        foreach (int index in indices)
+        {
+            if (!IsValidIndex(index)) continue;
+            if (GetBlockAtIndex(index) != null)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<int> BuildTransporterPathIndices(int originIndex, string[] routeSteps)
+    {
+        List<int> indices = new List<int>();
+        if (!IsValidIndex(originIndex))
+        {
+            return indices;
+        }
+
+        Vector2Int current = IndexToCoordinates(originIndex);
+        List<Vector2Int> steps = BuildTransporterSteps(routeSteps);
+        HashSet<int> unique = new HashSet<int>();
+
+        unique.Add(originIndex);
+        foreach (Vector2Int step in steps)
+        {
+            current += step;
+            if (IsValidCoordinates(current.x, current.y))
+            {
+                int idx = CoordinatesToIndex(current);
+                if (unique.Add(idx))
+                {
+                    indices.Add(idx);
+                }
+            }
+        }
+
+        indices.Insert(0, originIndex);
+        return indices;
+    }
+
+    private static List<Vector2Int> BuildTransporterSteps(string[] routeSteps)
+    {
+        List<Vector2Int> steps = new List<Vector2Int>();
+        if (routeSteps == null) return steps;
+
+        foreach (string raw in routeSteps)
+        {
+            if (string.IsNullOrWhiteSpace(raw)) continue;
+            string token = raw.Trim().ToUpperInvariant();
+            char dir = token[0];
+            if (token.Length < 2 || !int.TryParse(token.Substring(1), out int count) || count <= 0) continue;
+
+            Vector2Int step = dir switch
+            {
+                'L' => new Vector2Int(-1, 0),
+                'R' => new Vector2Int(1, 0),
+                'U' => new Vector2Int(0, 1),
+                'D' => new Vector2Int(0, -1),
+                _ => Vector2Int.zero
+            };
+
+            if (step == Vector2Int.zero) continue;
+            for (int i = 0; i < count; i++)
+            {
+                steps.Add(step);
+            }
+        }
+
+        return steps;
+    }
+
     private static LevelData.BlockData CreateBlockData(BaseBlock block, int index)
     {
         LevelData.BlockData data = new LevelData.BlockData(block.blockType, index);
+        data.inventoryKey = block.inventoryKey;
+        data.flavorId = block.flavorId;
         TransporterBlock transporter = block as TransporterBlock;
         if (transporter != null && transporter.routeSteps != null)
         {
@@ -1055,11 +1292,139 @@ public class GridManager : MonoBehaviour
     private static void ApplyBlockData(BaseBlock block, LevelData.BlockData data)
     {
         if (block == null || data == null) return;
+        block.inventoryKey = data.inventoryKey;
+        block.flavorId = data.flavorId;
         TransporterBlock transporter = block as TransporterBlock;
         if (transporter != null && data.routeSteps != null)
         {
             transporter.routeSteps = (string[])data.routeSteps.Clone();
         }
+    }
+
+    private List<LevelData.KeyStateData> CaptureKeyStates()
+    {
+        List<LevelData.KeyStateData> states = new List<LevelData.KeyStateData>();
+        KeyItem[] keys = FindObjectsOfType<KeyItem>();
+        foreach (KeyItem key in keys)
+        {
+            if (key == null) continue;
+
+            LevelData.KeyStateData data = new LevelData.KeyStateData
+            {
+                sourceKeyBlockIndex = key.SourceKeyBlockIndex,
+                location = LevelData.KeyLocation.World
+            };
+
+            if (key.IsLockedToBlock)
+            {
+                LockBlock lockBlock = key.GetComponentInParent<LockBlock>();
+                if (lockBlock != null)
+                {
+                    data.location = LevelData.KeyLocation.LockBlock;
+                    data.targetIndex = lockBlock.gridIndex;
+                }
+            }
+            else if (key.IsHeldByLem)
+            {
+                LemController lem = key.GetComponentInParent<LemController>();
+                if (lem != null)
+                {
+                    int lemIndex = WorldToGridIndex(lem.transform.position);
+                    data.location = LevelData.KeyLocation.Lem;
+                    data.targetIndex = lemIndex;
+                }
+            }
+            else
+            {
+                KeyBlock keyBlock = key.GetComponentInParent<KeyBlock>();
+                if (keyBlock != null)
+                {
+                    data.location = LevelData.KeyLocation.KeyBlock;
+                    data.targetIndex = keyBlock.gridIndex;
+                }
+            }
+
+            if (data.location == LevelData.KeyLocation.World)
+            {
+                data.hasWorldPosition = true;
+                data.worldPosition = key.transform.position;
+            }
+
+            states.Add(data);
+        }
+        return states;
+    }
+
+    private void ApplyKeyStates(List<LevelData.KeyStateData> states)
+    {
+        if (states == null) return;
+
+        foreach (LevelData.KeyStateData state in states)
+        {
+            if (state == null) continue;
+
+            KeyItem key = FindKeyBySourceIndex(state.sourceKeyBlockIndex);
+            if (key == null)
+            {
+                continue;
+            }
+
+            float size = cellSize;
+
+            switch (state.location)
+            {
+                case LevelData.KeyLocation.LockBlock:
+                {
+                    BaseBlock block = GetBlockAtIndex(state.targetIndex);
+                    LockBlock lockBlock = block as LockBlock;
+                    if (lockBlock != null)
+                    {
+                        lockBlock.AttachKeyFromState(key);
+                    }
+                    break;
+                }
+                case LevelData.KeyLocation.Lem:
+                {
+                    GameObject lem = GetLemAtIndex(state.targetIndex);
+                    LemController lemController = lem != null ? lem.GetComponent<LemController>() : null;
+                    if (lemController != null)
+                    {
+                        key.AttachToLem(lemController, key.GetCarryYOffset(size), key.GetWorldScale(size));
+                    }
+                    break;
+                }
+                case LevelData.KeyLocation.KeyBlock:
+                {
+                    BaseBlock block = GetBlockAtIndex(state.targetIndex);
+                    KeyBlock keyBlock = block as KeyBlock;
+                    if (keyBlock != null)
+                    {
+                        keyBlock.ResetKeyToBlock();
+                    }
+                    break;
+                }
+                case LevelData.KeyLocation.World:
+                default:
+                {
+                    if (state.hasWorldPosition)
+                    {
+                        key.transform.SetParent(null, true);
+                        key.transform.position = state.worldPosition;
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    private KeyItem FindKeyBySourceIndex(int sourceIndex)
+    {
+        if (sourceIndex < 0) return null;
+
+        BaseBlock block = GetBlockAtIndex(sourceIndex);
+        KeyBlock keyBlock = block as KeyBlock;
+        if (keyBlock == null) return null;
+        return keyBlock.GetKeyItem();
     }
 
     #region Debug Visualization

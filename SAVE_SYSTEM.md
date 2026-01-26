@@ -22,6 +22,7 @@ Serializable data structure that represents a complete level state.
 - Permanent block placements (type and index for each block)
 - Placeable spaces (list of indices where blocks can be placed)
 - Lem placements (position and facing direction)
+- Inventory entries (block flavors, counts, grouping)
 - Metadata (level name, save timestamp)
 
 #### LevelSaveSystem.cs
@@ -64,6 +65,7 @@ EditorController.HandleSaveLoad()
 GridManager.SaveLevel()
     ↓
 GridManager.CaptureLevelData()
+    ├─ Capture BlockInventory entries → LevelData.inventoryEntries
     ├─ Iterate permanentBlocks dictionary → LevelData.permanentBlocks
     ├─ Iterate placedBlocks dictionary → LevelData.blocks
     ├─ Iterate placeableSpaces array → LevelData.placeableSpaceIndices
@@ -96,6 +98,7 @@ GridManager.RestoreLevelData(levelData)
     ├─ ClearAllBlocks() - remove existing blocks
     ├─ ClearAllLems() - remove existing Lems
     ├─ ClearPlaceableSpaces() - reset placeable array
+    ├─ Apply inventory entries (if present)
     ├─ Check if grid size changed → reinitialize if needed
     ├─ Restore placeableSpaces array from indices
     ├─ PlacePermanentBlock() for each saved permanent block
@@ -116,20 +119,48 @@ Success/failure reported to console
   "gridWidth": 10,
   "gridHeight": 10,
   "cellSize": 1.0,
+  "inventoryEntries": [
+    {
+      "entryId": "Default",
+      "blockType": 0,
+      "displayName": "Default",
+      "inventoryGroupId": "",
+      "flavorId": "",
+      "routeSteps": null,
+      "maxCount": 999,
+      "currentCount": 999
+    },
+    {
+      "entryId": "Teleporter_A",
+      "blockType": 1,
+      "displayName": "Teleporter A",
+      "inventoryGroupId": "Teleporter",
+      "flavorId": "A",
+      "routeSteps": null,
+      "maxCount": 2,
+      "currentCount": 2
+    }
+  ],
   "blocks": [
     {
       "blockType": 0,
-      "gridIndex": 45
+      "gridIndex": 45,
+      "inventoryKey": "Default",
+      "flavorId": ""
     },
     {
       "blockType": 1,
-      "gridIndex": 46
+      "gridIndex": 46,
+      "inventoryKey": "Teleporter",
+      "flavorId": "A"
     }
   ],
   "permanentBlocks": [
     {
       "blockType": 2,
-      "gridIndex": 12
+      "gridIndex": 12,
+      "inventoryKey": "",
+      "flavorId": ""
     }
   ],
   "placeableSpaceIndices": [
@@ -152,13 +183,29 @@ Success/failure reported to console
 **gridHeight** (int): Number of rows in the grid
 **cellSize** (float): Size of each grid cell in world units
 
+**inventoryEntries** (array): Inventory configuration for this level
+- `entryId` (string): Unique id for the entry
+- `blockType` (int): BlockType enum value
+- `displayName` (string): Optional UI label
+- `inventoryGroupId` (string): Optional shared inventory group id
+- `flavorId` (string): Optional flavor identifier (e.g., Teleporter letter)
+- `routeSteps` (string[]): Optional transporter route steps
+- `maxCount` (int): Total number of blocks for this entry/group
+- `currentCount` (int): Current count (reset to max on load)
+
 **blocks** (array): List of all placed blocks
 - `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
 - `gridIndex` (int): Linear index in grid (0 to width*height-1)
+- `inventoryKey` (string): Inventory group key used for counts
+- `flavorId` (string): Flavor identifier (e.g., A, L3,U1)
+- `routeSteps` (string[]): Transporter-only route steps (optional)
 
 **permanentBlocks** (array): List of designer-placed permanent blocks
 - `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
 - `gridIndex` (int): Linear index in grid (0 to width*height-1)
+- `inventoryKey` (string): Inventory group key (optional)
+- `flavorId` (string): Flavor identifier (optional)
+- `routeSteps` (string[]): Transporter-only route steps (optional)
 
 **placeableSpaceIndices** (array): Grid indices where blocks can be placed during gameplay
 - Only stores indices where placeable = true

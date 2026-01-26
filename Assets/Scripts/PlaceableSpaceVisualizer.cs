@@ -12,6 +12,7 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
 
     private GridManager gridManager;
     private Dictionary<int, GameObject> placeableBorders = new Dictionary<int, GameObject>();
+    private bool isVisible = true;
 
     private void Awake()
     {
@@ -52,11 +53,22 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
         GameObject borderObj = new GameObject($"PlaceableBorder_{index}");
         borderObj.transform.parent = transform;
         borderObj.transform.position = gridManager.IndexToWorldPosition(index);
+        borderObj.SetActive(isVisible);
 
         BorderRenderer border = borderObj.AddComponent<BorderRenderer>();
         border.Initialize(placeableColor, gridManager.cellSize, RenderingConstants.BORDER_DEPTH, RenderingConstants.BORDER_SORTING, RenderingConstants.BORDER_LINE_WIDTH);
 
         placeableBorders[index] = borderObj;
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (isVisible == visible) return;
+        isVisible = visible;
+        foreach (var border in placeableBorders.Values)
+        {
+            if (border != null) border.SetActive(visible);
+        }
     }
 
     private void RemoveBorderAtIndex(int index)

@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: c82a334cf5a5e47978749c210cee72a7, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.4465781, g: 0.49641192, b: 0.574816, a: 1}
+  m_IndirectSpecularColor: {r: 0.13014346, g: 0.09454123, b: 0.12482851, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -183,7 +183,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 60
+  field of view: 20
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -230,9 +230,129 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridManager: {fileID: 0}
   targetCamera: {fileID: 0}
+  useOrthographic: 1
   distanceFromGrid: 15
   paddingPercent: 0.1
   minOrthographicSize: 3
+  autoUpdateInEditor: 1
+--- !u!1 &285017511
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 285017513}
+  - component: {fileID: 285017512}
+  m_Layer: 0
+  m_Name: InventoryConfig
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &285017512
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 285017511}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5168a4423945e4341a94fc8c6b5d1b2f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  entries:
+  - entryId: 
+    blockType: 0
+    displayName: Grass Block
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 5
+    currentCount: 0
+  - entryId: 
+    blockType: 2
+    displayName: Crumbler
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 2
+    currentCount: 0
+  - entryId: 
+    blockType: 3
+    displayName: Transporter
+    inventoryGroupId: 
+    flavorId: R3
+    routeSteps:
+    - R3
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
+  - entryId: 
+    blockType: 3
+    displayName: Transporter
+    inventoryGroupId: 
+    flavorId: R3,U1
+    routeSteps:
+    - R3
+    - U1
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
+  - entryId: 
+    blockType: 1
+    displayName: Teleporter
+    inventoryGroupId: 
+    flavorId: A
+    routeSteps: []
+    isPairInventory: 1
+    pairSize: 2
+    maxCount: 1
+    currentCount: 0
+  - entryId: 
+    blockType: 4
+    displayName: Key
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
+  - entryId: 
+    blockType: 5
+    displayName: Lock
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
+--- !u!4 &285017513
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 285017511}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_RootOrder: 4
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &756764136
 GameObject:
   m_ObjectHideFlags: 0
@@ -359,6 +479,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   currentBlockType: 0
+  currentInventoryEntry:
+    entryId: 
+    blockType: 0
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 2
+    maxCount: 0
+    currentCount: 0
   currentMode: 1
 --- !u!114 &1602858730
 MonoBehaviour:
@@ -386,7 +517,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 252b9f338df024d70a35fbbad703a06c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridWidth: 7
+  gridWidth: 8
   gridHeight: 5
   cellSize: 1
   _gridOrigin: {x: 0, y: 0, z: 0}
@@ -437,6 +568,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   autoSetupOnStart: 1
+  skyboxMaterial: {fileID: 0}
+  useDefaultSkyboxIfNone: 1
 --- !u!4 &1728154827
 Transform:
   m_ObjectHideFlags: 0

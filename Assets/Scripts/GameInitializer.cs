@@ -104,7 +104,7 @@ public class GameInitializer : MonoBehaviour
             }
 
             // Set basic camera properties (CameraSetup will handle positioning)
-            mainCamera.clearFlags = CameraClearFlags.SolidColor;
+            // mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.orthographic = true;
             mainCamera.nearClipPlane = 0.1f;
             mainCamera.farClipPlane = 100f;

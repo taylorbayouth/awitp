@@ -4,12 +4,17 @@ public class EditorModeManager : MonoBehaviour
 {
     [Header("Background Colors")]
     public Color normalModeColor = new Color(0.192f, 0.301f, 0.474f); // Unity default blue-grey
-    public Color editorModeColor = new Color(0.3f, 0.2f, 0.1f); // Brown tint for editor mode
+    public Color editorModeColor = new Color(0.211f, 0.211f, 0.211f); // #363636 for level editor
     public Color playModeColor = new Color(0.1f, 0.1f, 0.1f); // Dark for play mode
+
+    [Header("Skybox")]
+    public Material normalModeSkybox;
+    public Material playModeSkybox;
 
     [Header("References")]
     public Camera mainCamera;
     public EditorController editorController;
+    private GridVisualizer gridVisualizer;
 
     private GameMode previousMode = GameMode.Editor;
 
@@ -40,19 +45,6 @@ public class EditorModeManager : MonoBehaviour
             editorController = FindObjectOfType<EditorController>();
         }
 
-        // Set camera to use solid color (not skybox)
-        if (mainCamera != null)
-        {
-            mainCamera.clearFlags = CameraClearFlags.SolidColor;
-            mainCamera.backgroundColor = normalModeColor;
-            Debug.Log($"EditorModeManager: Camera set to solid color mode. Initial color: {normalModeColor}");
-            Debug.Log($"EditorModeManager: Camera clearFlags = {mainCamera.clearFlags}");
-        }
-        else
-        {
-            Debug.LogWarning("EditorModeManager: Main camera not found!");
-        }
-
         if (editorController != null)
         {
             Debug.Log("EditorModeManager: Found EditorController");
@@ -60,6 +52,11 @@ public class EditorModeManager : MonoBehaviour
         else
         {
             Debug.LogWarning("EditorModeManager: EditorController not found!");
+        }
+
+        if (normalModeSkybox == null && RenderSettings.skybox != null)
+        {
+            normalModeSkybox = RenderSettings.skybox;
         }
     }
 
@@ -87,26 +84,53 @@ public class EditorModeManager : MonoBehaviour
 
         if (editorController.currentMode == GameMode.LevelEditor)
         {
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = editorModeColor;
             Debug.Log($"Background changed to LEVEL EDITOR MODE color: {editorModeColor}");
         }
         else if (editorController.currentMode == GameMode.Play)
         {
-            mainCamera.backgroundColor = playModeColor;
+            if (playModeSkybox != null)
+            {
+                RenderSettings.skybox = playModeSkybox;
+            }
+            else
+            {
+                Debug.LogWarning("EditorModeManager: Play Mode Skybox not assigned. Using current skybox.");
+            }
+            mainCamera.clearFlags = CameraClearFlags.Skybox;
             Debug.Log($"Background changed to PLAY MODE color: {playModeColor}");
         }
         else
         {
-            mainCamera.backgroundColor = normalModeColor;
+            if (normalModeSkybox != null)
+            {
+                RenderSettings.skybox = normalModeSkybox;
+            }
+            else
+            {
+                Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
+            }
+            mainCamera.clearFlags = CameraClearFlags.Skybox;
             Debug.Log($"Background changed to NORMAL MODE color: {normalModeColor}");
         }
+
+        SetGridVisible(editorController.currentMode != GameMode.Play);
     }
 
     public void SetNormalMode()
     {
         if (mainCamera != null)
         {
-            mainCamera.backgroundColor = normalModeColor;
+            if (normalModeSkybox != null)
+            {
+                RenderSettings.skybox = normalModeSkybox;
+            }
+            else
+            {
+                Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
+            }
+            mainCamera.clearFlags = CameraClearFlags.Skybox;
             Debug.Log($"*** SetNormalMode called - Background set to: {normalModeColor} ***");
         }
         else
@@ -119,6 +143,7 @@ public class EditorModeManager : MonoBehaviour
     {
         if (mainCamera != null)
         {
+            mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = editorModeColor;
             Debug.Log($"*** SetEditorMode called - Background set to: {editorModeColor} ***");
         }
@@ -126,5 +151,17 @@ public class EditorModeManager : MonoBehaviour
         {
             Debug.LogError("SetEditorMode: Camera is null!");
         }
+    }
+
+    private void SetGridVisible(bool visible)
+    {
+        if (gridVisualizer == null)
+        {
+            gridVisualizer = FindObjectOfType<GridVisualizer>();
+        }
+
+        if (gridVisualizer == null) return;
+
+        gridVisualizer.SetGridVisible(visible);
     }
 }

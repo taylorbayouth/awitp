@@ -64,7 +64,7 @@ public class ControlsUI : MonoBehaviour
                     "Move: Arrow / WASD",
                     "Place Block: Space / Enter",
                     "Remove: Delete / Backspace",
-                    "Select Block: 1-4",
+                    "Select Block: 1-9 / [ ]",
                     "Level Editor: E",
                     "Play: P"
                 };
@@ -76,7 +76,7 @@ public class ControlsUI : MonoBehaviour
                     "Place Permanent Block: B",
                     "Place Lem: L",
                     "Remove: Delete / Backspace",
-                    "Select Block: 1-4",
+                    "Select Block: 1-9 / [ ]",
                     "Editor: E",
                     "Play: P"
                 };
