@@ -25,6 +25,15 @@ public class LockBlock : BaseBlock
         return KeyItem.IsKeyLockedOn(transform);
     }
 
+    /// <summary>
+    /// Returns true if this lock has a key inserted.
+    /// Alias for HasKeyLocked() for use with LevelManager win condition checks.
+    /// </summary>
+    public bool IsFilled()
+    {
+        return HasKeyLocked();
+    }
+
     public void AttachKeyFromState(KeyItem key)
     {
         if (key == null || key.IsLocked) return;

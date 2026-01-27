@@ -459,6 +459,35 @@ public class BlockInventory : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Loads inventory entries from a list (typically from LevelData).
+    /// Replaces current entries and resets counts.
+    /// </summary>
+    /// <param name="newEntries">List of entries to load</param>
+    public void LoadInventoryEntries(List<BlockInventoryEntry> newEntries)
+    {
+        if (newEntries == null || newEntries.Count == 0)
+        {
+            Debug.LogWarning("[BlockInventory] LoadInventoryEntries called with null or empty list");
+            return;
+        }
+
+        entries.Clear();
+        foreach (BlockInventoryEntry entry in newEntries)
+        {
+            if (entry != null)
+            {
+                entries.Add(entry.Clone());
+            }
+        }
+
+        NormalizeEntries();
+        ResetInventory();
+        designerEntries = null;
+
+        DebugLog.Info($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
+    }
+
     private bool LoadFromConfigIfAvailable()
     {
         if (configSource == null && autoFindConfig)
