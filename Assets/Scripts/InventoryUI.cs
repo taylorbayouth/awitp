@@ -25,6 +25,8 @@ public class InventoryUI : MonoBehaviour
     private GUIStyle subLabelStyle;
     private GUIStyle cornerStyle;
     private GUIStyle winStyle;
+    private GUIStyle teleporterLabelStyle;
+    private readonly Dictionary<string, Texture2D> transporterIconCache = new Dictionary<string, Texture2D>();
 
     private void Awake()
     {
@@ -142,6 +144,15 @@ public class InventoryUI : MonoBehaviour
             cornerStyle.fontStyle = FontStyle.Bold;
         }
 
+        if (teleporterLabelStyle == null)
+        {
+            teleporterLabelStyle = new GUIStyle(GUI.skin.label);
+            teleporterLabelStyle.alignment = TextAnchor.MiddleCenter;
+            teleporterLabelStyle.normal.textColor = Color.white;
+            teleporterLabelStyle.fontSize = 52;
+            teleporterLabelStyle.fontStyle = FontStyle.Bold;
+        }
+
         if (winStyle == null)
         {
             winStyle = new GUIStyle(GUI.skin.label);
@@ -179,10 +190,17 @@ public class InventoryUI : MonoBehaviour
         float previewY = yPos + (boxSize - previewSize) * 0.5f - 4f;
         Rect previewRect = new Rect(previewX, previewY, previewSize, previewSize);
 
-        Color oldColor = GUI.color;
-        GUI.color = blockColor;
-        GUI.DrawTexture(previewRect, Texture2D.whiteTexture);
-        GUI.color = oldColor;
+        if (entry.blockType == BlockType.Transporter)
+        {
+            if (!DrawTransporterPreview(entry, previewRect, blockColor))
+            {
+                DrawSolidPreview(previewRect, blockColor);
+            }
+        }
+        else
+        {
+            DrawSolidPreview(previewRect, blockColor);
+        }
 
         // Draw count text at bottom
         Rect countRect = new Rect(xPos, yPos + boxSize - (18f + itemPadding), boxSize, 18f);
@@ -201,6 +219,11 @@ public class InventoryUI : MonoBehaviour
         {
             Rect pairRect = new Rect(xPos, yPos + itemPadding + 18f, boxSize, 16f);
             GUI.Label(pairRect, "(pairs)", subLabelStyle);
+        }
+
+        if (entry.blockType == BlockType.Teleporter)
+        {
+            DrawTeleporterLabel(entry, previewRect);
         }
 
         // Draw key hint
@@ -259,6 +282,211 @@ public class InventoryUI : MonoBehaviour
 
         Rect rect = new Rect(GetViewLeft() + leftMargin, topMargin, 520f, 24f);
         GUI.Label(rect, text, labelStyle);
+    }
+
+    private void DrawSolidPreview(Rect previewRect, Color blockColor)
+    {
+        Color oldColor = GUI.color;
+        GUI.color = blockColor;
+        GUI.DrawTexture(previewRect, Texture2D.whiteTexture);
+        GUI.color = oldColor;
+    }
+
+    private void DrawTeleporterLabel(BlockInventoryEntry entry, Rect previewRect)
+    {
+        if (entry == null) return;
+        string labelSource = entry.GetResolvedFlavorId();
+        if (string.IsNullOrWhiteSpace(labelSource))
+        {
+            labelSource = entry.displayName;
+        }
+        if (string.IsNullOrWhiteSpace(labelSource))
+        {
+            labelSource = entry.GetDisplayName();
+        }
+        string label = ExtractTeleporterLabel(labelSource);
+        if (string.IsNullOrWhiteSpace(label)) return;
+
+        GUI.BeginGroup(previewRect);
+        Rect localRect = new Rect(0f, 0f, previewRect.width, previewRect.height);
+        GUI.Label(localRect, label.ToUpperInvariant(), teleporterLabelStyle);
+        GUI.EndGroup();
+    }
+
+    private static string ExtractTeleporterLabel(string labelSource)
+    {
+        if (string.IsNullOrWhiteSpace(labelSource)) return string.Empty;
+        string trimmed = labelSource.Trim();
+        string[] parts = trimmed.Split(new[] { ' ', '-', '_' }, System.StringSplitOptions.RemoveEmptyEntries);
+        string token = parts.Length > 0 ? parts[parts.Length - 1] : trimmed;
+        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
+        return token.Length > 1 ? token.Substring(0, 1) : token;
+    }
+
+    private bool DrawTransporterPreview(BlockInventoryEntry entry, Rect previewRect, Color blockColor)
+    {
+        string[] steps = ResolveRouteSteps(entry);
+        if (steps == null || steps.Length == 0) return false;
+
+        int size = Mathf.RoundToInt(Mathf.Min(previewRect.width, previewRect.height));
+        if (size <= 0) return false;
+
+        Texture2D icon = GetTransporterRouteTexture(steps, size);
+        if (icon == null) return false;
+
+        Color oldColor = GUI.color;
+        GUI.color = blockColor;
+        GUI.DrawTexture(previewRect, icon);
+        GUI.color = oldColor;
+        return true;
+    }
+
+    private Texture2D GetTransporterRouteTexture(string[] routeSteps, int size)
+    {
+        string cacheKey = BuildRouteCacheKey(routeSteps, size);
+        if (transporterIconCache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
+        {
+            return cached;
+        }
+
+        Texture2D texture = BuildTransporterRouteTexture(routeSteps, size);
+        if (texture != null)
+        {
+            transporterIconCache[cacheKey] = texture;
+        }
+        return texture;
+    }
+
+    private static string BuildRouteCacheKey(string[] routeSteps, int size)
+    {
+        string key = RouteParser.NormalizeRouteKey(routeSteps);
+        if (string.IsNullOrEmpty(key))
+        {
+            key = "EMPTY";
+        }
+        return $"{key}_{size}";
+    }
+
+    private static Texture2D BuildTransporterRouteTexture(string[] routeSteps, int size)
+    {
+        List<Vector2Int> positions = BuildRoutePositions(routeSteps);
+        if (positions.Count == 0) return null;
+
+        int minX = positions[0].x;
+        int maxX = positions[0].x;
+        int minY = positions[0].y;
+        int maxY = positions[0].y;
+
+        for (int i = 1; i < positions.Count; i++)
+        {
+            Vector2Int pos = positions[i];
+            if (pos.x < minX) minX = pos.x;
+            if (pos.x > maxX) maxX = pos.x;
+            if (pos.y < minY) minY = pos.y;
+            if (pos.y > maxY) maxY = pos.y;
+        }
+
+        int width = maxX - minX + 1;
+        int height = maxY - minY + 1;
+        int maxDim = Mathf.Max(1, Mathf.Max(width, height));
+        int padding = Mathf.Max(1, size / 10);
+        int cellSize = Mathf.Max(1, (size - (padding * 2)) / maxDim);
+
+        int usedWidth = width * cellSize;
+        int usedHeight = height * cellSize;
+        int offsetX = Mathf.Max(0, (size - usedWidth) / 2);
+        int offsetY = Mathf.Max(0, (size - usedHeight) / 2);
+
+        Texture2D texture = new Texture2D(size, size, TextureFormat.ARGB32, false);
+        texture.filterMode = FilterMode.Point;
+        texture.wrapMode = TextureWrapMode.Clamp;
+        texture.hideFlags = HideFlags.HideAndDontSave;
+
+        Color clear = new Color(1f, 1f, 1f, 0f);
+        Color fill = Color.white;
+        Color[] pixels = new Color[size * size];
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = clear;
+        }
+
+        for (int i = 0; i < positions.Count; i++)
+        {
+            Vector2Int pos = positions[i];
+            int localX = pos.x - minX;
+            int localY = pos.y - minY;
+            int pixelX = offsetX + (localX * cellSize);
+            int pixelY = offsetY + (localY * cellSize);
+
+            for (int y = 0; y < cellSize; y++)
+            {
+                int py = pixelY + y;
+                if (py < 0 || py >= size) continue;
+                int row = py * size;
+                for (int x = 0; x < cellSize; x++)
+                {
+                    int px = pixelX + x;
+                    if (px < 0 || px >= size) continue;
+                    pixels[row + px] = fill;
+                }
+            }
+        }
+
+        texture.SetPixels(pixels);
+        texture.Apply();
+        return texture;
+    }
+
+    private static List<Vector2Int> BuildRoutePositions(string[] routeSteps)
+    {
+        List<Vector2Int> steps = RouteParser.ParseRouteSteps(routeSteps);
+        List<Vector2Int> positions = new List<Vector2Int>();
+        Vector2Int current = Vector2Int.zero;
+        positions.Add(current);
+        foreach (Vector2Int step in steps)
+        {
+            current += step;
+            positions.Add(current);
+        }
+        return positions;
+    }
+
+    private static string[] ResolveRouteSteps(BlockInventoryEntry entry)
+    {
+        if (entry == null) return null;
+        RouteParser.RouteData data = RouteParser.ParseRoute(entry.routeSteps, entry.flavorId);
+        if (data.normalizedSteps == null || data.normalizedSteps.Length == 0) return null;
+        return data.normalizedSteps;
+    }
+
+    private void OnDisable()
+    {
+        ClearTransporterIconCache();
+    }
+
+    private void OnDestroy()
+    {
+        ClearTransporterIconCache();
+    }
+
+    private void ClearTransporterIconCache()
+    {
+        if (transporterIconCache.Count == 0) return;
+
+        foreach (Texture2D texture in transporterIconCache.Values)
+        {
+            if (texture == null) continue;
+            if (Application.isPlaying)
+            {
+                Destroy(texture);
+            }
+            else
+            {
+                DestroyImmediate(texture);
+            }
+        }
+
+        transporterIconCache.Clear();
     }
 
     private float GetViewLeft()

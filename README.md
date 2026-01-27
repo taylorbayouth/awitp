@@ -1,17 +1,42 @@
 # A Walk in the Park (AWITP)
 
-A Unity 3D puzzle game where players control "Lems" (lemming-like characters) that walk on blocks placed on a vertical wall. Features a comprehensive level editor with real-time testing and persistent save/load functionality.
+A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by strategically placing blocks to navigate through levels. The goal: collect all keys and place them in their corresponding locks.
 
-## Features
+## Game Overview
 
-### Level Editor
+**For Players:**
+- Solve spatial puzzles by placing blocks from your limited inventory
+- Guide autonomous Lems through levels to collect keys and fill locks
+- Two modes: **Build Mode** (place blocks) and **Play Mode** (test solution)
+- World-based progression: complete all levels in a world to unlock the next
+
+**For Designers:**
+- Comprehensive designer tools for creating puzzle levels
 - **Three Game Modes**:
-  - **Editor Mode**: Place and edit blocks
-  - **Level Editor Mode**: Define placeable spaces and position Lems
-  - **Play Mode**: Test your level with active Lem AI
+  - **Build Mode**: Place blocks from inventory (player experience)
+  - **Designer Mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
+  - **Play Mode**: Test levels with active Lem AI
 - **Real-Time Testing**: Switch to Play mode instantly to test your level
 - **Persistent Storage**: Save/load levels to JSON files (Ctrl+S / Ctrl+L)
 - **Visual Feedback**: Color-coded cursor shows placeable/editable states
+
+## Core Gameplay
+
+### Player Experience
+1. Start with a grid containing permanent blocks and marked placeable spaces (black borders)
+2. Use limited block inventory to create paths for Lems
+3. Lems walk autonomously - they turn at walls and fall off edges
+4. Navigate Lems to collect keys (gold blocks)
+5. Bring keys to locks (silver blocks) to fill them
+6. **Win Condition**: All locks filled with keys
+
+### Block Types
+- **Default (Cyan)**: Solid platforms
+- **Crumbler (Orange)**: Breaks after Lem exits - one-time use
+- **Transporter (Yellow)**: Moving platforms following predefined routes
+- **Teleporter (Magenta)**: Paired instant transport
+- **Key (Gold)**: Collectible items that attach to Lems
+- **Lock (Silver)**: Goal markers that accept keys
 
 ### Grid System
 - **Dynamic Grid Manager**: Configurable grid size and cell dimensions
@@ -24,6 +49,7 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 - **CenterTrigger System**: Precise detection when Lem reaches center/top of block
 - **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
 - **Inventory Management**: Per-level inventory entries with optional flavors and shared groups
+- **Transporter Route Icons**: Inventory preview shows the transporter route shape for each route entry
 - **Self-Contained Placement Validation**: Blocks define their own placement rules via virtual methods
   - Transporters block their route path from other placements
   - Teleporters validate they have exactly one matching pair
@@ -72,44 +98,53 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 
 ## Controls
 
-### Navigation (All Modes)
+### Player Controls (Build Mode + Play Mode)
+
+#### Navigation (All Modes)
 - **Arrow Keys / WASD**: Move cursor around grid
 
-### Editor Mode (Default)
+#### Build Mode (Player-Facing - Default)
 - **Space / Enter**: Place selected block type
 - **Delete / Backspace**: Remove block
 - **1-9**: Select block entry (first 9 slots)
 - **[ / ]**: Cycle block entries
-- **E**: Switch to Level Editor Mode
+- **P**: Toggle Play Mode to test solution
 
-### Level Editor Mode
-- **Space / Enter**: Toggle placeable space marking (black border)
-- **L**: Place/flip Lem character
-- **Delete / Backspace**: Remove block or Lem
-- **E**: Return to Editor Mode
-
-### Play Mode
-- **P**: Exit Play Mode (returns to Editor Mode)
+#### Play Mode
+- **P**: Return to Build Mode
 - Lems walk automatically
 
-### Save/Load
+### Designer Controls (Dev-Only)
+
+#### Designer Mode (Press E to access)
+- **Space / Enter**: Toggle placeable space marking (black border)
+- **B**: Place permanent block
+- **L**: Place/flip Lem character
+- **Delete / Backspace**: Remove block or Lem
+- **1-9**: Select block type for permanent blocks
+- **[ / ]**: Cycle block types
+- **E**: Return to Build Mode
+
+#### Save/Load (All Modes)
 - **Ctrl+S / Cmd+S**: Save current level
 - **Ctrl+L / Cmd+L**: Load saved level
 - **Ctrl+Shift+S / Cmd+Shift+S**: Show save location in console
 
-### Mode Switching
-- **E**: Toggle between Editor and Level Editor modes
+#### Mode Switching
+- **E**: Toggle Designer Mode on/off (dev-only)
 - **P**: Toggle Play Mode on/off
 
 ## Documentation
 
-### Quick Start
-See [LEVEL_EDITOR.md](LEVEL_EDITOR.md) for a complete user guide on creating levels.
+### For Designers
+- **[HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md)** - Complete guide to designing puzzle levels
+- **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Designer Mode controls and workflow
+- **[LEVEL-SYSTEM-DESIGN.md](LEVEL-SYSTEM-DESIGN.md)** - Architecture for multi-level progression system
 
-### Technical Documentation
+### For Developers
 - **[PROJECT.md](PROJECT.md)** - Complete project architecture and technical overview
-- **[LEVEL_EDITOR.md](LEVEL_EDITOR.md)** - User guide for the level editor
-- **[SAVE_SYSTEM.md](SAVE_SYSTEM.md)** - Technical details on save/load system
+- **[IMPLEMENTATION-TASKS.md](IMPLEMENTATION-TASKS.md)** - Roadmap for level system implementation
+- **[FEATURES-TO-BUILD.md](FEATURES-TO-BUILD.md)** - Future features and improvements
 
 ### API Examples
 
@@ -195,16 +230,24 @@ Assets/
 
 ## Quick Start
 
+### Playing a Level
 1. Open Unity and load the Master.unity scene
-2. Press Play to enter the level editor
+2. Press Play to start
 3. Use arrow keys or WASD to move the cursor
-4. Press 1-9 to select block entries (use [ / ] to cycle) and Space to place
-5. Press E to enter Level Editor Mode and mark placeable spaces
-6. Press L to place Lems
-7. Press P to test your level in Play Mode
-8. Press Ctrl+S to save your level
+4. Press 1-9 to select blocks from inventory and Space to place them in black-bordered spaces
+5. Press P to test your solution in Play Mode
+6. Collect all keys and fill all locks to win
 
-See [LEVEL_EDITOR.md](LEVEL_EDITOR.md) for detailed instructions.
+### Designing a Level
+1. Press E to enter Designer Mode (dev-only)
+2. Press B to place permanent blocks
+3. Press Space to mark placeable spaces (black borders)
+4. Press L to place starting Lems
+5. Press E to return to Build Mode
+6. Press P to test your level
+7. Press Ctrl+S to save
+
+See [HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md) for detailed instructions.
 
 ## Development
 
@@ -255,20 +298,27 @@ When adding new features:
 7. Cache component references instead of using FindObjectOfType
 8. Test in all three game modes
 
-## Future Enhancements
+## Current Development Focus
+
+### In Progress
+- **Level System Architecture**: World-based progression (Baba Is You style)
+  - Multiple levels per world
+  - Complete all levels to unlock next world
+  - Level selection UI
+- **Prefab-Based Architecture**: Centralized block/Lem prefabs for reusability
+- **Code Organization**: Consolidate block code, improve maintainability
 
 ### Planned Features
-- Multiple level save slots
-- Level naming and metadata
-- Undo/redo system
-- Block pattern templates
+- Level progression system (3-5 levels per world)
+- World unlock system
+- Level selection screen
+- Prefab-based blocks and Lems
+- Undo/redo system for Build Mode
 - Level validation (solvability check)
 
-### Potential Improvements
-- Custom level file format with compression
+### Future Improvements
 - Level thumbnail generation
-- In-game level browser
-- Multiplayer level sharing
 - Additional block types (Bridge, Switch, Gate, etc.)
 - Sound effects and music
 - Particle effects for block interactions
+- Level sharing/export system
