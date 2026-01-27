@@ -1,10 +1,21 @@
 # How to Create a Level in A Walk in the Park
 
+**STATUS: ✅ STILL CURRENT AND RELEVANT**
+
 **IMPORTANT**: This guide is for level designers (you, Taylor), not for players. This explains how to create the puzzles that players will solve.
 
 **Game Structure**:
 - **Players** see: Build Mode (place blocks to solve puzzle) + Play Mode (test solution)
 - **Designers** see: Build Mode + Designer Mode (E key - create puzzles) + Play Mode
+
+**NEW: Multi-Level System**
+This guide describes the original Designer Mode workflow (still fully functional). The new multi-level system adds:
+- **Editor Tools**: Convert saved JSON levels into ScriptableObject assets (see [LEVEL-SYSTEM-SETUP-GUIDE.md](LEVEL-SYSTEM-SETUP-GUIDE.md))
+- **World System**: Group levels into worlds with progression
+- **UI Navigation**: Menu → World Map → Level Select → Game
+
+**Use this guide for**: Creating and testing individual levels in Designer Mode
+**Then use**: Editor tools to integrate levels into the world system
 
 ---
 
