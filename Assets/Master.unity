@@ -231,138 +231,6 @@ MonoBehaviour:
   paddingPercent: 0.1
   minOrthographicSize: 3
   autoUpdateInEditor: 1
---- !u!1 &285017511
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 285017513}
-  - component: {fileID: 285017512}
-  m_Layer: 0
-  m_Name: InventoryConfig
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &285017512
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285017511}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5168a4423945e4341a94fc8c6b5d1b2f, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  entries:
-  - entryId: 
-    blockType: 0
-    displayName: Block
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 11
-    currentCount: 0
-  - entryId: 
-    blockType: 1
-    displayName: A
-    inventoryGroupId: A
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 1
-    pairSize: 2
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 1
-    displayName: B
-    inventoryGroupId: B
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 1
-    pairSize: 2
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 3
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps:
-    - R2
-    - U1
-    - R4
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 3
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps:
-    - R1
-    - U1
-    - R1
-    - U1
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 4
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 5
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
-  - entryId: 
-    blockType: 2
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 0
---- !u!4 &285017513
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 285017511}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &323621398
 GameObject:
   m_ObjectHideFlags: 0
@@ -513,6 +381,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 50, y: -30, z: 0}
+--- !u!1 &818250616
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 818250618}
+  - component: {fileID: 818250617}
+  m_Layer: 0
+  m_Name: LevelLoader
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &818250617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818250616}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4c5613e2e9a84fdfb7597ad55b1d4ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LevelLoader
+  levelDefinition: {fileID: 11400000, guid: 06d80c58e00154c4ea50687e1519e710, type: 2}
+--- !u!4 &818250618
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 818250616}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1602858728
 GameObject:
   m_ObjectHideFlags: 0
@@ -619,96 +532,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5d5e2c49bcdc44e9ba4b9426c804b2d1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  configSource: {fileID: 285017512}
-  autoFindConfig: 1
-  entries:
-  - entryId: Default
-    blockType: 0
-    displayName: Block
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 11
-    currentCount: 11
-  - entryId: Teleporter
-    blockType: 1
-    displayName: A
-    inventoryGroupId: A
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 1
-    pairSize: 2
-    maxCount: 1
-    currentCount: 1
-  - entryId: Teleporter_1
-    blockType: 1
-    displayName: B
-    inventoryGroupId: B
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 1
-    pairSize: 2
-    maxCount: 1
-    currentCount: 1
-  - entryId: Transporter_R2,U1,R4
-    blockType: 3
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps:
-    - R2
-    - U1
-    - R4
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 1
-  - entryId: Transporter_R1,U1,R1,U1
-    blockType: 3
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps:
-    - R1
-    - U1
-    - R1
-    - U1
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 1
-  - entryId: Key
-    blockType: 4
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 1
-  - entryId: Lock
-    blockType: 5
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 1
-  - entryId: Crumbler
-    blockType: 2
-    displayName: 
-    inventoryGroupId: 
-    flavorId: 
-    routeSteps: []
-    isPairInventory: 0
-    pairSize: 0
-    maxCount: 1
-    currentCount: 1
 --- !u!1 &1728154825
 GameObject:
   m_ObjectHideFlags: 0
@@ -764,5 +587,5 @@ SceneRoots:
   - {fileID: 756764138}
   - {fileID: 1602858732}
   - {fileID: 1728154827}
-  - {fileID: 285017513}
   - {fileID: 323621400}
+  - {fileID: 818250618}

@@ -38,7 +38,7 @@ public class LevelManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<LevelManager>();
+                _instance = UnityEngine.Object.FindAnyObjectByType<LevelManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("LevelManager");
@@ -158,6 +158,11 @@ public class LevelManager : MonoBehaviour
     {
         // Re-find references in case they weren't available in Awake
         FindReferences();
+
+        if (!_levelLoaded && _currentLevelDef != null)
+        {
+            LoadLevel(_currentLevelDef);
+        }
     }
 
     private void Update()
@@ -166,7 +171,7 @@ public class LevelManager : MonoBehaviour
         if (_levelLoaded && !_levelCompletedThisSession)
         {
             // Only check in play mode
-            EditorController editorController = FindObjectOfType<EditorController>();
+            EditorController editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
             if (editorController != null && editorController.currentMode == GameMode.Play)
             {
                 if (CheckLevelComplete())
@@ -296,14 +301,6 @@ public class LevelManager : MonoBehaviour
 
         try
         {
-            // Configure grid size
-            if (data.gridWidth > 0 && data.gridHeight > 0)
-            {
-                _gridManager.gridWidth = data.gridWidth;
-                _gridManager.gridHeight = data.gridHeight;
-                _gridManager.cellSize = data.cellSize;
-            }
-
             // Restore the level data through GridManager
             _gridManager.RestoreLevelData(data);
 
@@ -349,7 +346,7 @@ public class LevelManager : MonoBehaviour
             }
 
             // Destroy any remaining Lems
-            LemController[] lems = FindObjectsOfType<LemController>();
+            LemController[] lems = UnityEngine.Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
             foreach (var lem in lems)
             {
                 if (lem != null)
@@ -410,7 +407,7 @@ public class LevelManager : MonoBehaviour
         if (!_levelLoaded) return false;
 
         // Find all locks
-        LockBlock[] locks = FindObjectsOfType<LockBlock>();
+        LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
 
         // If no locks, level can't be completed (or is a special case)
         if (locks.Length == 0)
@@ -588,12 +585,12 @@ public class LevelManager : MonoBehaviour
     {
         if (_gridManager == null)
         {
-            _gridManager = FindObjectOfType<GridManager>();
+            _gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
         }
 
         if (_blockInventory == null)
         {
-            _blockInventory = FindObjectOfType<BlockInventory>();
+            _blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
     }
 

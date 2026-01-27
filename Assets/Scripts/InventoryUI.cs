@@ -7,6 +7,8 @@ using System.Collections.Generic;
 [ExecuteAlways]
 public class InventoryUI : MonoBehaviour
 {
+    private static InventoryUI _instance;
+
     [Header("References")]
     public BlockInventory inventory;
     public EditorController editorController;
@@ -26,6 +28,7 @@ public class InventoryUI : MonoBehaviour
     public bool autoScale = true;
 
     private float _scaleFactor = 1.0f;
+    private float _lastScaleFactor = -1f;
 
     private GUIStyle normalStyle;
     private GUIStyle selectedStyle;
@@ -39,28 +42,52 @@ public class InventoryUI : MonoBehaviour
 
     private void Awake()
     {
+        if (_instance != null && _instance != this)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(gameObject);
+            }
+            else
+            {
+                DestroyImmediate(this);
+            }
+            return;
+        }
+
+        _instance = this;
+
         // Find references if not assigned
         if (inventory == null)
         {
-            inventory = FindObjectOfType<BlockInventory>();
+            inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
         if (editorController == null)
         {
-            editorController = FindObjectOfType<EditorController>();
+            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
     }
 
     private void OnGUI()
     {
+        // In Unity Editor, OnGUI runs for multiple views (Scene, Game, etc.)
+        // Only render in the primary display (display 0) to prevent double-rendering
+#if UNITY_EDITOR
+        if (Event.current.displayIndex != 0)
+        {
+            return;
+        }
+#endif
+
         if (inventory == null)
         {
-            inventory = FindObjectOfType<BlockInventory>();
+            inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
         if (Application.isPlaying && editorController == null)
         {
-            editorController = FindObjectOfType<EditorController>();
+            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
 
         // Calculate scale factor
@@ -74,23 +101,20 @@ public class InventoryUI : MonoBehaviour
             _scaleFactor = uiScale;
         }
 
-        // Apply GUI scaling matrix
-        Matrix4x4 originalMatrix = GUI.matrix;
-        GUI.matrix = Matrix4x4.Scale(new Vector3(_scaleFactor, _scaleFactor, 1f));
+        // Snap to quarter steps to keep IMGUI text/layout crisp.
+        _scaleFactor = Mathf.Max(0.25f, Mathf.Round(_scaleFactor * 4f) / 4f);
 
         InitializeStyles();
 
         if (inventory == null)
         {
             DrawStatusLabel("InventoryUI: No BlockInventory found");
-            GUI.matrix = originalMatrix;
             return;
         }
 
         if (Application.isPlaying && editorController == null)
         {
             DrawStatusLabel("InventoryUI: No EditorController found");
-            GUI.matrix = originalMatrix;
             return;
         }
 
@@ -120,12 +144,13 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        // Restore original GUI matrix
-        GUI.matrix = originalMatrix;
     }
+
 
     private void InitializeStyles()
     {
+        bool scaleChanged = !Mathf.Approximately(_lastScaleFactor, _scaleFactor);
+
         if (normalStyle == null)
         {
             normalStyle = new GUIStyle(GUI.skin.box);
@@ -143,7 +168,6 @@ public class InventoryUI : MonoBehaviour
             textStyle = new GUIStyle(GUI.skin.label);
             textStyle.alignment = TextAnchor.MiddleCenter;
             textStyle.normal.textColor = Color.white;
-            textStyle.fontSize = 18;
             textStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -152,7 +176,6 @@ public class InventoryUI : MonoBehaviour
             labelStyle = new GUIStyle(GUI.skin.label);
             labelStyle.alignment = TextAnchor.MiddleCenter;
             labelStyle.normal.textColor = Color.white;
-            labelStyle.fontSize = 14;
             labelStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -161,7 +184,6 @@ public class InventoryUI : MonoBehaviour
             subLabelStyle = new GUIStyle(GUI.skin.label);
             subLabelStyle.alignment = TextAnchor.MiddleCenter;
             subLabelStyle.normal.textColor = new Color(1f, 1f, 1f, 0.75f);
-            subLabelStyle.fontSize = 12;
         }
 
         if (cornerStyle == null)
@@ -169,7 +191,6 @@ public class InventoryUI : MonoBehaviour
             cornerStyle = new GUIStyle(GUI.skin.label);
             cornerStyle.alignment = TextAnchor.UpperRight;
             cornerStyle.normal.textColor = Color.white;
-            cornerStyle.fontSize = 16;
             cornerStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -178,7 +199,6 @@ public class InventoryUI : MonoBehaviour
             teleporterLabelStyle = new GUIStyle(GUI.skin.label);
             teleporterLabelStyle.alignment = TextAnchor.MiddleCenter;
             teleporterLabelStyle.normal.textColor = Color.white;
-            teleporterLabelStyle.fontSize = 52;
             teleporterLabelStyle.fontStyle = FontStyle.Bold;
         }
 
@@ -187,8 +207,18 @@ public class InventoryUI : MonoBehaviour
             winStyle = new GUIStyle(GUI.skin.label);
             winStyle.alignment = TextAnchor.UpperRight;
             winStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
-            winStyle.fontSize = 18;
             winStyle.fontStyle = FontStyle.Bold;
+        }
+
+        if (scaleChanged)
+        {
+            textStyle.fontSize = ScaleFont(20);
+            labelStyle.fontSize = ScaleFont(16);
+            subLabelStyle.fontSize = ScaleFont(13);
+            cornerStyle.fontSize = ScaleFont(18);
+            teleporterLabelStyle.fontSize = ScaleFont(56);
+            winStyle.fontSize = ScaleFont(20);
+            _lastScaleFactor = _scaleFactor;
         }
     }
 
@@ -196,9 +226,15 @@ public class InventoryUI : MonoBehaviour
     {
         if (entry == null) return;
 
-        float xPos = GetViewLeft() + leftMargin;
-        float yPos = topMargin + (drawIndex * (boxSize + spacing));
-        Rect boxRect = new Rect(xPos, yPos, boxSize, boxSize);
+        float scaledBoxSize = Scale(boxSize);
+        float scaledSpacing = Scale(spacing);
+        float scaledItemPadding = Scale(itemPadding);
+        float scaledTopMargin = Scale(topMargin);
+        float scaledLeftMargin = Scale(leftMargin);
+
+        float xPos = Mathf.Round(GetViewLeft() + scaledLeftMargin);
+        float yPos = Mathf.Round(scaledTopMargin + (drawIndex * (scaledBoxSize + scaledSpacing)));
+        Rect boxRect = new Rect(xPos, yPos, scaledBoxSize, scaledBoxSize);
 
         // Draw background box
         GUI.Box(boxRect, "", isSelected ? selectedStyle : normalStyle);
@@ -214,9 +250,9 @@ public class InventoryUI : MonoBehaviour
             blockColor.a = 0.3f; // Dim if unavailable
         }
 
-        float previewSize = boxSize * 0.4f;
-        float previewX = xPos + (boxSize - previewSize) * 0.5f;
-        float previewY = yPos + (boxSize - previewSize) * 0.5f - 4f;
+        float previewSize = scaledBoxSize * 0.4f;
+        float previewX = xPos + (scaledBoxSize - previewSize) * 0.5f;
+        float previewY = yPos + (scaledBoxSize - previewSize) * 0.5f - Scale(4f);
         Rect previewRect = new Rect(previewX, previewY, previewSize, previewSize);
 
         if (entry.blockType == BlockType.Transporter)
@@ -232,12 +268,12 @@ public class InventoryUI : MonoBehaviour
         }
 
         // Draw count text at bottom
-        Rect countRect = new Rect(xPos, yPos + boxSize - (18f + itemPadding), boxSize, 18f);
+        Rect countRect = new Rect(xPos, yPos + scaledBoxSize - (Scale(18f) + scaledItemPadding), scaledBoxSize, Scale(18f));
         string countText = showInfinite ? "INF" : $"{available}/{total}";
         GUI.Label(countRect, countText, textStyle);
 
         // Draw block type label at top (height increased to prevent clipping)
-        Rect labelRect = new Rect(xPos, yPos + itemPadding, boxSize, 18f);
+        Rect labelRect = new Rect(xPos, yPos + scaledItemPadding, scaledBoxSize, Scale(18f));
         string blockName = entry.GetDisplayName();
         GUI.Label(labelRect, blockName, labelStyle);
 
@@ -246,7 +282,7 @@ public class InventoryUI : MonoBehaviour
         bool isPair = groupEntry != null && groupEntry.isPairInventory;
         if (isPair)
         {
-            Rect pairRect = new Rect(xPos, yPos + itemPadding + 18f, boxSize, 16f);
+            Rect pairRect = new Rect(xPos, yPos + scaledItemPadding + Scale(18f), scaledBoxSize, Scale(16f));
             GUI.Label(pairRect, "(pairs)", subLabelStyle);
         }
 
@@ -256,7 +292,7 @@ public class InventoryUI : MonoBehaviour
         }
 
         // Draw key hint
-        Rect keyRect = new Rect(xPos, yPos + boxSize + 4f, boxSize, 20f);
+        Rect keyRect = new Rect(xPos, yPos + scaledBoxSize + Scale(4f), scaledBoxSize, Scale(20f));
         string keyHint = showKeyHint && index < 9 ? $"[{index + 1}]" : string.Empty;
         if (!string.IsNullOrEmpty(keyHint))
         {
@@ -273,7 +309,7 @@ public class InventoryUI : MonoBehaviour
 
     private void DrawLockStatus()
     {
-        LockBlock[] locks = FindObjectsOfType<LockBlock>();
+        LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
         int totalLocks = locks.Length;
         int lockedCount = 0;
         foreach (LockBlock lockBlock in locks)
@@ -284,14 +320,14 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        float rightMargin = 24f;
-        float topOffset = 20f;
-        Rect statusRect = new Rect(0f, topOffset, Screen.width - rightMargin, 24f);
+        float rightMargin = Scale(24f);
+        float topOffset = Scale(20f);
+        Rect statusRect = new Rect(0f, topOffset, Screen.width - rightMargin, Scale(24f));
         GUI.Label(statusRect, $"{lockedCount} of {totalLocks}", cornerStyle);
 
         if (editorController != null && editorController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
         {
-            Rect winRect = new Rect(0f, topOffset + 26f, Screen.width - rightMargin, 24f);
+            Rect winRect = new Rect(0f, topOffset + Scale(26f), Screen.width - rightMargin, Scale(24f));
             GUI.Label(winRect, "You win", winStyle);
         }
     }
@@ -309,8 +345,18 @@ public class InventoryUI : MonoBehaviour
             };
         }
 
-        Rect rect = new Rect(GetViewLeft() + leftMargin, topMargin, 520f, 24f);
+        Rect rect = new Rect(GetViewLeft() + Scale(leftMargin), Scale(topMargin), Scale(520f), Scale(24f));
         GUI.Label(rect, text, labelStyle);
+    }
+
+    private float Scale(float value)
+    {
+        return Mathf.Round(value * _scaleFactor);
+    }
+
+    private int ScaleFont(int value)
+    {
+        return Mathf.Max(1, Mathf.RoundToInt(value * _scaleFactor));
     }
 
     private void DrawSolidPreview(Rect previewRect, Color blockColor)
@@ -495,6 +541,10 @@ public class InventoryUI : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (_instance == this)
+        {
+            _instance = null;
+        }
         ClearTransporterIconCache();
     }
 
@@ -522,7 +572,7 @@ public class InventoryUI : MonoBehaviour
     {
         Camera cam = Camera.main;
         if (cam == null) return 0f;
-        return cam.ViewportToScreenPoint(new Vector3(0f, 0f, 0f)).x;
+        return Mathf.Round(cam.ViewportToScreenPoint(new Vector3(0f, 0f, 0f)).x);
     }
 
     private Color GetColorForBlockType(BlockType blockType)

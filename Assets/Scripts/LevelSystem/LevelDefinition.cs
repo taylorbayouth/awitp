@@ -104,6 +104,30 @@ public class LevelDefinition : ScriptableObject
     }
 
     /// <summary>
+    /// Saves the provided LevelData into this asset and persists it in the Unity Editor.
+    /// In builds, this updates the in-memory asset only (designer workflow is editor-only).
+    /// </summary>
+    /// <param name="data">The LevelData to serialize</param>
+    /// <returns>True if data was applied; false if data was null</returns>
+    public bool SaveFromLevelData(LevelData data)
+    {
+        if (data == null)
+        {
+            Debug.LogError("[LevelDefinition] Cannot save from null LevelData");
+            return false;
+        }
+
+        FromLevelData(data);
+
+#if UNITY_EDITOR
+        UnityEditor.EditorUtility.SetDirty(this);
+        UnityEditor.AssetDatabase.SaveAssets();
+#endif
+
+        return true;
+    }
+
+    /// <summary>
     /// Validates this level definition has all required data.
     /// </summary>
     /// <returns>True if valid, false otherwise</returns>

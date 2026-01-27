@@ -95,16 +95,16 @@ public class BlockInventoryEntry
 /// <summary>
 /// Manages per-level block inventory constraints.
 /// Supports multiple flavored entries with shared inventory groups.
+///
+/// INVENTORY SOURCE: LevelDefinition assets only.
+/// Inventory entries are loaded via LoadInventoryEntries() when LevelManager loads a level.
+/// If no level is loaded, a default inventory is created for testing/editor use.
 /// </summary>
 [ExecuteAlways]
 public class BlockInventory : MonoBehaviour
 {
-    [Header("Inventory Source")]
-    public LevelBlockInventoryConfig configSource;
-    public bool autoFindConfig = true;
-
-    [Header("Level Block Inventory")]
-    public List<BlockInventoryEntry> entries = new List<BlockInventoryEntry>();
+    // Runtime inventory entries - loaded from LevelDefinition via LevelManager
+    private List<BlockInventoryEntry> entries = new List<BlockInventoryEntry>();
 
     private readonly Dictionary<string, int> pairCredits = new Dictionary<string, int>();
     private List<BlockInventoryEntry> designerEntries;
@@ -127,13 +127,7 @@ public class BlockInventory : MonoBehaviour
 
     private void InitializeInventory()
     {
-        LoadFromConfigIfAvailable();
-
-        if (entries.Count == 0)
-        {
-            CreateDefaultInventory();
-        }
-
+        // Inventory starts empty - it's loaded from LevelDefinition via LoadInventoryEntries()
         NormalizeEntries();
         ResetInventory();
         designerEntries = null;
@@ -460,8 +454,9 @@ public class BlockInventory : MonoBehaviour
     }
 
     /// <summary>
-    /// Loads inventory entries from a list (typically from LevelData).
+    /// Loads inventory entries from a list (typically from LevelData via LevelManager).
     /// Replaces current entries and resets counts.
+    /// This is the ONLY way inventory should be populated at runtime.
     /// </summary>
     /// <param name="newEntries">List of entries to load</param>
     public void LoadInventoryEntries(List<BlockInventoryEntry> newEntries)
@@ -485,43 +480,7 @@ public class BlockInventory : MonoBehaviour
         ResetInventory();
         designerEntries = null;
 
-        DebugLog.Info($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
-    }
-
-    private bool LoadFromConfigIfAvailable()
-    {
-        if (configSource == null && autoFindConfig)
-        {
-            LevelBlockInventoryConfig[] configs = FindObjectsOfType<LevelBlockInventoryConfig>(true);
-            if (configs != null && configs.Length > 0)
-            {
-                configSource = configs[0];
-            }
-        }
-
-        if (configSource != null && configSource.entries != null && configSource.entries.Count > 0)
-        {
-            entries.Clear();
-            foreach (BlockInventoryEntry entry in configSource.entries)
-            {
-                if (entry != null)
-                {
-                    entries.Add(entry.Clone());
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    private void CreateDefaultInventory()
-    {
-        entries.Add(new BlockInventoryEntry(BlockType.Default, 999));
-        entries.Add(new BlockInventoryEntry(BlockType.Crumbler, 4));
-        entries.Add(new BlockInventoryEntry(BlockType.Teleporter, 5));
-        entries.Add(new BlockInventoryEntry(BlockType.Transporter, 1));
-        entries.Add(new BlockInventoryEntry(BlockType.Key, 1));
-        entries.Add(new BlockInventoryEntry(BlockType.Lock, 1));
+        Debug.Log($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
     }
 
     private IReadOnlyList<BlockInventoryEntry> GetDesignerEntries()

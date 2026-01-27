@@ -27,7 +27,7 @@ public class EditorModeManager : MonoBehaviour
             if (mainCamera == null)
             {
                 Debug.LogError("EditorModeManager: Camera.main returned null! Looking for any camera...");
-                mainCamera = FindObjectOfType<Camera>();
+                mainCamera = UnityEngine.Object.FindAnyObjectByType<Camera>();
             }
         }
 
@@ -40,7 +40,7 @@ public class EditorModeManager : MonoBehaviour
         // If still not found, search scene
         if (editorController == null)
         {
-            editorController = FindObjectOfType<EditorController>();
+            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
 
         // editorController may be assigned later in Update if not found here.
@@ -56,7 +56,7 @@ public class EditorModeManager : MonoBehaviour
         if (editorController == null)
         {
             // Try to find it if not found
-            editorController = FindObjectOfType<EditorController>();
+            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
             return;
         }
 
@@ -136,7 +136,7 @@ public class EditorModeManager : MonoBehaviour
     {
         if (gridVisualizer == null)
         {
-            gridVisualizer = FindObjectOfType<GridVisualizer>();
+            gridVisualizer = UnityEngine.Object.FindAnyObjectByType<GridVisualizer>();
         }
 
         if (gridVisualizer == null) return;

@@ -32,7 +32,7 @@ public class GameInitializer : MonoBehaviour
 
     private void EnsureEditorInventorySetup()
     {
-        GridManager gridManager = FindObjectOfType<GridManager>();
+        GridManager gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
         if (gridManager == null) return;
 
         if (gridManager.GetComponent<BlockInventory>() == null)
@@ -40,7 +40,7 @@ public class GameInitializer : MonoBehaviour
             gridManager.gameObject.AddComponent<BlockInventory>();
         }
 
-        InventoryUI inventoryUI = FindObjectOfType<InventoryUI>();
+        InventoryUI inventoryUI = UnityEngine.Object.FindAnyObjectByType<InventoryUI>();
         if (inventoryUI == null)
         {
             GameObject uiObj = new GameObject("InventoryUI");
@@ -58,7 +58,7 @@ public class GameInitializer : MonoBehaviour
         DebugLog.Info("=== Game Initializer: Starting Setup ===");
 
         // Ensure GridManager exists
-        GridManager gridManager = FindObjectOfType<GridManager>();
+        GridManager gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
         if (gridManager == null)
         {
             Debug.LogError("GameInitializer: GridManager not found in scene!");
@@ -113,7 +113,7 @@ public class GameInitializer : MonoBehaviour
         DebugLog.Info($"GameInitializer: EditorController present: {ec != null}, EditorModeManager present: {emm != null}");
 
         // Setup Inventory UI
-        if (FindObjectOfType<InventoryUI>() == null)
+        if (UnityEngine.Object.FindAnyObjectByType<InventoryUI>() == null)
         {
             GameObject uiObj = new GameObject("InventoryUI");
             InventoryUI inventoryUI = uiObj.AddComponent<InventoryUI>();
@@ -168,7 +168,7 @@ public class GameInitializer : MonoBehaviour
         RenderSettings.ambientLight = new Color(0.8f, 0.8f, 0.8f); // Bright flat lighting
 
         // Ensure there's a directional light
-        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+        Light[] lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
         bool hasDirectionalLight = false;
         foreach (Light light in lights)
         {
@@ -239,7 +239,7 @@ public class GameInitializer : MonoBehaviour
 
     private void DelayedRefresh()
     {
-        GridManager gridManager = FindObjectOfType<GridManager>();
+        GridManager gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
         if (gridManager != null)
         {
             gridManager.RefreshGrid();

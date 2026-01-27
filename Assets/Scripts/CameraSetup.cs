@@ -43,13 +43,13 @@ public class CameraSetup : MonoBehaviour
             targetCamera = Camera.main;
             if (targetCamera == null)
             {
-                targetCamera = FindObjectOfType<Camera>();
+                targetCamera = UnityEngine.Object.FindAnyObjectByType<Camera>();
             }
         }
 
         if (gridManager == null)
         {
-            gridManager = FindObjectOfType<GridManager>();
+            gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
         }
     }
 

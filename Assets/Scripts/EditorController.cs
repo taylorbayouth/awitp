@@ -23,7 +23,7 @@ public class EditorController : MonoBehaviour
         editorModeManager = GetComponent<EditorModeManager>();
         if (editorModeManager == null)
         {
-            editorModeManager = FindObjectOfType<EditorModeManager>();
+            editorModeManager = UnityEngine.Object.FindAnyObjectByType<EditorModeManager>();
         }
 
         // EditorModeManager is ensured by GameInitializer; don't add it here.
@@ -32,10 +32,11 @@ public class EditorController : MonoBehaviour
         blockInventory = GetComponent<BlockInventory>();
         if (blockInventory == null)
         {
-            blockInventory = FindObjectOfType<BlockInventory>();
+            blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
         InitializeInventorySelection();
+        FreezeAllLems();
     }
 
     private void InitializeInventorySelection()
@@ -60,7 +61,7 @@ public class EditorController : MonoBehaviour
         blockInventory = GetComponent<BlockInventory>();
         if (blockInventory == null)
         {
-            blockInventory = FindObjectOfType<BlockInventory>();
+            blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
         if (blockInventory != null)
@@ -73,7 +74,7 @@ public class EditorController : MonoBehaviour
     {
         if (blockInventory == null) return;
 
-        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
         if (entries == null || entries.Count == 0)
         {
             currentInventoryEntry = null;
@@ -81,16 +82,41 @@ public class EditorController : MonoBehaviour
         }
 
         bool found = false;
-        foreach (BlockInventoryEntry entry in entries)
+        int foundIndex = -1;
+        for (int i = 0; i < entries.Count; i++)
         {
-            if (entry == currentInventoryEntry)
+            if (entries[i] == currentInventoryEntry)
             {
                 found = true;
+                foundIndex = i;
                 break;
             }
         }
 
-        if (!found)
+        if (!found && currentInventoryEntry != null)
+        {
+            // In designer mode the entries list is regenerated, so match by block type instead of reference.
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i] != null && entries[i].blockType == currentInventoryEntry.blockType)
+                {
+                    foundIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (found)
+        {
+            currentInventoryIndex = foundIndex;
+            currentInventoryEntry = entries[currentInventoryIndex];
+            if (currentInventoryEntry != null)
+            {
+                currentBlockType = currentInventoryEntry.blockType;
+            }
+        }
+        else
         {
             currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
             currentInventoryEntry = entries[currentInventoryIndex];
@@ -241,7 +267,7 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null || blockInventory == null) return;
 
-        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
         if (entries == null || entries.Count == 0) return;
 
         int? requestedIndex = GetInventoryIndexFromKeys();
@@ -369,6 +395,7 @@ public class EditorController : MonoBehaviour
         {
             GridManager.Instance.RestorePlayModeSnapshot();
         }
+        FreezeAllLems();
         UpdateCursorVisibility();
     }
 
@@ -382,6 +409,7 @@ public class EditorController : MonoBehaviour
                 currentMode = GameMode.Editor;
                 DebugLog.Info("=== EDITOR MODE === Place blocks");
                 if (editorModeManager != null) editorModeManager.SetNormalMode();
+                FreezeAllLems();
                 UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Editor)
@@ -389,6 +417,7 @@ public class EditorController : MonoBehaviour
                 currentMode = GameMode.LevelEditor;
                 DebugLog.Info("=== LEVEL EDITOR MODE === Place Lem and mark placeable spaces");
                 if (editorModeManager != null) editorModeManager.SetEditorMode();
+                FreezeAllLems();
                 UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Play)
@@ -439,7 +468,7 @@ public class EditorController : MonoBehaviour
 
     private void FreezeAllLems()
     {
-        LemController[] lems = FindObjectsOfType<LemController>();
+        LemController[] lems = UnityEngine.Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
         foreach (LemController lem in lems)
         {
             lem.SetFrozen(true);
@@ -448,7 +477,7 @@ public class EditorController : MonoBehaviour
 
     private void UnfreezeAllLems()
     {
-        LemController[] lems = FindObjectsOfType<LemController>();
+        LemController[] lems = UnityEngine.Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
         foreach (LemController lem in lems)
         {
             lem.SetFrozen(false);
@@ -474,6 +503,12 @@ public class EditorController : MonoBehaviour
     {
         if (GridManager.Instance == null) return;
 
+        if (currentMode == GameMode.Play)
+        {
+            Debug.LogWarning("Cannot save/load during Play Mode. Exit Play Mode first.");
+            return;
+        }
+
         // Check for Ctrl/Cmd modifier
         bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
                          Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
@@ -481,47 +516,40 @@ public class EditorController : MonoBehaviour
         // Ctrl/Cmd + S to save
         if (ctrlOrCmd && Input.GetKeyDown(KeyCode.S))
         {
-            if (GridManager.Instance.SaveLevel())
+            LevelManager levelManager = LevelManager.Instance;
+            if (levelManager == null || levelManager.CurrentLevelDef == null)
             {
-                DebugLog.Info("=== LEVEL SAVED === Level saved successfully");
+                Debug.LogWarning("No LevelDefinition loaded. Load a level via LevelManager before saving.");
+                return;
             }
-            else
-            {
-                Debug.LogError("Failed to save level");
-            }
-        }
 
-        // Ctrl/Cmd + L to load
-        if (ctrlOrCmd && Input.GetKeyDown(KeyCode.L))
-        {
-            if (LevelSaveSystem.LevelExists())
+            LevelData levelData = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
+            if (levelManager.CurrentLevelDef.SaveFromLevelData(levelData))
             {
-                if (GridManager.Instance.LoadLevel())
-                {
-                    DebugLog.Info("=== LEVEL LOADED === Level loaded successfully");
-                    // Refresh the visualizer after loading
-                    PlaceableSpaceVisualizer visualizer = FindObjectOfType<PlaceableSpaceVisualizer>();
-                    if (visualizer != null)
-                    {
-                        visualizer.RefreshVisuals();
-                    }
-                }
-                else
-                {
-                    Debug.LogError("Failed to load level");
-                }
+                DebugLog.Info("=== LEVEL SAVED === LevelDefinition updated successfully");
             }
             else
             {
-                Debug.LogWarning("No saved level found. Save a level first with Ctrl+S");
+                Debug.LogError("Failed to save level to LevelDefinition");
             }
         }
 
         // Show save location with Ctrl/Cmd + Shift + S
         if (ctrlOrCmd && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.S))
         {
-            string savePath = LevelSaveSystem.GetSavePath();
-            DebugLog.Info($"Levels are saved to: {savePath}");
+            LevelManager levelManager = LevelManager.Instance;
+            if (levelManager == null || levelManager.CurrentLevelDef == null)
+            {
+                Debug.LogWarning("No LevelDefinition loaded. Load a level via LevelManager to view its asset path.");
+                return;
+            }
+
+#if UNITY_EDITOR
+            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(levelManager.CurrentLevelDef);
+            DebugLog.Info($"LevelDefinition asset path: {assetPath}");
+#else
+            DebugLog.Info("Level data is saved to the LevelDefinition asset (path available in editor only).");
+#endif
         }
     }
 }

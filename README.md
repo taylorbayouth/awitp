@@ -17,7 +17,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
   - **Designer Mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
   - **Play Mode**: Test levels with active Lem AI
 - **Real-Time Testing**: Switch to Play mode instantly to test your level
-- **Persistent Storage**: Save/load levels to JSON files (Ctrl+S / Ctrl+L)
+- **Persistent Storage**: Save levels to JSON files (Ctrl+S)
 - **Visual Feedback**: Color-coded cursor shows placeable/editable states
 
 ## Core Gameplay
@@ -127,7 +127,6 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 #### Save/Load (All Modes)
 - **Ctrl+S / Cmd+S**: Save current level
-- **Ctrl+L / Cmd+L**: Load saved level
 - **Ctrl+Shift+S / Cmd+Shift+S**: Show save location in console
 
 #### Mode Switching
@@ -154,7 +153,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 GridManager.Instance.SaveLevel();
 
 // Load saved level
-GridManager.Instance.LoadLevel();
+LevelManager.Instance.LoadLevel("tutorial_01");
 
 // Check if save exists
 bool exists = LevelSaveSystem.LevelExists();
