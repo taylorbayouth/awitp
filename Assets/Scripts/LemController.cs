@@ -309,9 +309,35 @@ public class LemController : MonoBehaviour
 
     /// <summary>
     /// Creates a Lem character with its foot point placed at the specified position.
+    /// Tries to load from Resources/Characters/Lem prefab first, falls back to programmatic creation.
     /// Lem height is 95% of the current grid cell size (leaving 5% headroom).
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
+    {
+        // PREFAB-BASED INSTANTIATION (Primary method)
+        GameObject lemPrefab = Resources.Load<GameObject>("Characters/Lem");
+        if (lemPrefab != null)
+        {
+            GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
+            LemController controller = lem.GetComponent<LemController>();
+            if (controller != null)
+            {
+                controller.isFrozen = true;
+                controller.UpdateFacingVisuals();
+            }
+            return lem;
+        }
+
+        Debug.LogWarning("[LemController] Lem prefab not found at Resources/Characters/Lem. Using programmatic creation as fallback.");
+
+        // FALLBACK: Programmatic creation
+        return CreateLemProgrammatically(position);
+    }
+
+    /// <summary>
+    /// Programmatic Lem creation (fallback when prefab doesn't exist).
+    /// </summary>
+    private static GameObject CreateLemProgrammatically(Vector3 position)
     {
         GameObject lem = new GameObject("Lem");
         lem.transform.position = position;
@@ -340,7 +366,7 @@ public class LemController : MonoBehaviour
 
         // Controller
         LemController controller = lem.AddComponent<LemController>();
-        controller.isFrozen = true; // Start frozen in editor
+        controller.isFrozen = true;
         controller.UpdateFacingVisuals();
         controller.glitchVisual = lem.transform.Find("Glitch");
         controller.ApplyGlitchVisualRotation();

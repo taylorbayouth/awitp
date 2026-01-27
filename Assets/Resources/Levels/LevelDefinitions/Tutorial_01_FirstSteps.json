@@ -1,0 +1,106 @@
+{
+  "levelId": "tutorial_01_firststeps",
+  "levelName": "First Steps",
+  "worldId": "world_tutorial",
+  "orderInWorld": 0,
+  "gridWidth": 8,
+  "gridHeight": 6,
+  "cellSize": 1.0,
+  "permanentBlocks": [
+    {
+      "blockType": 1,
+      "gridIndex": 0,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 1,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 2,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 5,
+      "gridIndex": 19,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 20,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 6,
+      "gridIndex": 37,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 38,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 39,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    }
+  ],
+  "blocks": [],
+  "placeableSpaceIndices": [
+    8,
+    9,
+    10,
+    11,
+    16,
+    17,
+    18,
+    27,
+    28,
+    29,
+    30
+  ],
+  "lems": [
+    {
+      "gridIndex": 0,
+      "facingRight": true,
+      "worldPosition": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.0
+      },
+      "hasWorldPosition": true
+    }
+  ],
+  "inventoryEntries": [
+    {
+      "blockType": 1,
+      "displayName": "Platform",
+      "flavorId": "",
+      "routeSteps": [],
+      "maxCount": 8,
+      "isPairInventory": false,
+      "pairSize": 1,
+      "inventoryGroupId": ""
+    }
+  ],
+  "keyStates": []
+}
