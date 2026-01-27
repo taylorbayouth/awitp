@@ -173,12 +173,10 @@ public class EditorController : MonoBehaviour
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlaceBlock(currentInventoryEntry, cursorIndex);
-                DebugLog.Info($"Placed {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
             }
             else
             {
                 GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
-                DebugLog.Info($"Placed {currentBlockType} block at index {cursorIndex}");
             }
         }
     }
@@ -194,12 +192,10 @@ public class EditorController : MonoBehaviour
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlacePermanentBlock(currentInventoryEntry, cursorIndex);
-                DebugLog.Info($"Placed permanent {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
             }
             else
             {
                 GridManager.Instance.PlacePermanentBlock(currentBlockType, cursorIndex);
-                DebugLog.Info($"Placed permanent {currentBlockType} block at index {cursorIndex}");
             }
         }
     }
@@ -224,7 +220,6 @@ public class EditorController : MonoBehaviour
                 else
                 {
                     block.DestroyBlock();
-                    DebugLog.Info($"Removed block at index {cursorIndex}");
                 }
             }
 
@@ -232,14 +227,12 @@ public class EditorController : MonoBehaviour
             if (currentMode == GameMode.LevelEditor && GridManager.Instance.HasLemAtIndex(cursorIndex))
             {
                 GridManager.Instance.RemoveLem(cursorIndex);
-                DebugLog.Info($"Removed Lem at index {cursorIndex}");
             }
 
             // Remove placeable space marker in Level Editor mode
             if (currentMode == GameMode.LevelEditor && GridManager.Instance.IsSpacePlaceable(cursorIndex))
             {
                 GridManager.Instance.SetSpacePlaceable(cursorIndex, false);
-                DebugLog.Info($"Removed placeable space at index {cursorIndex}");
             }
         }
     }
@@ -325,11 +318,6 @@ public class EditorController : MonoBehaviour
             }
 
             ChangeBlockType(existingBlock, entry);
-            DebugLog.Info($"Changed block at index {cursorIndex} to {entry.GetDisplayName()}");
-        }
-        else
-        {
-            DebugLog.Info($"Switched to {entry.GetDisplayName()} block");
         }
     }
 
@@ -367,6 +355,23 @@ public class EditorController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Exits play mode and restores the level to its pre-play state.
+    /// Can be called from external systems (like when Lem dies).
+    /// </summary>
+    public void ExitPlayMode()
+    {
+        if (currentMode != GameMode.Play) return;
+
+        currentMode = GameMode.Editor;
+        DebugLog.Info("=== EXITED PLAY MODE === Back to Editor");
+        if (GridManager.Instance != null)
+        {
+            GridManager.Instance.RestorePlayModeSnapshot();
+        }
+        UpdateCursorVisibility();
+    }
+
     private void HandleModeToggle()
     {
         // E key toggles between Level Editor and Editor
@@ -398,14 +403,7 @@ public class EditorController : MonoBehaviour
         {
             if (currentMode == GameMode.Play)
             {
-                // Exit play mode, return to Editor
-                currentMode = GameMode.Editor;
-                DebugLog.Info("=== EXITED PLAY MODE === Back to Editor");
-                if (GridManager.Instance != null)
-                {
-                    GridManager.Instance.RestorePlayModeSnapshot();
-                }
-                UpdateCursorVisibility();
+                ExitPlayMode();
             }
             else
             {
@@ -468,7 +466,6 @@ public class EditorController : MonoBehaviour
             if (!GridManager.Instance.IsSpacePlaceable(cursorIndex))
             {
                 GridManager.Instance.SetSpacePlaceable(cursorIndex, true);
-                DebugLog.Info($"Marked space at index {cursorIndex} as placeable");
             }
         }
     }

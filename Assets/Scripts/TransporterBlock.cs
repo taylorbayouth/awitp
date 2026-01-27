@@ -116,7 +116,7 @@ public class TransporterBlock : BaseBlock
             prevUseGravity = lemRb.useGravity;
             if (!lemRb.isKinematic)
             {
-                lemRb.velocity = Vector3.zero;
+                lemRb.linearVelocity = Vector3.zero;
             }
             lemRb.isKinematic = true;
             lemRb.useGravity = false;
@@ -421,6 +421,10 @@ public class TransporterBlock : BaseBlock
         if (mat == null) return;
         if (mat.shader != null && mat.shader.name == "Standard")
         {
+            // Set non-metallic properties
+            mat.SetFloat("_Metallic", 0f);
+            mat.SetFloat("_Glossiness", 0f);
+
             mat.SetFloat("_Mode", 3f);
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
@@ -435,7 +439,7 @@ public class TransporterBlock : BaseBlock
     private static GridManager GetGridManager()
     {
         if (GridManager.Instance != null) return GridManager.Instance;
-        return Object.FindObjectOfType<GridManager>();
+        return Object.FindAnyObjectByType<GridManager>();
     }
 
     private void LateUpdate()

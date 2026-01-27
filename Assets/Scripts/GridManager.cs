@@ -299,6 +299,14 @@ public class GridManager : MonoBehaviour
                 }
 
                 string[] routeSteps = resolvedForRoute != null ? resolvedForRoute.routeSteps : null;
+
+                // Check if route goes outside grid bounds
+                if (!IsTransporterRouteWithinBounds(gridIndex, routeSteps))
+                {
+                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Route path goes outside grid bounds");
+                    return null;
+                }
+
                 List<int> routeIndices = BuildTransporterPathIndices(gridIndex, routeSteps);
                 if (routeIndices.Count > 0 && HasBlocksOnIndices(routeIndices))
                 {
@@ -346,7 +354,6 @@ public class GridManager : MonoBehaviour
             // If there's already a non-permanent block here, destroy it
             if (placedBlocks.ContainsKey(gridIndex))
             {
-                DebugLog.Info($"[GridManager] Replacing existing block at index {gridIndex}");
                 placedBlocks[gridIndex].DestroyBlock();
             }
 
@@ -384,7 +391,6 @@ public class GridManager : MonoBehaviour
             placedBlocks[gridIndex] = newBlock;
             UpdateCursorState();
 
-            DebugLog.Info($"[GridManager] Successfully placed {blockType} block at index {gridIndex}");
             return newBlock;
         }
         catch (Exception ex)
@@ -536,7 +542,6 @@ public class GridManager : MonoBehaviour
                 lemController.TurnAround();
                 // Update original placement data with new facing direction
                 originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, lemController.GetFacingRight());
-                DebugLog.Info($"Turned Lem around at index {gridIndex}");
             }
             return existingLem;
         }
@@ -578,7 +583,6 @@ public class GridManager : MonoBehaviour
             Destroy(lem);
             placedLems.Remove(gridIndex);
             originalLemPlacements.Remove(gridIndex);
-            DebugLog.Info($"Removed Lem at index {gridIndex}");
         }
     }
 
@@ -985,7 +989,7 @@ public class GridManager : MonoBehaviour
         ClearAllLems();
         ClearPlaceableSpaces();
 
-        BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         if (inventory != null)
         {
             inventory.ResetInventory();
@@ -1175,7 +1179,7 @@ public class GridManager : MonoBehaviour
 
     public bool HasTransporterConflicts()
     {
-        TransporterBlock[] transporters = FindObjectsOfType<TransporterBlock>();
+        TransporterBlock[] transporters = FindObjectsByType<TransporterBlock>(FindObjectsSortMode.None);
         foreach (TransporterBlock transporter in transporters)
         {
             if (transporter == null) continue;
@@ -1307,6 +1311,37 @@ public class GridManager : MonoBehaviour
         return RouteParser.ParseRouteSteps(routeSteps);
     }
 
+    /// <summary>
+    /// Checks if a transporter route stays within grid bounds for all steps.
+    /// Returns false if any step would go outside the grid.
+    /// </summary>
+    private bool IsTransporterRouteWithinBounds(int originIndex, string[] routeSteps)
+    {
+        if (!IsValidIndex(originIndex))
+        {
+            return false;
+        }
+
+        if (routeSteps == null || routeSteps.Length == 0)
+        {
+            return true; // Empty route is valid
+        }
+
+        Vector2Int current = IndexToCoordinates(originIndex);
+        List<Vector2Int> steps = BuildTransporterSteps(routeSteps);
+
+        foreach (Vector2Int step in steps)
+        {
+            current += step;
+            if (!IsValidCoordinates(current.x, current.y))
+            {
+                return false; // Step goes outside grid bounds
+            }
+        }
+
+        return true; // All steps stay within bounds
+    }
+
     private static LevelData.BlockData CreateBlockData(BaseBlock block, int index)
     {
         LevelData.BlockData data = new LevelData.BlockData(block.blockType, index);
@@ -1346,7 +1381,7 @@ public class GridManager : MonoBehaviour
     private List<LevelData.KeyStateData> CaptureKeyStates()
     {
         List<LevelData.KeyStateData> states = new List<LevelData.KeyStateData>();
-        KeyItem[] keys = FindObjectsOfType<KeyItem>();
+        KeyItem[] keys = FindObjectsByType<KeyItem>(FindObjectsSortMode.None);
         foreach (KeyItem key in keys)
         {
             if (key == null) continue;

@@ -12,7 +12,9 @@ public class CrumblerBlock : BaseBlock
     [SerializeField] private bool debugCrumbleLogs = true;
     private bool isCrumbing = false;
     // (unused) kept for backward compatibility if serialized
+#pragma warning disable CS0414
     [SerializeField] private bool isCracked = false;
+#pragma warning restore CS0414
     private static Material crackMaterial;
     private bool loggedEnter = false;
     private bool loggedCenter = false;
@@ -45,6 +47,9 @@ public class CrumblerBlock : BaseBlock
                 shader = Shader.Find("Unlit/Color");
             }
             crackMaterial = new Material(shader);
+            // Set non-metallic properties
+            crackMaterial.SetFloat("_Metallic", 0f);
+            crackMaterial.SetFloat("_Glossiness", 0f);
         }
 
         crackMaterial.color = crumbleColor;
