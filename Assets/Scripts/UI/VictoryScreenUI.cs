@@ -88,7 +88,7 @@ public class VictoryScreenUI : MonoBehaviour
         }
     }
 
-    public void Show()
+    public void Show(LevelDefinition completedLevel)
     {
         if (victoryPanel == null)
         {
@@ -96,13 +96,13 @@ public class VictoryScreenUI : MonoBehaviour
             return;
         }
 
-        if (LevelManager.Instance == null || LevelManager.Instance.currentLevelDef == null)
+        if (completedLevel == null)
         {
-            Debug.LogError("[VictoryScreenUI] No current level found!");
+            Debug.LogError("[VictoryScreenUI] No level provided!");
             return;
         }
 
-        currentLevel = LevelManager.Instance.currentLevelDef;
+        currentLevel = completedLevel;
 
         // Show victory panel
         victoryPanel.SetActive(true);

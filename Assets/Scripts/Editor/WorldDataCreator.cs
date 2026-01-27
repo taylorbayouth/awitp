@@ -12,7 +12,7 @@ public class WorldDataCreator : EditorWindow
     private string worldName = "";
     private string description = "";
     private int orderInGame = 0;
-    private Color visualColor = Color.cyan;
+    private Color themeColor = Color.cyan;
 
     private List<LevelDefinition> levels = new List<LevelDefinition>();
     private Vector2 scrollPosition;
@@ -32,7 +32,7 @@ public class WorldDataCreator : EditorWindow
         worldName = EditorGUILayout.TextField("World Name", worldName);
         description = EditorGUILayout.TextField("Description", description, GUILayout.Height(60));
         orderInGame = EditorGUILayout.IntField("Order in Game", orderInGame);
-        visualColor = EditorGUILayout.ColorField("Visual Color", visualColor);
+        themeColor = EditorGUILayout.ColorField("Theme Color", themeColor);
 
         EditorGUILayout.Space();
         GUILayout.Label("Levels in this World", EditorStyles.boldLabel);
@@ -88,7 +88,7 @@ public class WorldDataCreator : EditorWindow
         worldData.worldName = worldName;
         worldData.description = description;
         worldData.orderInGame = orderInGame;
-        worldData.visualColor = visualColor;
+        worldData.themeColor = themeColor;
         worldData.levels = levels.ToArray();
 
         // Save the asset

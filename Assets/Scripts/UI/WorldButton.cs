@@ -106,8 +106,8 @@ public class WorldButton : MonoBehaviour
             }
             else
             {
-                // Use world's visual color if available
-                backgroundImage.color = worldData.visualColor != Color.clear ? worldData.visualColor : unlockedColor;
+                // Use world's theme color if available
+                backgroundImage.color = worldData.themeColor != Color.clear ? worldData.themeColor : unlockedColor;
             }
         }
 

@@ -78,6 +78,11 @@ public class WorldManager : MonoBehaviour
     public IReadOnlyList<WorldData> Worlds => _worlds;
 
     /// <summary>
+    /// Gets all worlds as an array (for UI iteration).
+    /// </summary>
+    public WorldData[] allWorlds => _worlds.ToArray();
+
+    /// <summary>
     /// Gets the number of worlds.
     /// </summary>
     public int WorldCount => _worlds.Count;
