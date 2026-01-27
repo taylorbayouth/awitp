@@ -116,7 +116,13 @@ public class LevelSystemSetup : EditorWindow
 
         // Add MainMenuController
         GameObject controllerObj = new GameObject("MainMenuController");
-        MainMenuController controller = controllerObj.AddComponent<MainMenuController>();
+        System.Type controllerType = System.Type.GetType("MainMenuController");
+        if (controllerType == null)
+        {
+            Debug.LogError("Could not find MainMenuController type.");
+            return;
+        }
+        Component controller = controllerObj.AddComponent(controllerType);
 
         // Wire up references via SerializedObject
         SerializedObject so = new SerializedObject(controller);
@@ -218,7 +224,13 @@ public class LevelSystemSetup : EditorWindow
 
         // Add WorldMapController
         GameObject controllerObj = new GameObject("WorldMapController");
-        WorldMapController controller = controllerObj.AddComponent<WorldMapController>();
+        System.Type controllerType = System.Type.GetType("WorldMapController");
+        if (controllerType == null)
+        {
+            Debug.LogError("Could not find WorldMapController type.");
+            return;
+        }
+        Component controller = controllerObj.AddComponent(controllerType);
 
         // Wire up references
         SerializedObject so = new SerializedObject(controller);
@@ -431,8 +443,14 @@ public class LevelSystemSetup : EditorWindow
         GameObject worldMapBtn = CreateUIButton(victoryPanel.transform, "WorldMapButton", "World Map",
             new Vector2(0.5f, 0.12f), new Vector2(0.5f, 0.12f), new Vector2(0, 0), new Vector2(180, 45));
 
-        // Add VictoryScreen component
-        VictoryScreen victoryScreen = victoryPanel.AddComponent<VictoryScreen>();
+        // Add VictoryScreen component (use type lookup to avoid assembly reference issues)
+        System.Type victoryScreenType = System.Type.GetType("VictoryScreen");
+        if (victoryScreenType == null)
+        {
+            Debug.LogError("Could not find VictoryScreen type. Make sure VictoryScreen.cs exists.");
+            return;
+        }
+        Component victoryScreen = victoryPanel.AddComponent(victoryScreenType);
 
         // Wire up references
         SerializedObject so = new SerializedObject(victoryScreen);
@@ -463,23 +481,26 @@ public class LevelSystemSetup : EditorWindow
         }
 
         // Add LevelManager
-        if (FindObjectOfType<LevelManager>() == null)
+        System.Type levelManagerType = System.Type.GetType("LevelManager");
+        if (levelManagerType != null && FindAnyObjectByType(levelManagerType) == null)
         {
-            managers.AddComponent<LevelManager>();
+            managers.AddComponent(levelManagerType);
             Debug.Log("Added LevelManager");
         }
 
         // Add WorldManager
-        if (FindObjectOfType<WorldManager>() == null)
+        System.Type worldManagerType = System.Type.GetType("WorldManager");
+        if (worldManagerType != null && FindAnyObjectByType(worldManagerType) == null)
         {
-            managers.AddComponent<WorldManager>();
+            managers.AddComponent(worldManagerType);
             Debug.Log("Added WorldManager");
         }
 
         // Add ProgressManager
-        if (FindObjectOfType<ProgressManager>() == null)
+        System.Type progressManagerType = System.Type.GetType("ProgressManager");
+        if (progressManagerType != null && FindAnyObjectByType(progressManagerType) == null)
         {
-            managers.AddComponent<ProgressManager>();
+            managers.AddComponent(progressManagerType);
             Debug.Log("Added ProgressManager");
         }
 

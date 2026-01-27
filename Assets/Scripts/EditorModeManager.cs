@@ -4,7 +4,7 @@ public class EditorModeManager : MonoBehaviour
 {
     [Header("Background Colors")]
     public Color normalModeColor = new Color(0.192f, 0.301f, 0.474f); // Unity default blue-grey
-    public Color editorModeColor = new Color(0.211f, 0.211f, 0.211f); // #363636 for level editor
+    public Color editorModeColor = new Color(0.8f, 0.8f, 0.8f); // Light grey for level editor
     public Color playModeColor = new Color(0.1f, 0.1f, 0.1f); // Dark for play mode
 
     [Header("Skybox")]
@@ -85,10 +85,6 @@ public class EditorModeManager : MonoBehaviour
             {
                 RenderSettings.skybox = playModeSkybox;
             }
-            else
-            {
-                Debug.LogWarning("EditorModeManager: Play Mode Skybox not assigned. Using current skybox.");
-            }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
             DebugLog.Info($"Background changed to PLAY MODE color: {playModeColor}");
         }
@@ -97,10 +93,6 @@ public class EditorModeManager : MonoBehaviour
             if (normalModeSkybox != null)
             {
                 RenderSettings.skybox = normalModeSkybox;
-            }
-            else
-            {
-                Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
             DebugLog.Info($"Background changed to NORMAL MODE color: {normalModeColor}");
@@ -116,10 +108,6 @@ public class EditorModeManager : MonoBehaviour
             if (normalModeSkybox != null)
             {
                 RenderSettings.skybox = normalModeSkybox;
-            }
-            else
-            {
-                Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
             DebugLog.Info($"*** SetNormalMode called - Background set to: {normalModeColor} ***");

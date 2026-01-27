@@ -164,7 +164,7 @@ public class TeleporterBlock : BaseBlock
         Rigidbody lemRb = lem.GetComponent<Rigidbody>();
         if (lemRb != null)
         {
-            lemRb.velocity = Vector3.zero;
+            lemRb.linearVelocity = Vector3.zero;
         }
 
         lem.SetFrozen(true);

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public static class DebugLog
 {
-    public static bool InfoEnabled = false;
+    public static bool InfoEnabled = true;
     public static bool CrumblerEnabled = true;
 
     public static void Info(string message, Object context = null)
