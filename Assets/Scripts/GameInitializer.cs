@@ -163,6 +163,36 @@ public class GameInitializer : MonoBehaviour
             }
         }
 
+        // Setup lighting for non-metallic look
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientLight = new Color(0.8f, 0.8f, 0.8f); // Bright flat lighting
+
+        // Ensure there's a directional light
+        Light[] lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+        bool hasDirectionalLight = false;
+        foreach (Light light in lights)
+        {
+            if (light.type == LightType.Directional)
+            {
+                hasDirectionalLight = true;
+                // Make sure it's bright and white
+                light.color = Color.white;
+                light.intensity = 1f;
+                break;
+            }
+        }
+
+        if (!hasDirectionalLight)
+        {
+            GameObject lightObj = new GameObject("Directional Light");
+            Light light = lightObj.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.color = Color.white;
+            light.intensity = 1f;
+            light.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+            DebugLog.Info("GameInitializer: Created directional light");
+        }
+
         // Force refresh of all visualizations
         Invoke(nameof(DelayedRefresh), 0.1f);
 

@@ -15,7 +15,7 @@ using System;
 /// - Uses Rigidbody with continuous collision detection
 /// - Custom PhysicMaterial with zero friction to prevent sticking
 /// - Constrained to XY plane (Z position and rotation frozen)
-/// - Half-scale (0.5x) to fit grid better
+/// - Height is 95% of grid cell size (leaving 5% headroom)
 ///
 /// DESIGN NOTES:
 /// - Raycasts use QueryTriggerInteraction.Ignore to avoid detecting block trigger zones
@@ -35,7 +35,7 @@ public class LemController : MonoBehaviour
     [SerializeField] private float walkSpeed = 1f;
 
     [Header("Detection")]
-    [Tooltip("Raycast distance for wall detection (tuned for half-scale Lem)")]
+    [Tooltip("Raycast distance for wall detection")]
     [SerializeField] private float wallCheckDistance = 0.3f;
 
     [Tooltip("Raycast distance for ground detection")]
@@ -93,12 +93,12 @@ public class LemController : MonoBehaviour
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
 
         // Create physics material to prevent sticking
-        PhysicMaterial physicsMaterial = new PhysicMaterial("LemPhysics");
+        PhysicsMaterial physicsMaterial = new PhysicsMaterial("LemPhysics");
         physicsMaterial.dynamicFriction = 0f;
         physicsMaterial.staticFriction = 0f;
         physicsMaterial.bounciness = 0f;
-        physicsMaterial.frictionCombine = PhysicMaterialCombine.Minimum;
-        physicsMaterial.bounceCombine = PhysicMaterialCombine.Minimum;
+        physicsMaterial.frictionCombine = PhysicsMaterialCombine.Minimum;
+        physicsMaterial.bounceCombine = PhysicsMaterialCombine.Minimum;
 
         CapsuleCollider collider = GetComponent<CapsuleCollider>();
         if (collider != null)
@@ -182,8 +182,8 @@ public class LemController : MonoBehaviour
     private void Walk()
     {
         float direction = facingRight ? 1f : -1f;
-        Vector3 newVelocity = new Vector3(direction * walkSpeed, rb.velocity.y, 0);
-        rb.velocity = newVelocity;
+        Vector3 newVelocity = new Vector3(direction * walkSpeed, rb.linearVelocity.y, 0);
+        rb.linearVelocity = newVelocity;
     }
 
     private void CheckGround()
@@ -211,7 +211,7 @@ public class LemController : MonoBehaviour
 
     private void CheckCliffAhead()
     {
-        // Check slightly ahead for ground - adjusted for smaller Lem
+        // Check slightly ahead for ground
         Vector3 origin = transform.position + (facingRight ? Vector3.right : Vector3.left) * 0.3f;
         origin.y += 0.1f; // Start from same height as ground check
 
@@ -244,7 +244,7 @@ public class LemController : MonoBehaviour
         isFrozen = frozen;
         if (rb != null && frozen && !rb.isKinematic)
         {
-            rb.velocity = Vector3.zero; // Stop movement when frozen
+            rb.linearVelocity = Vector3.zero; // Stop movement when frozen
         }
 
     }
@@ -262,8 +262,16 @@ public class LemController : MonoBehaviour
         if (!isAlive) return;
 
         isAlive = false;
-        rb.velocity = Vector3.zero;
-        Destroy(gameObject, 2f);
+        rb.linearVelocity = Vector3.zero;
+
+        // Exit play mode when Lem dies
+        EditorController editorController = FindAnyObjectByType<EditorController>();
+        if (editorController != null)
+        {
+            editorController.ExitPlayMode();
+        }
+
+        Destroy(gameObject, 0.1f);
     }
 
     public Vector3 GetFootPointPosition()
@@ -301,7 +309,7 @@ public class LemController : MonoBehaviour
 
     /// <summary>
     /// Creates a Lem character with its foot point placed at the specified position.
-    /// Lem height is exactly 50% of the current grid cell size.
+    /// Lem height is 95% of the current grid cell size (leaving 5% headroom).
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
     {
@@ -311,7 +319,7 @@ public class LemController : MonoBehaviour
         lem.tag = "Player";
 
         float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
-        float lemHeight = cellSize * 0.5f;
+        float lemHeight = cellSize * 0.95f;
         float lemRadius = lemHeight * 0.25f;
 
         GameObject foot = new GameObject("FootPoint");
@@ -544,7 +552,7 @@ public class LemController : MonoBehaviour
     {
         if (!hasAnimator || glitchAnimator == null) return;
 
-        float horizontalSpeed = Mathf.Abs(rb != null ? rb.velocity.x : 0f);
+        float horizontalSpeed = Mathf.Abs(rb != null ? rb.linearVelocity.x : 0f);
         if (isFrozen)
         {
             horizontalSpeed = 0f;

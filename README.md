@@ -1,4 +1,4 @@
-# A Walk in the Park (AWITP)
+# A Walk in the Park
 
 A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by strategically placing blocks to navigate through levels. The goal: collect all keys and place them in their corresponding locks.
 
