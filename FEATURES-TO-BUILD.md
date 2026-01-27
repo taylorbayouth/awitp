@@ -1,5 +1,19 @@
 # Features to Build for Complete Level Creation Experience
 
+**STATUS: ✅ STILL RELEVANT - Future Enhancement Wishlist**
+
+**Note**: These features are separate from the multi-level system (which is now implemented). These are quality-of-life improvements for the Designer Mode level creation workflow.
+
+**What Was Completed (2026-01-27)**:
+- ✅ Multi-level system with progression (LevelManager, WorldManager, ProgressManager)
+- ✅ Editor tools for creating Level/World assets (LevelDefinitionCreator, WorldDataCreator)
+- ✅ UI system for menu navigation
+
+**What This Document Covers**:
+- Enhancements to Designer Mode workflow (undo/redo, error messages, etc.)
+- Polish features for level editing experience
+- Future improvements for content creators
+
 This document tracks features mentioned in [HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md) that would enhance the level creation workflow but don't currently exist.
 
 ## Priority: Critical (Blockers for Good UX)
