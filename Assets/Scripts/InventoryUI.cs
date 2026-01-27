@@ -18,6 +18,15 @@ public class InventoryUI : MonoBehaviour
     public float topMargin = 24f;
     public float leftMargin = 24f;
 
+    [Header("Scaling")]
+    [Tooltip("UI scale multiplier (1.0 = normal, 0.5 = half size)")]
+    public float uiScale = 1.0f;
+
+    [Tooltip("Auto-scale based on screen resolution (recommended)")]
+    public bool autoScale = true;
+
+    private float _scaleFactor = 1.0f;
+
     private GUIStyle normalStyle;
     private GUIStyle selectedStyle;
     private GUIStyle textStyle;
@@ -54,17 +63,34 @@ public class InventoryUI : MonoBehaviour
             editorController = FindObjectOfType<EditorController>();
         }
 
+        // Calculate scale factor
+        if (autoScale)
+        {
+            // Scale based on screen height (1080p = 1.0x, 720p = 0.67x, 4K = 2.0x)
+            _scaleFactor = (Screen.height / 1080f) * uiScale;
+        }
+        else
+        {
+            _scaleFactor = uiScale;
+        }
+
+        // Apply GUI scaling matrix
+        Matrix4x4 originalMatrix = GUI.matrix;
+        GUI.matrix = Matrix4x4.Scale(new Vector3(_scaleFactor, _scaleFactor, 1f));
+
         InitializeStyles();
 
         if (inventory == null)
         {
             DrawStatusLabel("InventoryUI: No BlockInventory found");
+            GUI.matrix = originalMatrix;
             return;
         }
 
         if (Application.isPlaying && editorController == null)
         {
             DrawStatusLabel("InventoryUI: No EditorController found");
+            GUI.matrix = originalMatrix;
             return;
         }
 
@@ -93,6 +119,9 @@ public class InventoryUI : MonoBehaviour
                 DrawStatusLabel("InventoryUI: No visible inventory entries");
             }
         }
+
+        // Restore original GUI matrix
+        GUI.matrix = originalMatrix;
     }
 
     private void InitializeStyles()
