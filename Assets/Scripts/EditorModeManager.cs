@@ -20,8 +20,6 @@ public class EditorModeManager : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log("EditorModeManager: Awake called");
-
         // Find references if not assigned
         if (mainCamera == null)
         {
@@ -45,14 +43,7 @@ public class EditorModeManager : MonoBehaviour
             editorController = FindObjectOfType<EditorController>();
         }
 
-        if (editorController != null)
-        {
-            Debug.Log("EditorModeManager: Found EditorController");
-        }
-        else
-        {
-            Debug.LogWarning("EditorModeManager: EditorController not found!");
-        }
+        // editorController may be assigned later in Update if not found here.
 
         if (normalModeSkybox == null && RenderSettings.skybox != null)
         {
@@ -72,7 +63,7 @@ public class EditorModeManager : MonoBehaviour
         // Check if game mode changed
         if (editorController.currentMode != previousMode)
         {
-            Debug.Log($"EditorModeManager detected mode change: {previousMode} -> {editorController.currentMode}");
+            DebugLog.Info($"EditorModeManager detected mode change: {previousMode} -> {editorController.currentMode}");
             previousMode = editorController.currentMode;
             UpdateBackgroundColor();
         }
@@ -86,7 +77,7 @@ public class EditorModeManager : MonoBehaviour
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = editorModeColor;
-            Debug.Log($"Background changed to LEVEL EDITOR MODE color: {editorModeColor}");
+            DebugLog.Info($"Background changed to LEVEL EDITOR MODE color: {editorModeColor}");
         }
         else if (editorController.currentMode == GameMode.Play)
         {
@@ -99,7 +90,7 @@ public class EditorModeManager : MonoBehaviour
                 Debug.LogWarning("EditorModeManager: Play Mode Skybox not assigned. Using current skybox.");
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            Debug.Log($"Background changed to PLAY MODE color: {playModeColor}");
+            DebugLog.Info($"Background changed to PLAY MODE color: {playModeColor}");
         }
         else
         {
@@ -112,7 +103,7 @@ public class EditorModeManager : MonoBehaviour
                 Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            Debug.Log($"Background changed to NORMAL MODE color: {normalModeColor}");
+            DebugLog.Info($"Background changed to NORMAL MODE color: {normalModeColor}");
         }
 
         SetGridVisible(editorController.currentMode != GameMode.Play);
@@ -131,7 +122,7 @@ public class EditorModeManager : MonoBehaviour
                 Debug.LogWarning("EditorModeManager: Normal Mode Skybox not assigned. Using current skybox.");
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            Debug.Log($"*** SetNormalMode called - Background set to: {normalModeColor} ***");
+            DebugLog.Info($"*** SetNormalMode called - Background set to: {normalModeColor} ***");
         }
         else
         {
@@ -145,7 +136,7 @@ public class EditorModeManager : MonoBehaviour
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = editorModeColor;
-            Debug.Log($"*** SetEditorMode called - Background set to: {editorModeColor} ***");
+            DebugLog.Info($"*** SetEditorMode called - Background set to: {editorModeColor} ***");
         }
         else
         {

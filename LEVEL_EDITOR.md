@@ -20,9 +20,11 @@
 - **1-9 Keys** - Switch block entry (first 9 slots)
 - **[ / ]** - Cycle block entries
   - 1 = Default (cyan platform)
-  - 2 = Teleporter (magenta)
+  - 2 = Teleporter (magenta) - must be placed in pairs
   - 3 = Crumbler (orange)
   - 4 = Transporter (yellow)
+  - 5 = Key (gold)
+  - 6 = Lock (silver)
 - **E** - Switch to Level Editor Mode
 
 ### Level Editor Mode
@@ -138,9 +140,10 @@ The console will show you the full path to where levels are saved.
 
 ### Block Placement
 - Default blocks are your foundation - use them liberally
-- Teleporters create shortcuts or tricky paths
-- Crumblers add time pressure and consequences
-- Transporters enable dynamic level changes
+- Teleporters create shortcuts or tricky paths (must be placed in pairs with matching flavor)
+- Crumblers add time pressure and consequences - they darken when stepped on and crumble when exited
+- Transporters enable dynamic level changes (route path is blocked for other placements)
+- Keys and Locks create puzzle gates - Lem collects key and brings it to matching lock
 
 ### Placeable Spaces
 - Too few spaces = frustratingly difficult
@@ -165,10 +168,12 @@ The console will show you the full path to where levels are saved.
 ### Editor Mode
 - **Space / Enter** - Place selected block type
 - **Delete / Backspace** - Remove block
-- **1** - Select Default block (cyan)
-- **2** - Select Teleporter block (magenta)
-- **3** - Select Crumbler block (orange)
-- **4** - Select Transporter block (yellow)
+- **1** - Select Default block
+- **2** - Select Teleporter block
+- **3** - Select Crumbler block
+- **4** - Select Transporter block
+- **5** - Select Key block
+- **6** - Select Lock block
 - **E** - Switch to Level Editor Mode
 
 ### Level Editor Mode
@@ -246,9 +251,14 @@ Add a **LevelBlockInventoryConfig** component to an empty GameObject to define:
 
 Block inventory is saved with the level and restored on load.
 
-### Color Customization
+### Visual Customization
+Block visuals are defined by prefabs in `Resources/Blocks/`:
+- Each block type has its own prefab (e.g., Block_Key.prefab, Block_Lock.prefab)
+- Prefabs can include custom meshes, materials, and child objects
+- Fallback colors are defined in `BlockColors.cs` for blocks without prefabs
+
 Edit `BlockColors.cs` to change:
-- Block type colors
+- Fallback block type colors
 - Cursor colors (placeable, editable, non-placeable)
 - Grid line color
 - Placeable border color

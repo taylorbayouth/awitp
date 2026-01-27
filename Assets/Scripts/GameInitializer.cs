@@ -55,7 +55,7 @@ public class GameInitializer : MonoBehaviour
 
     public void SetupGame()
     {
-        Debug.Log("=== Game Initializer: Starting Setup ===");
+        DebugLog.Info("=== Game Initializer: Starting Setup ===");
 
         // Ensure GridManager exists
         GridManager gridManager = FindObjectOfType<GridManager>();
@@ -66,26 +66,26 @@ public class GameInitializer : MonoBehaviour
         }
         else
         {
-            Debug.Log("GameInitializer: GridManager found");
+            DebugLog.Info("GameInitializer: GridManager found");
         }
 
         // Ensure GridManager has required components IN ORDER
         if (gridManager.GetComponent<GridVisualizer>() == null)
         {
             gridManager.gameObject.AddComponent<GridVisualizer>();
-            Debug.Log("GameInitializer: Added GridVisualizer");
+            DebugLog.Info("GameInitializer: Added GridVisualizer");
         }
 
         if (gridManager.GetComponent<PlaceableSpaceVisualizer>() == null)
         {
             gridManager.gameObject.AddComponent<PlaceableSpaceVisualizer>();
-            Debug.Log("GameInitializer: Added PlaceableSpaceVisualizer");
+            DebugLog.Info("GameInitializer: Added PlaceableSpaceVisualizer");
         }
 
         if (gridManager.GetComponent<BlockInventory>() == null)
         {
             gridManager.gameObject.AddComponent<BlockInventory>();
-            Debug.Log("GameInitializer: Added BlockInventory");
+            DebugLog.Info("GameInitializer: Added BlockInventory");
         }
 
         // IMPORTANT: Add EditorModeManager BEFORE EditorController
@@ -93,25 +93,24 @@ public class GameInitializer : MonoBehaviour
         if (gridManager.GetComponent<EditorModeManager>() == null)
         {
             gridManager.gameObject.AddComponent<EditorModeManager>();
-            Debug.Log("GameInitializer: Added EditorModeManager");
         }
 
         if (gridManager.GetComponent<EditorController>() == null)
         {
             gridManager.gameObject.AddComponent<EditorController>();
-            Debug.Log("GameInitializer: Added EditorController");
+            DebugLog.Info("GameInitializer: Added EditorController");
         }
 
         if (gridManager.GetComponent<ControlsUI>() == null)
         {
             gridManager.gameObject.AddComponent<ControlsUI>();
-            Debug.Log("GameInitializer: Added ControlsUI");
+            DebugLog.Info("GameInitializer: Added ControlsUI");
         }
 
         // Verify they're both present
         EditorController ec = gridManager.GetComponent<EditorController>();
         EditorModeManager emm = gridManager.GetComponent<EditorModeManager>();
-        Debug.Log($"GameInitializer: EditorController present: {ec != null}, EditorModeManager present: {emm != null}");
+        DebugLog.Info($"GameInitializer: EditorController present: {ec != null}, EditorModeManager present: {emm != null}");
 
         // Setup Inventory UI
         if (FindObjectOfType<InventoryUI>() == null)
@@ -120,7 +119,7 @@ public class GameInitializer : MonoBehaviour
             InventoryUI inventoryUI = uiObj.AddComponent<InventoryUI>();
             inventoryUI.inventory = gridManager.GetComponent<BlockInventory>();
             inventoryUI.editorController = ec;
-            Debug.Log("GameInitializer: Added InventoryUI");
+            DebugLog.Info("GameInitializer: Added InventoryUI");
         }
 
         // Setup camera
@@ -132,7 +131,7 @@ public class GameInitializer : MonoBehaviour
             {
                 cameraSetup = mainCamera.gameObject.AddComponent<CameraSetup>();
                 cameraSetup.gridManager = gridManager;
-                Debug.Log("GameInitializer: Added CameraSetup to Main Camera");
+                DebugLog.Info("GameInitializer: Added CameraSetup to Main Camera");
             }
 
             // Set basic camera properties (CameraSetup will handle positioning)
@@ -141,7 +140,7 @@ public class GameInitializer : MonoBehaviour
             mainCamera.nearClipPlane = 0.1f;
             mainCamera.farClipPlane = 100f;
 
-            Debug.Log("GameInitializer: Camera setup - CameraSetup component will handle positioning");
+            DebugLog.Info("GameInitializer: Camera setup - CameraSetup component will handle positioning");
         }
         else
         {
@@ -152,7 +151,7 @@ public class GameInitializer : MonoBehaviour
         if (skyboxMaterial != null)
         {
             RenderSettings.skybox = skyboxMaterial;
-            Debug.Log("GameInitializer: Skybox set from assigned material");
+            DebugLog.Info("GameInitializer: Skybox set from assigned material");
         }
         else if (useDefaultSkyboxIfNone && RenderSettings.skybox == null)
         {
@@ -160,14 +159,14 @@ public class GameInitializer : MonoBehaviour
             if (defaultSkybox != null)
             {
                 RenderSettings.skybox = defaultSkybox;
-                Debug.Log("GameInitializer: Default skybox applied");
+                DebugLog.Info("GameInitializer: Default skybox applied");
             }
         }
 
         // Force refresh of all visualizations
         Invoke(nameof(DelayedRefresh), 0.1f);
 
-        Debug.Log("=== Game Initializer: Setup Complete ===");
+        DebugLog.Info("=== Game Initializer: Setup Complete ===");
     }
 
     private void DelayedRefresh()
@@ -176,7 +175,7 @@ public class GameInitializer : MonoBehaviour
         if (gridManager != null)
         {
             gridManager.RefreshGrid();
-            Debug.Log("GameInitializer: Performed delayed refresh");
+            DebugLog.Info("GameInitializer: Performed delayed refresh");
         }
     }
 }

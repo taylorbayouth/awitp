@@ -107,6 +107,7 @@ public class BlockInventory : MonoBehaviour
     public List<BlockInventoryEntry> entries = new List<BlockInventoryEntry>();
 
     private readonly Dictionary<string, int> pairCredits = new Dictionary<string, int>();
+    private List<BlockInventoryEntry> designerEntries;
 
     private void OnEnable()
     {
@@ -118,7 +119,10 @@ public class BlockInventory : MonoBehaviour
 
     private void Awake()
     {
-        InitializeInventory();
+        if (Application.isPlaying)
+        {
+            InitializeInventory();
+        }
     }
 
     private void InitializeInventory()
@@ -132,10 +136,21 @@ public class BlockInventory : MonoBehaviour
 
         NormalizeEntries();
         ResetInventory();
+        designerEntries = null;
     }
 
     public IReadOnlyList<BlockInventoryEntry> GetEntries()
     {
+        return entries;
+    }
+
+    public IReadOnlyList<BlockInventoryEntry> GetEntriesForMode(GameMode mode)
+    {
+        if (mode == GameMode.LevelEditor)
+        {
+            return GetDesignerEntries();
+        }
+
         return entries;
     }
 
@@ -256,7 +271,7 @@ public class BlockInventory : MonoBehaviour
             if (credits > 0)
             {
                 SetPairCredits(key, credits - 1);
-                Debug.Log($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair credit). Remaining credits: {credits - 1}");
+                DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair credit). Remaining credits: {credits - 1}");
                 return true;
             }
 
@@ -270,7 +285,7 @@ public class BlockInventory : MonoBehaviour
             SetGroupCount(key, newCount);
             int newCredits = Mathf.Max(0, groupEntry.pairSize - 1);
             SetPairCredits(key, newCredits);
-            Debug.Log($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair). Remaining pairs: {newCount}/{groupEntry.maxCount}, credits: {newCredits}");
+            DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair). Remaining pairs: {newCount}/{groupEntry.maxCount}, credits: {newCredits}");
             return true;
         }
 
@@ -282,7 +297,7 @@ public class BlockInventory : MonoBehaviour
 
         int remaining = Mathf.Max(0, groupEntry.currentCount - 1);
         SetGroupCount(key, remaining);
-        Debug.Log($"[BlockInventory] Used {groupEntry.GetDisplayName()}. Remaining: {remaining}/{groupEntry.maxCount}");
+        DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()}. Remaining: {remaining}/{groupEntry.maxCount}");
         return true;
     }
 
@@ -318,20 +333,20 @@ public class BlockInventory : MonoBehaviour
             if (credits < maxCredits)
             {
                 SetPairCredits(key, credits + 1);
-                Debug.Log($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair credit). Credits: {credits + 1}");
+                DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair credit). Credits: {credits + 1}");
                 return;
             }
 
             int newPairCount = Mathf.Min(groupEntry.maxCount, groupEntry.currentCount + 1);
             SetGroupCount(key, newPairCount);
             SetPairCredits(key, 0);
-            Debug.Log($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair). Available pairs: {newPairCount}/{groupEntry.maxCount}");
+            DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair). Available pairs: {newPairCount}/{groupEntry.maxCount}");
             return;
         }
 
         int newSingleCount = Mathf.Min(groupEntry.maxCount, groupEntry.currentCount + 1);
         SetGroupCount(key, newSingleCount);
-        Debug.Log($"[BlockInventory] Returned {groupEntry.GetDisplayName()}. Available: {newSingleCount}/{groupEntry.maxCount}");
+        DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()}. Available: {newSingleCount}/{groupEntry.maxCount}");
     }
 
     public int GetAvailableCount(BlockInventoryEntry entry)
@@ -442,7 +457,6 @@ public class BlockInventory : MonoBehaviour
                 SetGroupCount(key, GetGroupMaxCount(key));
             }
         }
-        Debug.Log("[BlockInventory] Inventory reset");
     }
 
     private bool LoadFromConfigIfAvailable()
@@ -481,6 +495,32 @@ public class BlockInventory : MonoBehaviour
         entries.Add(new BlockInventoryEntry(BlockType.Lock, 1));
     }
 
+    private IReadOnlyList<BlockInventoryEntry> GetDesignerEntries()
+    {
+        if (designerEntries != null) return designerEntries;
+
+        designerEntries = new List<BlockInventoryEntry>();
+        foreach (BlockType blockType in System.Enum.GetValues(typeof(BlockType)))
+        {
+            BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
+            BlockInventoryEntry clone = entry != null ? entry.Clone() : new BlockInventoryEntry(blockType, 9999);
+
+            clone.displayName = BlockColors.GetBlockTypeName(blockType);
+            clone.inventoryGroupId = string.Empty;
+            clone.flavorId = string.Empty;
+            clone.routeSteps = null;
+            clone.isPairInventory = false;
+            clone.pairSize = 1;
+            clone.maxCount = 9999;
+            clone.currentCount = 9999;
+            clone.entryId = clone.GetEntryId();
+
+            designerEntries.Add(clone);
+        }
+
+        return designerEntries;
+    }
+
     private void NormalizeEntries()
     {
         if (entries == null || entries.Count == 0) return;
@@ -517,6 +557,8 @@ public class BlockInventory : MonoBehaviour
 
             usedIds.Add(entry.entryId);
         }
+
+        designerEntries = null;
 
         Dictionary<string, int> groupMaxCounts = new Dictionary<string, int>();
         foreach (BlockInventoryEntry entry in entries)

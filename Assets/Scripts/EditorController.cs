@@ -26,11 +26,7 @@ public class EditorController : MonoBehaviour
             editorModeManager = FindObjectOfType<EditorModeManager>();
         }
 
-        // If still not found, add it to this GameObject
-        if (editorModeManager == null)
-        {
-            editorModeManager = gameObject.AddComponent<EditorModeManager>();
-        }
+        // EditorModeManager is ensured by GameInitializer; don't add it here.
 
         // Find BlockInventory
         blockInventory = GetComponent<BlockInventory>();
@@ -46,7 +42,7 @@ public class EditorController : MonoBehaviour
     {
         if (blockInventory == null) return;
 
-        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntries();
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
         if (entries == null || entries.Count == 0) return;
 
         currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
@@ -177,12 +173,12 @@ public class EditorController : MonoBehaviour
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlaceBlock(currentInventoryEntry, cursorIndex);
-                Debug.Log($"Placed {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
+                DebugLog.Info($"Placed {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
             }
             else
             {
                 GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
-                Debug.Log($"Placed {currentBlockType} block at index {cursorIndex}");
+                DebugLog.Info($"Placed {currentBlockType} block at index {cursorIndex}");
             }
         }
     }
@@ -198,12 +194,12 @@ public class EditorController : MonoBehaviour
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlacePermanentBlock(currentInventoryEntry, cursorIndex);
-                Debug.Log($"Placed permanent {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
+                DebugLog.Info($"Placed permanent {currentInventoryEntry.GetDisplayName()} block at index {cursorIndex}");
             }
             else
             {
                 GridManager.Instance.PlacePermanentBlock(currentBlockType, cursorIndex);
-                Debug.Log($"Placed permanent {currentBlockType} block at index {cursorIndex}");
+                DebugLog.Info($"Placed permanent {currentBlockType} block at index {cursorIndex}");
             }
         }
     }
@@ -228,7 +224,7 @@ public class EditorController : MonoBehaviour
                 else
                 {
                     block.DestroyBlock();
-                    Debug.Log($"Removed block at index {cursorIndex}");
+                    DebugLog.Info($"Removed block at index {cursorIndex}");
                 }
             }
 
@@ -236,14 +232,14 @@ public class EditorController : MonoBehaviour
             if (currentMode == GameMode.LevelEditor && GridManager.Instance.HasLemAtIndex(cursorIndex))
             {
                 GridManager.Instance.RemoveLem(cursorIndex);
-                Debug.Log($"Removed Lem at index {cursorIndex}");
+                DebugLog.Info($"Removed Lem at index {cursorIndex}");
             }
 
             // Remove placeable space marker in Level Editor mode
             if (currentMode == GameMode.LevelEditor && GridManager.Instance.IsSpacePlaceable(cursorIndex))
             {
                 GridManager.Instance.SetSpacePlaceable(cursorIndex, false);
-                Debug.Log($"Removed placeable space at index {cursorIndex}");
+                DebugLog.Info($"Removed placeable space at index {cursorIndex}");
             }
         }
     }
@@ -329,11 +325,11 @@ public class EditorController : MonoBehaviour
             }
 
             ChangeBlockType(existingBlock, entry);
-            Debug.Log($"Changed block at index {cursorIndex} to {entry.GetDisplayName()}");
+            DebugLog.Info($"Changed block at index {cursorIndex} to {entry.GetDisplayName()}");
         }
         else
         {
-            Debug.Log($"Switched to {entry.GetDisplayName()} block");
+            DebugLog.Info($"Switched to {entry.GetDisplayName()} block");
         }
     }
 
@@ -379,21 +375,21 @@ public class EditorController : MonoBehaviour
             if (currentMode == GameMode.LevelEditor)
             {
                 currentMode = GameMode.Editor;
-                Debug.Log("=== EDITOR MODE === Place blocks");
+                DebugLog.Info("=== EDITOR MODE === Place blocks");
                 if (editorModeManager != null) editorModeManager.SetNormalMode();
                 UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Editor)
             {
                 currentMode = GameMode.LevelEditor;
-                Debug.Log("=== LEVEL EDITOR MODE === Place Lem and mark placeable spaces");
+                DebugLog.Info("=== LEVEL EDITOR MODE === Place Lem and mark placeable spaces");
                 if (editorModeManager != null) editorModeManager.SetEditorMode();
                 UpdateCursorVisibility();
             }
             else if (currentMode == GameMode.Play)
             {
                 // Can't toggle modes during play
-                Debug.Log("Exit Play mode first (press P)");
+                DebugLog.Info("Exit Play mode first (press P)");
             }
         }
 
@@ -404,12 +400,10 @@ public class EditorController : MonoBehaviour
             {
                 // Exit play mode, return to Editor
                 currentMode = GameMode.Editor;
-                Debug.Log("=== EXITED PLAY MODE === Back to Editor");
-                // Reset Lems to original Level Editor positions
+                DebugLog.Info("=== EXITED PLAY MODE === Back to Editor");
                 if (GridManager.Instance != null)
                 {
-                    GridManager.Instance.ResetAllLems();
-                    GridManager.Instance.RestoreOriginalKeyStates();
+                    GridManager.Instance.RestorePlayModeSnapshot();
                 }
                 UpdateCursorVisibility();
             }
@@ -423,10 +417,10 @@ public class EditorController : MonoBehaviour
                 }
                 if (GridManager.Instance != null)
                 {
-                    GridManager.Instance.CaptureOriginalKeyStates();
+                    GridManager.Instance.CapturePlayModeSnapshot();
                 }
                 currentMode = GameMode.Play;
-                Debug.Log("=== PLAY MODE === Lem is walking!");
+                DebugLog.Info("=== PLAY MODE === Lem is walking!");
                 UnfreezeAllLems();
                 UpdateCursorVisibility();
             }
@@ -474,7 +468,7 @@ public class EditorController : MonoBehaviour
             if (!GridManager.Instance.IsSpacePlaceable(cursorIndex))
             {
                 GridManager.Instance.SetSpacePlaceable(cursorIndex, true);
-                Debug.Log($"Marked space at index {cursorIndex} as placeable");
+                DebugLog.Info($"Marked space at index {cursorIndex} as placeable");
             }
         }
     }
@@ -492,7 +486,7 @@ public class EditorController : MonoBehaviour
         {
             if (GridManager.Instance.SaveLevel())
             {
-                Debug.Log("=== LEVEL SAVED === Level saved successfully");
+                DebugLog.Info("=== LEVEL SAVED === Level saved successfully");
             }
             else
             {
@@ -507,7 +501,7 @@ public class EditorController : MonoBehaviour
             {
                 if (GridManager.Instance.LoadLevel())
                 {
-                    Debug.Log("=== LEVEL LOADED === Level loaded successfully");
+                    DebugLog.Info("=== LEVEL LOADED === Level loaded successfully");
                     // Refresh the visualizer after loading
                     PlaceableSpaceVisualizer visualizer = FindObjectOfType<PlaceableSpaceVisualizer>();
                     if (visualizer != null)
@@ -530,7 +524,7 @@ public class EditorController : MonoBehaviour
         if (ctrlOrCmd && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.S))
         {
             string savePath = LevelSaveSystem.GetSavePath();
-            Debug.Log($"Levels are saved to: {savePath}");
+            DebugLog.Info($"Levels are saved to: {savePath}");
         }
     }
 }

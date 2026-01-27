@@ -13,6 +13,12 @@ public class KeyBlock : BaseBlock
     [Tooltip("Optional prefab to use for the key visual (falls back to a sphere if null)")]
     [SerializeField] private GameObject keyVisualPrefab;
 
+    [Tooltip("Optional mesh for key visual when prefab instantiation fails")]
+    [SerializeField] private Mesh keyVisualMesh;
+
+    [Tooltip("Optional material for key visual when prefab instantiation fails")]
+    [SerializeField] private Material keyVisualMaterial;
+
     [Tooltip("Key scale relative to grid cell size")]
     [SerializeField] private float keyScale = 0.2f;
 
@@ -47,11 +53,21 @@ public class KeyBlock : BaseBlock
         GameObject keyObj;
         if (keyVisualPrefab != null)
         {
-            keyObj = Instantiate(keyVisualPrefab);
+            Object instance = Instantiate((Object)keyVisualPrefab);
+            keyObj = instance as GameObject;
+            if (keyObj == null && instance is Component component)
+            {
+                keyObj = component.gameObject;
+            }
+            if (keyObj == null)
+            {
+                Debug.LogWarning($"[KeyBlock] Failed to instantiate key visual prefab on {name}. Falling back to mesh/sphere.", this);
+                keyObj = CreateKeyFromMeshOrSphere();
+            }
         }
         else
         {
-            keyObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            keyObj = CreateKeyFromMeshOrSphere();
         }
         keyObj.name = "Key";
         foreach (Collider collider in keyObj.GetComponentsInChildren<Collider>())
@@ -72,7 +88,7 @@ public class KeyBlock : BaseBlock
         }
 
         Renderer keyRenderer = keyObj.GetComponentInChildren<Renderer>();
-        if (keyRenderer != null && keyVisualPrefab == null)
+        if (keyRenderer != null && keyVisualPrefab == null && keyVisualMaterial == null)
         {
             keyRenderer.material.color = keyColor;
         }
@@ -81,6 +97,31 @@ public class KeyBlock : BaseBlock
         keyItem = keyObj.AddComponent<KeyItem>();
         keyItem.ConfigureSource(gridIndex, keyLocalYOffset, keyScale * keyVisualScaleMultiplier, keyCarryYOffset);
         ApplyKeyTransform(keyTransform, Vector3.up * keyLocalYOffset, GetKeyWorldScale());
+    }
+
+    private GameObject CreateKeyFromMeshOrSphere()
+    {
+        if (keyVisualMesh != null)
+        {
+            GameObject keyObj = new GameObject("Key");
+            MeshFilter filter = keyObj.AddComponent<MeshFilter>();
+            filter.sharedMesh = keyVisualMesh;
+
+            MeshRenderer renderer = keyObj.AddComponent<MeshRenderer>();
+            if (keyVisualMaterial != null)
+            {
+                renderer.sharedMaterial = keyVisualMaterial;
+            }
+            else
+            {
+                renderer.material.color = keyColor;
+            }
+
+            return keyObj;
+        }
+
+        GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        return sphere;
     }
 
     private void AttachKeyToLem(LemController lem)

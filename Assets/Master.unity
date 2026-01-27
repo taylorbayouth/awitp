@@ -307,6 +307,26 @@ MonoBehaviour:
     pairSize: 0
     maxCount: 1
     currentCount: 0
+  - entryId: 
+    blockType: 4
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
+  - entryId: 
+    blockType: 5
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 0
 --- !u!4 &285017513
 Transform:
   m_ObjectHideFlags: 0
@@ -353,7 +373,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inventory: {fileID: 1602858733}
   editorController: {fileID: 1602858729}
-  boxSize: 110
+  boxSize: 140
   spacing: 20
   itemPadding: 6
   topMargin: 24
@@ -602,6 +622,38 @@ MonoBehaviour:
     routeSteps: []
     isPairInventory: 1
     pairSize: 2
+    maxCount: 1
+    currentCount: 1
+  - entryId: Transporter_R2,U1
+    blockType: 3
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps:
+    - R2
+    - U1
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 1
+  - entryId: Key
+    blockType: 4
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
+    maxCount: 1
+    currentCount: 1
+  - entryId: Lock
+    blockType: 5
+    displayName: 
+    inventoryGroupId: 
+    flavorId: 
+    routeSteps: []
+    isPairInventory: 0
+    pairSize: 0
     maxCount: 1
     currentCount: 1
 --- !u!1 &1728154825
