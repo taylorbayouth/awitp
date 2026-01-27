@@ -51,7 +51,7 @@ public class GridVisualizer : MonoBehaviour
             CreateGridLine($"VerticalLine_{x}", start, end, gridColor);
         }
 
-        Debug.Log($"Grid visualization created: {gridManager.gridWidth}x{gridManager.gridHeight}, line color = {gridColor}");
+        DebugLog.Info($"Grid visualization created: {gridManager.gridWidth}x{gridManager.gridHeight}, line color = {gridColor}");
     }
 
     private void CreateGridLine(string name, Vector3 start, Vector3 end, Color color)

@@ -42,7 +42,7 @@ public class TransporterBlock : BaseBlock
 
         if (!isForward)
         {
-            steps = ReverseSteps(steps);
+            steps = RouteParser.ReverseSteps(steps);
         }
 
         isArmed = false;
@@ -56,6 +56,50 @@ public class TransporterBlock : BaseBlock
         base.Start();
         previewOriginIndex = gridIndex;
         BuildPreview();
+    }
+
+    private void OnDestroy()
+    {
+        // Stop any running transport coroutine to prevent state corruption
+        StopAllCoroutines();
+
+        // Clean up preview material to prevent memory leak
+        if (previewMaterialInstance != null)
+        {
+            Destroy(previewMaterialInstance);
+            previewMaterialInstance = null;
+        }
+
+        // Clear preview objects
+        ClearPreview();
+
+        // Reset state in case coroutine was interrupted mid-transport
+        if (isTransporting && currentPlayer != null)
+        {
+            // Attempt to restore Lem state if we were interrupted mid-transport
+            currentPlayer.transform.SetParent(null, true);
+            Rigidbody lemRb = currentPlayer.GetComponent<Rigidbody>();
+            if (lemRb != null)
+            {
+                lemRb.isKinematic = false;
+                lemRb.useGravity = true;
+            }
+            currentPlayer.SetFrozen(false);
+        }
+    }
+
+    /// <summary>
+    /// Resets the transporter to its initial state. Useful for level resets.
+    /// </summary>
+    public void ResetState()
+    {
+        StopAllCoroutines();
+        isTransporting = false;
+        isForward = true;
+        isArmed = true;
+        waitingForExit = false;
+        hasSnappedThisRide = false;
+        SetCenterTriggerEnabled(true);
     }
 
     private IEnumerator TransportRoutine(LemController lem, List<Vector2Int> steps)
@@ -140,45 +184,96 @@ public class TransporterBlock : BaseBlock
 
     private List<Vector2Int> BuildSteps()
     {
-        List<Vector2Int> steps = new List<Vector2Int>();
-        if (routeSteps == null) return steps;
+        return RouteParser.ParseRouteSteps(routeSteps);
+    }
 
-        foreach (string raw in routeSteps)
+    #region Placement Validation Overrides
+
+    /// <summary>
+    /// Returns all grid indices along this transporter's route.
+    /// These positions are blocked for other block placement.
+    /// </summary>
+    public override int[] GetBlockedIndices()
+    {
+        List<int> pathIndices = GetRoutePathIndices();
+        // Exclude the origin (where this block sits) - it's already occupied by this block
+        if (pathIndices.Count > 0 && pathIndices[0] == gridIndex)
         {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            string token = raw.Trim().ToUpperInvariant();
-            char dir = token[0];
-            if (token.Length < 2 || !int.TryParse(token.Substring(1), out int count) || count <= 0) continue;
+            pathIndices.RemoveAt(0);
+        }
+        return pathIndices.ToArray();
+    }
 
-            Vector2Int step = dir switch
-            {
-                'L' => new Vector2Int(-1, 0),
-                'R' => new Vector2Int(1, 0),
-                'U' => new Vector2Int(0, 1),
-                'D' => new Vector2Int(0, -1),
-                _ => Vector2Int.zero
-            };
+    /// <summary>
+    /// Checks if this transporter can be placed at the target index.
+    /// Validates that the entire route path is clear of other blocks.
+    /// </summary>
+    public override bool CanBePlacedAt(int targetIndex, GridManager grid)
+    {
+        if (grid == null) return true;
 
-            if (step == Vector2Int.zero) continue;
-            for (int i = 0; i < count; i++)
+        // Calculate what the route would be from this position
+        Vector2Int current = grid.IndexToCoordinates(targetIndex);
+        List<Vector2Int> steps = BuildSteps();
+
+        foreach (Vector2Int step in steps)
+        {
+            current += step;
+            if (!grid.IsValidCoordinates(current.x, current.y))
             {
-                steps.Add(step);
+                continue; // Out of bounds positions are handled elsewhere
+            }
+
+            int idx = grid.CoordinatesToIndex(current);
+
+            // Check if there's already a block at this position
+            if (grid.HasBlockAtIndex(idx))
+            {
+                return false;
+            }
+
+            // Check if another transporter's route passes through here
+            if (grid.IsIndexBlockedByAnyBlock(idx, this))
+            {
+                return false;
             }
         }
 
-        return steps;
+        return true;
     }
 
-    private static List<Vector2Int> ReverseSteps(List<Vector2Int> steps)
+    /// <summary>
+    /// Returns error message explaining why placement failed.
+    /// </summary>
+    public override string GetPlacementErrorMessage(int targetIndex, GridManager grid)
     {
-        List<Vector2Int> reversed = new List<Vector2Int>(steps.Count);
-        for (int i = steps.Count - 1; i >= 0; i--)
+        if (grid == null) return null;
+
+        Vector2Int current = grid.IndexToCoordinates(targetIndex);
+        List<Vector2Int> steps = BuildSteps();
+
+        foreach (Vector2Int step in steps)
         {
-            Vector2Int step = steps[i];
-            reversed.Add(new Vector2Int(-step.x, -step.y));
+            current += step;
+            if (!grid.IsValidCoordinates(current.x, current.y)) continue;
+
+            int idx = grid.CoordinatesToIndex(current);
+
+            if (grid.HasBlockAtIndex(idx))
+            {
+                return $"Route path blocked by existing block at index {idx}";
+            }
+
+            if (grid.IsIndexBlockedByAnyBlock(idx, this))
+            {
+                return $"Route path conflicts with another transporter's route at index {idx}";
+            }
         }
-        return reversed;
+
+        return null;
     }
+
+    #endregion
 
     public List<int> GetRoutePathIndices()
     {
@@ -329,7 +424,7 @@ public class TransporterBlock : BaseBlock
             mat.SetFloat("_Mode", 3f);
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
             mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 0);
+            mat.SetInt("_ZWrite", 1);
             mat.DisableKeyword("_ALPHATEST_ON");
             mat.EnableKeyword("_ALPHABLEND_ON");
             mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");

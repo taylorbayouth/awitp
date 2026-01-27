@@ -73,14 +73,16 @@ public class InventoryUI : MonoBehaviour
 
         if (!Application.isPlaying || editorController.currentMode != GameMode.Play)
         {
-            IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntries();
+            GameMode mode = editorController != null ? editorController.currentMode : GameMode.Editor;
+            IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
+            bool showInfinite = mode == GameMode.LevelEditor;
             int drawIndex = 0;
             for (int i = 0; i < entries.Count; i++)
             {
-                if (ShouldHideFromInventory(entries[i])) continue;
+                if (ShouldHideFromInventory(entries[i], mode)) continue;
                 bool isSelected = editorController != null && editorController.CurrentInventoryIndex == i;
                 bool showKeyHint = editorController != null;
-                DrawBlockSlot(entries[i], i, drawIndex, isSelected, showKeyHint);
+                DrawBlockSlot(entries[i], i, drawIndex, isSelected, showKeyHint, showInfinite);
                 drawIndex++;
             }
 
@@ -150,7 +152,7 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex, bool isSelected, bool showKeyHint)
+    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex, bool isSelected, bool showKeyHint, bool showInfinite)
     {
         if (entry == null) return;
 
@@ -167,7 +169,7 @@ public class InventoryUI : MonoBehaviour
 
         // Draw colored block preview in the center
         Color blockColor = GetColorForBlockType(entry.blockType);
-        if (available == 0)
+        if (!showInfinite && available == 0)
         {
             blockColor.a = 0.3f; // Dim if unavailable
         }
@@ -184,7 +186,8 @@ public class InventoryUI : MonoBehaviour
 
         // Draw count text at bottom
         Rect countRect = new Rect(xPos, yPos + boxSize - (18f + itemPadding), boxSize, 18f);
-        GUI.Label(countRect, $"{available}/{total}", textStyle);
+        string countText = showInfinite ? "INF" : $"{available}/{total}";
+        GUI.Label(countRect, countText, textStyle);
 
         // Draw block type label at top (height increased to prevent clipping)
         Rect labelRect = new Rect(xPos, yPos + itemPadding, boxSize, 18f);
@@ -209,9 +212,10 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private bool ShouldHideFromInventory(BlockInventoryEntry entry)
+    private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
     {
         if (entry == null) return true;
+        if (mode == GameMode.LevelEditor) return false;
         return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
     }
 

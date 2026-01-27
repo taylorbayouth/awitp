@@ -23,6 +23,7 @@ Serializable data structure that represents a complete level state.
 - Placeable spaces (list of indices where blocks can be placed)
 - Lem placements (position and facing direction)
 - Inventory entries (block flavors, counts, grouping)
+- Key states (location: World, KeyBlock, Lem, or LockBlock)
 - Metadata (level name, save timestamp)
 
 #### LevelSaveSystem.cs
@@ -194,18 +195,23 @@ Success/failure reported to console
 - `currentCount` (int): Current count (reset to max on load)
 
 **blocks** (array): List of all placed blocks
-- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
+- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter, 4=Key, 5=Lock)
 - `gridIndex` (int): Linear index in grid (0 to width*height-1)
 - `inventoryKey` (string): Inventory group key used for counts
 - `flavorId` (string): Flavor identifier (e.g., A, L3,U1)
 - `routeSteps` (string[]): Transporter-only route steps (optional)
 
 **permanentBlocks** (array): List of designer-placed permanent blocks
-- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter)
+- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter, 4=Key, 5=Lock)
 - `gridIndex` (int): Linear index in grid (0 to width*height-1)
 - `inventoryKey` (string): Inventory group key (optional)
 - `flavorId` (string): Flavor identifier (optional)
 - `routeSteps` (string[]): Transporter-only route steps (optional)
+
+**keyStates** (array): Tracks the location of each key in the level
+- `keyLocation` (enum): Where the key is (0=World, 1=KeyBlock, 2=Lem, 3=LockBlock)
+- `sourceKeyBlockIndex` (int): Original KeyBlock grid index
+- `lockBlockIndex` (int): If locked, the LockBlock grid index
 
 **placeableSpaceIndices** (array): Grid indices where blocks can be placed during gameplay
 - Only stores indices where placeable = true

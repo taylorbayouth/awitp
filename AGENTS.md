@@ -93,8 +93,9 @@ In Unity Editor:
 
 ## Template Methods for Subclasses
 
-BaseBlock provides three virtual methods that subclasses can override:
+BaseBlock provides virtual methods that subclasses can override:
 
+### Player Interaction Methods
 ```csharp
 // Called when Lem enters block (trigger or collision)
 protected virtual void OnPlayerEnter() { }
@@ -104,6 +105,21 @@ protected virtual void OnPlayerExit() { }
 
 // Called when Lem reaches the center point (CenterTrigger)
 protected virtual void OnPlayerReachCenter() { }
+```
+
+### Placement Validation Methods
+```csharp
+// Check if this block can be placed at the target index
+public virtual bool CanBePlacedAt(int targetIndex, GridManager grid) { return true; }
+
+// Return grid indices this block reserves (prevents other blocks from occupying)
+public virtual int[] GetBlockedIndices() { return Array.Empty<int>(); }
+
+// Validate group requirements after placement (e.g., teleporter pairs)
+public virtual bool ValidateGroupPlacement(GridManager grid) { return true; }
+
+// Return user-friendly error message for failed placement
+public virtual string GetPlacementErrorMessage(int targetIndex, GridManager grid) { return null; }
 ```
 
 ## Implementation Examples
@@ -159,22 +175,55 @@ public class TransporterBlock : BaseBlock
 }
 ```
 
-### Example 3: Custom Teleporter Block
+### Example 3: TeleporterBlock (Actual Implementation)
 
 ```csharp
 public class TeleporterBlock : BaseBlock
 {
-    public Transform destinationTransform;
-
+    // Finds matching teleporter with same flavorId
     protected override void OnPlayerReachCenter()
     {
-        if (currentPlayer != null && destinationTransform != null)
-        {
-            // Teleport player
-            currentPlayer.transform.position = destinationTransform.position;
+        LemController lem = currentPlayer;
+        if (lem == null || IsOnCooldown(lem)) return;
 
-            // Optional: Play effect, sound, etc.
-            Debug.Log($"Teleported Lem to {destinationTransform.position}");
+        TeleporterBlock destination = FindMatchingTeleporter();
+        if (destination == null) return;
+
+        StartCoroutine(TeleportSequence(lem, destination));
+    }
+
+    // Validates teleporter has exactly one matching pair
+    public override bool ValidateGroupPlacement(GridManager grid)
+    {
+        return HasValidPair();
+    }
+}
+```
+
+### Example 4: KeyBlock and LockBlock
+
+```csharp
+public class KeyBlock : BaseBlock
+{
+    protected override void OnPlayerReachCenter()
+    {
+        // Lem collects the key when reaching center
+        if (currentPlayer != null && keyItem != null)
+        {
+            currentPlayer.CollectKey(keyItem);
+        }
+    }
+}
+
+public class LockBlock : BaseBlock
+{
+    protected override void OnPlayerReachCenter()
+    {
+        // Lem deposits key into lock
+        if (currentPlayer != null && currentPlayer.HasKey())
+        {
+            KeyItem key = currentPlayer.DropKey();
+            key.AttachToLock(this);
         }
     }
 }
@@ -346,8 +395,12 @@ Potential improvements to the detection system:
 
 ## Related Files
 
-- **BaseBlock.cs** - Main block class with detection logic
+- **BaseBlock.cs** - Main block class with detection logic and placement validation
 - **CenterTrigger.cs** - Precise center detection component
 - **LemController.cs** - Player character with physics and collision
-- **TransporterBlock.cs** - Example using OnPlayerReachCenter
-- **CrumblerBlock.cs** - Example using OnPlayerExit
+- **TransporterBlock.cs** - Moving platform using OnPlayerReachCenter and GetBlockedIndices
+- **TeleporterBlock.cs** - Paired teleportation with ValidateGroupPlacement
+- **CrumblerBlock.cs** - Breakable block using OnPlayerExit
+- **KeyBlock.cs** - Collectible key block
+- **LockBlock.cs** - Key receiver block
+- **RouteParser.cs** - Shared utility for transporter route parsing

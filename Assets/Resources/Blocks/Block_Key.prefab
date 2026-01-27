@@ -115,6 +115,8 @@ MonoBehaviour:
   centerLabelDuration: 0.15
   keyColor: {r: 0, g: 1, b: 0, a: 1}
   keyVisualPrefab: {fileID: 100100000, guid: fa186174f8c185c4ca69b3977dc19196, type: 3}
-  keyScale: 0.2
+  keyVisualMesh: {fileID: 6093789492850456457, guid: e93ba1a8b31807e4ab5e3864c32cfb59, type: 3}
+  keyVisualMaterial: {fileID: 2100000, guid: 3cd972dd761e85e41ae854dbf7319b50, type: 2}
+  keyScale: 0.3
   keyLocalYOffset: 0.6
   keyCarryYOffset: 0.6

@@ -64,7 +64,7 @@ public class CameraSetup : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.C))
         {
             SetupCamera();
-            Debug.Log("Camera setup refreshed manually (C key pressed)");
+            DebugLog.Info("Camera setup refreshed manually (C key pressed)");
         }
     }
 
@@ -94,7 +94,7 @@ public class CameraSetup : MonoBehaviour
     private void RefreshCameraSetup()
     {
         SetupCamera();
-        Debug.Log("Camera setup refreshed via context menu");
+        DebugLog.Info("Camera setup refreshed via context menu");
     }
 
     public void SetupCamera()
@@ -115,12 +115,12 @@ public class CameraSetup : MonoBehaviour
         if (useOrthographic)
         {
             targetCamera.orthographicSize = CalculateOrthographicSize();
-            Debug.Log($"CameraSetup: Orthographic camera at {targetCamera.transform.position}, " +
+            DebugLog.Info($"CameraSetup: Orthographic camera at {targetCamera.transform.position}, " +
                       $"size={targetCamera.orthographicSize:F2}, padding={paddingPercent:F2}");
         }
         else
         {
-            Debug.Log($"CameraSetup: Perspective camera at {targetCamera.transform.position}, " +
+            DebugLog.Info($"CameraSetup: Perspective camera at {targetCamera.transform.position}, " +
                       $"distance={distanceFromGrid:F2}, FOV={targetCamera.fieldOfView:F1}°");
         }
     }
@@ -157,7 +157,7 @@ public class CameraSetup : MonoBehaviour
         // Enforce minimum size to prevent extreme zoom on tiny grids
         size = Mathf.Max(size, minOrthographicSize);
 
-        Debug.Log($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight}, " +
+        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight}, " +
                   $"aspect={aspect:F2}, heightNeeded={heightNeeded:F2}, widthNeeded={widthNeeded:F2}, " +
                   $"padding={paddingPercent:F2}, final size={size:F2}");
 

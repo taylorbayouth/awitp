@@ -51,6 +51,7 @@ public class CenterTrigger : MonoBehaviour
         }
         if (other.CompareTag("Player"))
         {
+            LogCrumblerSphere("enter", other);
             UpdateCenterState(other);
         }
     }
@@ -84,6 +85,7 @@ public class CenterTrigger : MonoBehaviour
                 isActive = false;
                 owner.NotifyCenterTriggerExit();
             }
+            LogCrumblerSphere("exit", other);
         }
     }
 
@@ -120,6 +122,17 @@ public class CenterTrigger : MonoBehaviour
         }
 
         return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;
+    }
+
+    private void LogCrumblerSphere(string phase, Collider other)
+    {
+        if (owner == null || owner.blockType != BlockType.Crumbler) return;
+        SphereCollider sphereCollider = sphere ?? GetComponent<SphereCollider>();
+        if (sphereCollider == null) return;
+
+        Vector3 footPoint = GetFootPoint(other);
+        float distance = Vector3.Distance(footPoint, transform.position);
+        DebugLog.Crumbler($"[CrumblerCenter] Block {owner.gridIndex}: sphere {phase}. Foot distance {distance:0.###}, radius {sphereCollider.radius:0.###}.");
     }
 
 #if UNITY_EDITOR

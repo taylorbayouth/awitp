@@ -24,6 +24,10 @@ using System;
 /// </summary>
 public class LemController : MonoBehaviour
 {
+    [Header("Glitch Visuals")]
+    [Tooltip("Local rotation offset (degrees) to align Glitch with +X movement")]
+    [SerializeField] private Vector3 glitchRotationOffset = new Vector3(0f, 90f, 0f);
+
     #region Inspector Fields
 
     [Header("Movement")]
@@ -58,6 +62,14 @@ public class LemController : MonoBehaviour
     private CapsuleCollider capsuleCollider;
     private Transform hatTransform;
     private Transform footPoint;
+    private Animator glitchAnimator;
+    private bool hasAnimator;
+    private bool hasSpeedParam;
+    private bool hasIsWalkingParam;
+    private bool hasHasKeyParam;
+    private Transform glitchVisual;
+    private Transform glitchPivot;
+    private Vector3 lastGlitchRotationOffset;
 
     #endregion
 
@@ -100,6 +112,10 @@ public class LemController : MonoBehaviour
             footPoint = transform;
         }
         hatTransform = transform.Find("Hat");
+        glitchPivot = transform.Find("GlitchPivot");
+        glitchVisual = transform.Find("Glitch");
+        CacheAnimator();
+        ApplyGlitchVisualRotation();
     }
 
     void FixedUpdate()
@@ -124,6 +140,13 @@ public class LemController : MonoBehaviour
         {
             Die();
         }
+
+        if (glitchRotationOffset != lastGlitchRotationOffset)
+        {
+            ApplyGlitchVisualRotation();
+        }
+
+        UpdateAnimator();
     }
 
     private bool IsOutsideCameraBounds()
@@ -230,7 +253,9 @@ public class LemController : MonoBehaviour
     {
         float yRotation = facingRight ? 0f : 180f;
         transform.rotation = Quaternion.Euler(0f, yRotation, 0f);
+        ApplyGlitchVisualRotation();
     }
+
 
     public void Die()
     {
@@ -293,33 +318,10 @@ public class LemController : MonoBehaviour
         foot.transform.SetParent(lem.transform);
         foot.transform.localPosition = Vector3.zero;
 
-        // Body (capsule)
-        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-        body.name = "Body";
-        body.transform.SetParent(lem.transform);
-        body.transform.localPosition = Vector3.up * (lemHeight * 0.5f);
-        body.transform.localScale = new Vector3(lemHeight * 0.5f, lemHeight * 0.5f, lemHeight * 0.5f);
-        Destroy(body.GetComponent<Collider>());
-
-        Renderer bodyRenderer = body.GetComponent<Renderer>();
-        if (bodyRenderer != null)
+        bool attachedGlitch = AttachGlitchVisual(lem.transform, lemHeight);
+        if (!attachedGlitch)
         {
-            bodyRenderer.material.color = Color.red; // Red body
-        }
-
-        // Hat (cube) - points in walking direction
-        GameObject hat = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        hat.name = "Hat";
-        hat.transform.SetParent(lem.transform);
-        hat.transform.localPosition = new Vector3(lemRadius * 1.5f, lemHeight * 0.9f, 0);
-        hat.transform.localScale = new Vector3(lemRadius * 1.5f, lemHeight * 0.12f, lemRadius);
-        hat.transform.localRotation = Quaternion.Euler(0, 0, -90f);
-        Destroy(hat.GetComponent<Collider>());
-
-        Renderer hatRenderer = hat.GetComponent<Renderer>();
-        if (hatRenderer != null)
-        {
-            hatRenderer.material.color = new Color(0.1f, 0.1f, 0.1f); // Dark hat
+            CreateFallbackBody(lem.transform, lemHeight);
         }
 
         // Collider on parent - smaller and centered
@@ -332,8 +334,160 @@ public class LemController : MonoBehaviour
         LemController controller = lem.AddComponent<LemController>();
         controller.isFrozen = true; // Start frozen in editor
         controller.UpdateFacingVisuals();
+        controller.glitchVisual = lem.transform.Find("Glitch");
+        controller.ApplyGlitchVisualRotation();
 
         return lem;
+    }
+
+    private static bool AttachGlitchVisual(Transform parent, float targetHeight)
+    {
+        if (parent == null) return false;
+
+        GameObject prefab = LoadGlitchPrefab();
+        if (prefab == null)
+        {
+            Debug.LogWarning("[LemController] Glitch prefab not found. Using fallback body.");
+            return false;
+        }
+
+        Transform pivot = new GameObject("GlitchPivot").transform;
+        pivot.SetParent(parent, false);
+
+        GameObject visual = Instantiate(prefab, pivot);
+        visual.name = "Glitch";
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = Quaternion.identity;
+        visual.transform.localScale = Vector3.one;
+
+        Material builtInMaterial = LoadGlitchMaterial();
+        if (builtInMaterial != null)
+        {
+            Renderer[] renderers = visual.GetComponentsInChildren<Renderer>();
+            foreach (Renderer renderer in renderers)
+            {
+                if (renderer == null) continue;
+                Material[] materials = renderer.sharedMaterials;
+                if (materials == null || materials.Length == 0)
+                {
+                    renderer.sharedMaterial = builtInMaterial;
+                }
+                else
+                {
+                    for (int i = 0; i < materials.Length; i++)
+                    {
+                        materials[i] = builtInMaterial;
+                    }
+                    renderer.sharedMaterials = materials;
+                }
+            }
+        }
+
+        if (!TryGetBoundsInParentSpace(visual.transform, parent, out Bounds bounds))
+        {
+            return true;
+        }
+
+        float height = bounds.size.y;
+        if (height > 0.0001f)
+        {
+            float scale = targetHeight / height;
+            visual.transform.localScale = Vector3.one * scale;
+            if (TryGetBoundsInParentSpace(visual.transform, parent, out bounds))
+            {
+                // Center on X and ground on Y; keep Z centered on the block to avoid front-edge drift.
+                Vector3 offset = new Vector3(-bounds.center.x, -bounds.min.y, 0f);
+                pivot.localPosition = offset;
+            }
+        }
+
+        return true;
+    }
+
+    private void ApplyGlitchVisualRotation()
+    {
+        if (glitchPivot == null)
+        {
+            glitchPivot = transform.Find("GlitchPivot");
+        }
+
+        if (glitchPivot == null) return;
+
+        glitchPivot.localRotation = Quaternion.Euler(glitchRotationOffset);
+        lastGlitchRotationOffset = glitchRotationOffset;
+    }
+
+    private static bool TryGetBoundsInParentSpace(Transform root, Transform parent, out Bounds bounds)
+    {
+        bounds = new Bounds();
+        if (root == null || parent == null) return false;
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>();
+        if (renderers == null || renderers.Length == 0) return false;
+
+        bool hasBounds = false;
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null) continue;
+            Bounds rBounds = renderer.bounds;
+            Vector3 min = rBounds.min;
+            Vector3 max = rBounds.max;
+            Vector3[] corners =
+            {
+                new Vector3(min.x, min.y, min.z),
+                new Vector3(min.x, min.y, max.z),
+                new Vector3(min.x, max.y, min.z),
+                new Vector3(min.x, max.y, max.z),
+                new Vector3(max.x, min.y, min.z),
+                new Vector3(max.x, min.y, max.z),
+                new Vector3(max.x, max.y, min.z),
+                new Vector3(max.x, max.y, max.z),
+            };
+
+            for (int i = 0; i < corners.Length; i++)
+            {
+                Vector3 localCorner = parent.InverseTransformPoint(corners[i]);
+                if (!hasBounds)
+                {
+                    bounds = new Bounds(localCorner, Vector3.zero);
+                    hasBounds = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(localCorner);
+                }
+            }
+        }
+
+        return hasBounds;
+    }
+
+    private static GameObject LoadGlitchPrefab()
+    {
+        GameObject prefab = null;
+#if UNITY_EDITOR
+        prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Glitch/Prefabs/PF_Glitch.prefab");
+#endif
+        return prefab;
+    }
+
+    private static Material LoadGlitchMaterial()
+    {
+        Material mat = null;
+#if UNITY_EDITOR
+        mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Glitch/Materials/Built-In/M_Glitch.mat");
+#endif
+        return mat;
+    }
+
+    private static void CreateFallbackBody(Transform parent, float lemHeight)
+    {
+        GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        body.name = "Body";
+        body.transform.SetParent(parent, false);
+        body.transform.localPosition = Vector3.up * (lemHeight * 0.5f);
+        body.transform.localScale = new Vector3(lemHeight * 0.5f, lemHeight * 0.5f, lemHeight * 0.5f);
+        Destroy(body.GetComponent<Collider>());
     }
 
     #region Debug
@@ -363,4 +517,55 @@ public class LemController : MonoBehaviour
     }
 
     #endregion
+
+    private void CacheAnimator()
+    {
+        glitchAnimator = GetComponentInChildren<Animator>();
+        if (glitchAnimator == null)
+        {
+            hasAnimator = false;
+            return;
+        }
+
+        hasAnimator = true;
+        hasSpeedParam = false;
+        hasIsWalkingParam = false;
+        hasHasKeyParam = false;
+
+        foreach (AnimatorControllerParameter param in glitchAnimator.parameters)
+        {
+            if (param.name == "Speed") hasSpeedParam = true;
+            if (param.name == "IsWalking") hasIsWalkingParam = true;
+            if (param.name == "HasKey") hasHasKeyParam = true;
+        }
+    }
+
+    private void UpdateAnimator()
+    {
+        if (!hasAnimator || glitchAnimator == null) return;
+
+        float horizontalSpeed = Mathf.Abs(rb != null ? rb.velocity.x : 0f);
+        if (isFrozen)
+        {
+            horizontalSpeed = 0f;
+        }
+        bool isWalking = !isFrozen && horizontalSpeed > 0.01f;
+
+        if (hasSpeedParam)
+        {
+            glitchAnimator.SetFloat("Speed", horizontalSpeed);
+        }
+
+        if (hasIsWalkingParam)
+        {
+            glitchAnimator.SetBool("IsWalking", isWalking);
+        }
+
+        if (hasHasKeyParam)
+        {
+            bool hasKey = KeyItem.FindHeldKey(this) != null;
+            glitchAnimator.SetBool("HasKey", hasKey);
+        }
+
+    }
 }

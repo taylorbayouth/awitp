@@ -32,6 +32,39 @@ public class TeleporterBlock : BaseBlock
 
     private static readonly Dictionary<LemController, float> LemCooldownUntil = new Dictionary<LemController, float>();
 
+    private void OnDestroy()
+    {
+        // Clean up any stale entries referencing destroyed Lems
+        CleanupStaleCooldownEntries();
+    }
+
+    /// <summary>
+    /// Removes cooldown entries for Lems that have been destroyed.
+    /// Called on destroy and periodically during cooldown checks.
+    /// </summary>
+    private static void CleanupStaleCooldownEntries()
+    {
+        if (LemCooldownUntil.Count == 0) return;
+
+        List<LemController> staleKeys = null;
+        foreach (var kvp in LemCooldownUntil)
+        {
+            if (kvp.Key == null)
+            {
+                if (staleKeys == null) staleKeys = new List<LemController>();
+                staleKeys.Add(kvp.Key);
+            }
+        }
+
+        if (staleKeys != null)
+        {
+            foreach (var key in staleKeys)
+            {
+                LemCooldownUntil.Remove(key);
+            }
+        }
+    }
+
     protected override void Start()
     {
         base.Start();
@@ -158,12 +191,19 @@ public class TeleporterBlock : BaseBlock
             lem.SetFrozen(false);
         }
 
-        Debug.Log($"[TeleporterBlock] Teleported Lem to '{destination.name}' (flavor '{GetTeleportKey()}')", this);
+        DebugLog.Info($"[TeleporterBlock] Teleported Lem to '{destination.name}' (flavor '{GetTeleportKey()}')", this);
     }
 
     private bool IsOnCooldown(LemController lem)
     {
         if (lem == null) return true;
+
+        // Periodically clean up stale entries (every 10+ entries)
+        if (LemCooldownUntil.Count > 10)
+        {
+            CleanupStaleCooldownEntries();
+        }
+
         if (LemCooldownUntil.TryGetValue(lem, out float until))
         {
             return Time.time < until;
@@ -177,6 +217,59 @@ public class TeleporterBlock : BaseBlock
         float cooldown = Mathf.Max(teleportCooldownSeconds, preTeleportPauseSeconds + postTeleportPauseSeconds);
         LemCooldownUntil[lem] = Time.time + cooldown;
     }
+
+    #region Placement Validation Overrides
+
+    /// <summary>
+    /// Validates that this teleporter has exactly one matching pair.
+    /// Teleporters must come in pairs to function.
+    /// </summary>
+    public override bool ValidateGroupPlacement(GridManager grid)
+    {
+        return HasValidPair();
+    }
+
+    /// <summary>
+    /// Returns error message if teleporter doesn't have a valid pair.
+    /// </summary>
+    public override string GetPlacementErrorMessage(int targetIndex, GridManager grid)
+    {
+        if (!HasValidPair())
+        {
+            return $"Teleporter '{GetTeleportKey()}' needs exactly one matching pair to function";
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Checks if this teleporter has exactly one other teleporter with the same key.
+    /// </summary>
+    public bool HasValidPair()
+    {
+        TeleporterBlock[] teleporters = FindObjectsOfType<TeleporterBlock>();
+        if (teleporters == null) return false;
+
+        string key = GetTeleportKey();
+        int matchCount = 0;
+
+        foreach (TeleporterBlock teleporter in teleporters)
+        {
+            if (teleporter == null || teleporter == this) continue;
+            if (teleporter.GetTeleportKey() == key)
+            {
+                matchCount++;
+            }
+        }
+
+        return matchCount == 1; // Exactly one pair
+    }
+
+    /// <summary>
+    /// Gets the teleport key for this block. Made public for validation purposes.
+    /// </summary>
+    public string GetKey() => GetTeleportKey();
+
+    #endregion
 
     // Destination cooldown handled by Lem-based cooldown.
 

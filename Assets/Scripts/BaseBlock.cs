@@ -78,7 +78,7 @@ public class BaseBlock : MonoBehaviour
     public float onTriggerYOffset = 1f;
 
     [Tooltip("Radius of the center detection sphere")]
-    public float centerTriggerRadius = 0.02f;
+    public float centerTriggerRadius = 0.08f;
 
     [Tooltip("Y offset for center trigger relative to block scale")]
     public float centerTriggerYOffset = 0.5f;
@@ -141,7 +141,7 @@ public class BaseBlock : MonoBehaviour
         if (string.IsNullOrEmpty(uniqueID))
         {
             uniqueID = Guid.NewGuid().ToString();
-            Debug.Log($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
+            DebugLog.Info($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
         EnsureVisualRoot();
@@ -159,7 +159,7 @@ public class BaseBlock : MonoBehaviour
             if (GridManager.Instance != null)
             {
                 GridManager.Instance.RegisterBlock(this);
-                Debug.Log($"[BaseBlock] Registered {blockType} block at grid index {gridIndex}");
+                DebugLog.Info($"[BaseBlock] Registered {blockType} block at grid index {gridIndex}");
             }
             else
             {
@@ -198,7 +198,7 @@ public class BaseBlock : MonoBehaviour
             {
                 // Fallback: Create primitive cube
                 blockObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                Debug.Log($"[BaseBlock] Created primitive cube for {type} block (no prefab found)");
+                DebugLog.Info($"[BaseBlock] Created primitive cube for {type} block (no prefab found)");
             }
 
             // Set descriptive name for hierarchy
@@ -242,7 +242,7 @@ public class BaseBlock : MonoBehaviour
                 Debug.LogWarning($"[BaseBlock] No Renderer found on {type} block. Block will be invisible.");
             }
 
-            Debug.Log($"[BaseBlock] Successfully instantiated {type} block at grid index {gridIndex}");
+            DebugLog.Info($"[BaseBlock] Successfully instantiated {type} block at grid index {gridIndex}");
             return block;
         }
         catch (Exception ex)
@@ -267,33 +267,33 @@ public class BaseBlock : MonoBehaviour
         {
             case BlockType.Crumbler:
                 block = blockObj.AddComponent<CrumblerBlock>();
-                Debug.Log($"[BaseBlock] Added CrumblerBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added CrumblerBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Transporter:
                 block = blockObj.AddComponent<TransporterBlock>();
-                Debug.Log($"[BaseBlock] Added TransporterBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added TransporterBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Key:
                 block = blockObj.AddComponent<KeyBlock>();
-                Debug.Log($"[BaseBlock] Added KeyBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added KeyBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Lock:
                 block = blockObj.AddComponent<LockBlock>();
-                Debug.Log($"[BaseBlock] Added LockBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added LockBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Teleporter:
                 block = blockObj.AddComponent<TeleporterBlock>();
-                Debug.Log($"[BaseBlock] Added TeleporterBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added TeleporterBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Default:
             default:
                 block = blockObj.AddComponent<BaseBlock>();
-                Debug.Log($"[BaseBlock] Added BaseBlock component to {blockObj.name}");
+                DebugLog.Info($"[BaseBlock] Added BaseBlock component to {blockObj.name}");
                 break;
         }
 
@@ -338,15 +338,15 @@ public class BaseBlock : MonoBehaviour
             prefab = Resources.Load<GameObject>("Blocks/BaseBlock");
             if (prefab == null)
             {
-                Debug.Log($"[BaseBlock] No prefab found at Resources/{prefabName} or Resources/Blocks/BaseBlock, will use primitive");
+                DebugLog.Info($"[BaseBlock] No prefab found at Resources/{prefabName} or Resources/Blocks/BaseBlock, will use primitive");
                 return null;
             }
 
-            Debug.Log($"[BaseBlock] Loaded base prefab from Resources/Blocks/BaseBlock for {type}");
+            DebugLog.Info($"[BaseBlock] Loaded base prefab from Resources/Blocks/BaseBlock for {type}");
             return Instantiate(prefab);
         }
 
-        Debug.Log($"[BaseBlock] Loaded prefab from Resources/{prefabName}");
+        DebugLog.Info($"[BaseBlock] Loaded prefab from Resources/{prefabName}");
         return Instantiate(prefab);
     }
 
@@ -441,7 +441,7 @@ public class BaseBlock : MonoBehaviour
                     {
                         _cachedInventory.ReturnBlock(blockType);
                     }
-                    Debug.Log($"[BaseBlock] Returned {blockType} block at index {gridIndex} to inventory");
+                    DebugLog.Info($"[BaseBlock] Returned {blockType} block at index {gridIndex} to inventory");
                 }
                 else
                 {
@@ -450,14 +450,14 @@ public class BaseBlock : MonoBehaviour
             }
             else
             {
-                Debug.Log($"[BaseBlock] Permanent {blockType} block at index {gridIndex} destroyed (not returned to inventory)");
+                DebugLog.Info($"[BaseBlock] Permanent {blockType} block at index {gridIndex} destroyed (not returned to inventory)");
             }
 
             // Unregister from GridManager
             if (GridManager.Instance != null)
             {
                 GridManager.Instance.UnregisterBlock(this);
-                Debug.Log($"[BaseBlock] Unregistered {blockType} block from GridManager");
+                DebugLog.Info($"[BaseBlock] Unregistered {blockType} block from GridManager");
             }
             else
             {
@@ -493,7 +493,6 @@ public class BaseBlock : MonoBehaviour
             isPlayerOnBlock = true;
             lastTriggerState = TriggerState.On;
 
-            Debug.Log($"[BaseBlock] Player entered trigger on {blockType} block at index {gridIndex}");
             OnPlayerEnter();
         }
     }
@@ -513,7 +512,7 @@ public class BaseBlock : MonoBehaviour
             currentPlayer = null;
             lastTriggerState = TriggerState.Off;
 
-            Debug.Log($"[BaseBlock] Player exited trigger on {blockType} block at index {gridIndex}");
+            DebugLog.Info($"[BaseBlock] Player exited trigger on {blockType} block at index {gridIndex}");
             OnPlayerExit();
         }
     }
@@ -533,7 +532,6 @@ public class BaseBlock : MonoBehaviour
             {
                 currentPlayer = other.GetComponent<LemController>();
                 isPlayerOnBlock = true;
-                Debug.Log($"[BaseBlock] Player entered trigger on {blockType} block at index {gridIndex} (stay)");
                 OnPlayerEnter();
             }
             lastTriggerState = TriggerState.On;
@@ -555,7 +553,6 @@ public class BaseBlock : MonoBehaviour
             isPlayerOnBlock = true;
             lastTriggerState = TriggerState.On;
 
-            Debug.Log($"[BaseBlock] Player collision enter on {blockType} block at index {gridIndex}");
             OnPlayerEnter();
         }
     }
@@ -574,7 +571,6 @@ public class BaseBlock : MonoBehaviour
             currentPlayer = null;
             lastTriggerState = TriggerState.Off;
 
-            Debug.Log($"[BaseBlock] Player collision exit on {blockType} block at index {gridIndex}");
             OnPlayerExit();
         }
     }
@@ -593,7 +589,6 @@ public class BaseBlock : MonoBehaviour
             {
                 currentPlayer = collision.collider.GetComponent<LemController>();
                 isPlayerOnBlock = true;
-                Debug.Log($"[BaseBlock] Player collision enter on {blockType} block at index {gridIndex} (stay)");
                 OnPlayerEnter();
             }
             lastTriggerState = TriggerState.On;
@@ -687,6 +682,58 @@ public class BaseBlock : MonoBehaviour
 
         Debug.LogWarning($"[BaseBlock] Cannot get coordinates: GridManager.Instance is null");
         return Vector2Int.zero;
+    }
+
+    #endregion
+
+    #region Placement Validation
+
+    /// <summary>
+    /// Checks if this block type can be placed at the specified grid index.
+    /// Override in subclasses to implement custom placement rules.
+    /// Called by GridManager before placing a block.
+    /// </summary>
+    /// <param name="targetIndex">The grid index where placement is being attempted</param>
+    /// <param name="grid">Reference to the GridManager for coordinate lookups</param>
+    /// <returns>True if placement is allowed, false otherwise</returns>
+    public virtual bool CanBePlacedAt(int targetIndex, GridManager grid)
+    {
+        return true; // Default: no restrictions
+    }
+
+    /// <summary>
+    /// Returns grid indices that this block "claims" and prevents other blocks from occupying.
+    /// Override in subclasses that need to reserve multiple grid spaces (e.g., TransporterBlock routes).
+    /// Called by GridManager when checking if a space is available.
+    /// </summary>
+    /// <returns>Array of grid indices blocked by this block (empty by default)</returns>
+    public virtual int[] GetBlockedIndices()
+    {
+        return Array.Empty<int>(); // Default: only occupies own grid index
+    }
+
+    /// <summary>
+    /// Validates that this block's placement requirements are satisfied after placement.
+    /// Override in subclasses that have group requirements (e.g., TeleporterBlock needs a pair).
+    /// Called by GridManager after a block is placed to check for incomplete states.
+    /// </summary>
+    /// <param name="grid">Reference to the GridManager</param>
+    /// <returns>True if placement is valid, false if requirements not met</returns>
+    public virtual bool ValidateGroupPlacement(GridManager grid)
+    {
+        return true; // Default: no group requirements
+    }
+
+    /// <summary>
+    /// Returns a human-readable message explaining why placement failed.
+    /// Override alongside CanBePlacedAt to provide helpful feedback.
+    /// </summary>
+    /// <param name="targetIndex">The grid index where placement was attempted</param>
+    /// <param name="grid">Reference to the GridManager</param>
+    /// <returns>Error message, or null if placement is allowed</returns>
+    public virtual string GetPlacementErrorMessage(int targetIndex, GridManager grid)
+    {
+        return null; // Default: no error
     }
 
     #endregion
@@ -806,7 +853,7 @@ public class BaseBlock : MonoBehaviour
             centerTrigger = triggerObj.AddComponent<CenterTrigger>();
             centerTrigger.Initialize(this);
 
-            Debug.Log($"[BaseBlock] Created CenterTrigger for {blockType} block at index {gridIndex}");
+            DebugLog.Info($"[BaseBlock] Created CenterTrigger for {blockType} block at index {gridIndex}");
         }
 
         // Update trigger shape to match block dimensions
@@ -828,7 +875,7 @@ public class BaseBlock : MonoBehaviour
         if (centerTrigger != null)
         {
             centerTrigger.SetEnabled(enabled);
-            Debug.Log($"[BaseBlock] Center trigger {(enabled ? "enabled" : "disabled")} for {blockType} block");
+            DebugLog.Info($"[BaseBlock] Center trigger {(enabled ? "enabled" : "disabled")} for {blockType} block");
         }
     }
 
@@ -864,7 +911,6 @@ public class BaseBlock : MonoBehaviour
         lastTriggerState = TriggerState.Center;
         centerLabelUntil = Time.time + centerLabelDuration;
 
-        Debug.Log($"[BaseBlock] Player reached center of {blockType} block at index {gridIndex}");
         OnPlayerReachCenter();
     }
 
@@ -879,7 +925,7 @@ public class BaseBlock : MonoBehaviour
         if (isPlayerOnBlock)
         {
             lastTriggerState = TriggerState.On;
-            Debug.Log($"[BaseBlock] Player exited center of {blockType} block");
+            DebugLog.Info($"[BaseBlock] Player exited center of {blockType} block");
         }
     }
 

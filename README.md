@@ -20,11 +20,14 @@ A Unity 3D puzzle game where players control "Lems" (lemming-like characters) th
 - **Coordinate Conversion**: Utilities for index ↔ coordinates ↔ world position
 
 ### Block System
-- **4 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow)
+- **6 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow), Key (gold), Lock (silver)
 - **CenterTrigger System**: Precise detection when Lem reaches center/top of block
 - **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
 - **Inventory Management**: Per-level inventory entries with optional flavors and shared groups
-- **Placement Validation**: Transporter placement is blocked if its route intersects existing blocks
+- **Self-Contained Placement Validation**: Blocks define their own placement rules via virtual methods
+  - Transporters block their route path from other placements
+  - Teleporters validate they have exactly one matching pair
+  - Custom blocks can override `CanBePlacedAt()`, `GetBlockedIndices()`, and `ValidateGroupPlacement()`
 
 ### Character System
 - **Lem Controller**: Walking AI with gravity, collision detection, and turning logic
@@ -131,13 +134,17 @@ Assets/
 │   ├── GridVisualizer.cs           # Grid line rendering
 │   ├── GridCursor.cs               # Interactive cursor
 │   ├── PlaceableSpaceVisualizer.cs # Placeable space borders
-│   ├── BaseBlock.cs                # Base block class with error handling
+│   ├── BaseBlock.cs                # Base block class with placement validation
 │   ├── CenterTrigger.cs            # Precise center detection system
-│   ├── BlockType.cs                # Block type enum
+│   ├── BlockType.cs                # Block type enum (6 types)
 │   ├── BlockColors.cs              # Centralized color definitions
 │   ├── BlockInventory.cs           # Block count management
 │   ├── CrumblerBlock.cs            # Crumbling block implementation
-│   ├── TransporterBlock.cs         # Moving platform block
+│   ├── TransporterBlock.cs         # Moving platform block with route validation
+│   ├── TeleporterBlock.cs          # Paired teleport block with cooldowns
+│   ├── KeyBlock.cs                 # Block holding a collectible key
+│   ├── LockBlock.cs                # Block that accepts keys
+│   ├── RouteParser.cs              # Shared transporter route parsing utility
 │   ├── LemController.cs            # Lem AI and movement
 │   ├── LemSpawner.cs               # Lem spawning utility
 │   ├── EditorController.cs         # Editor input handling
@@ -153,6 +160,10 @@ Assets/
 │   ├── ControlsUI.cs               # Controls help display
 │   └── Editor/
 │       └── LightmapperFix.cs       # Unity lightmapper fix
+├── Resources/
+│   └── Blocks/                     # Block prefabs
+│       ├── Block_Key.prefab
+│       └── Block_Lock.prefab
 └── Master.unity                     # Main scene
 ```
 
@@ -214,6 +225,8 @@ Built with Unity 2022+ using C# scripting.
 - **Centralized Constants**: BlockColors and RenderingConstants utilities
 - **Performance Optimization**: Cached component references to avoid FindObjectOfType
 - **Error Handling**: Comprehensive try-catch blocks with detailed logging
+- **Self-Contained Validation**: Blocks define their own placement rules via virtual methods
+- **Template Method Pattern**: BaseBlock provides hooks (OnPlayerEnter, OnPlayerExit, OnPlayerReachCenter) for subclasses
 
 ## Recent Improvements
 
@@ -256,6 +269,6 @@ When adding new features:
 - Level thumbnail generation
 - In-game level browser
 - Multiplayer level sharing
-- More block types (Bridge, Switch, Gate, Portal, etc.)
+- Additional block types (Bridge, Switch, Gate, etc.)
 - Sound effects and music
 - Particle effects for block interactions

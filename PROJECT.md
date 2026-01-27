@@ -15,12 +15,16 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **GridCursor** - Interactive cursor for navigating the grid
 
 #### Block System
-- **BaseBlock** - Base class for all block types with collision detection
-- **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter)
+- **BaseBlock** - Base class for all block types with collision detection and placement validation
+- **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter, Key, Lock)
 - **BlockColors** - Centralized color management for all visual elements
 - **BlockInventory** - Manages block counts per entry (supports flavors and shared groups)
 - **LevelBlockInventoryConfig** - Optional scene config for inventory entries
-- **Transporter Validation** - Prevents placement if route intersects existing blocks
+- **RouteParser** - Shared utility for parsing transporter route strings
+- **Placement Validation** - Self-contained rules via virtual methods:
+  - `CanBePlacedAt(index, grid)` - Check if placement is allowed
+  - `GetBlockedIndices()` - Return grid spaces this block reserves
+  - `ValidateGroupPlacement(grid)` - Validate group requirements (e.g., teleporter pairs)
 
 #### Character System
 - **LemController** - Controls Lem movement, physics, and AI
@@ -99,10 +103,12 @@ Assets/
 
 ### Block Types
 - **Default** - Standard platform blocks (cyan)
-- **Teleporter** - Transport blocks (magenta)
-- **Crumbler** - Breakable blocks (orange)
-- **Transporter** - Moving blocks (yellow)
-  - Placement is blocked if the route path intersects existing blocks
+- **Teleporter** - Paired teleport blocks (magenta) - requires exactly one matching pair
+- **Crumbler** - Breakable blocks that darken and crumble when Lem exits (orange)
+- **Transporter** - Moving platform blocks with configurable routes (yellow)
+  - Placement blocked if route path intersects existing blocks or other transporter routes
+- **Key** - Blocks holding collectible keys (gold)
+- **Lock** - Blocks that accept keys to unlock (silver)
 
 ### Rendering Features
 - Configurable line widths for grid, borders, and cursor
@@ -141,8 +147,18 @@ Assets/
 ### Adding New Block Types
 1. Add new entry to BlockType enum
 2. Add color to BlockColors.GetColorForBlockType()
-3. Optionally extend BaseBlock with specialized behavior
-4. Add to EditorController.HandleBlockTypeSwitch() if needed
+3. Create a new class extending BaseBlock with specialized behavior
+4. Override template methods as needed:
+   - `OnPlayerEnter()` - Called when Lem enters block
+   - `OnPlayerExit()` - Called when Lem exits block
+   - `OnPlayerReachCenter()` - Called when Lem reaches block center
+5. Optionally override placement validation methods:
+   - `CanBePlacedAt(index, grid)` - Custom placement rules
+   - `GetBlockedIndices()` - Reserve grid spaces
+   - `ValidateGroupPlacement(grid)` - Group requirements (e.g., pairs)
+   - `GetPlacementErrorMessage(index, grid)` - User-friendly error messages
+6. Add case to BaseBlock.AddBlockComponent() factory method
+7. Create prefab in Resources/Blocks/Block_{TypeName}.prefab
 
 ### Modifying Rendering
 - Update RenderingConstants.cs for depth, sorting, or line width changes

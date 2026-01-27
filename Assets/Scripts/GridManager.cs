@@ -68,6 +68,7 @@ public class GridManager : MonoBehaviour
     private Dictionary<int, GameObject> placedLems = new Dictionary<int, GameObject>();
     private Dictionary<int, LemPlacementData> originalLemPlacements = new Dictionary<int, LemPlacementData>();
     private List<LevelData.KeyStateData> originalKeyStates = new List<LevelData.KeyStateData>();
+    private LevelData playModeSnapshot;
 
     /// <summary>
     /// Stores original Lem placement data for resetting after Play mode
@@ -94,7 +95,7 @@ public class GridManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("[GridManager] Singleton instance initialized");
+            DebugLog.Info("[GridManager] Singleton instance initialized");
         }
         else
         {
@@ -114,7 +115,7 @@ public class GridManager : MonoBehaviour
             // Create the visual cursor for editor mode
             CreateCursor();
 
-            Debug.Log($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid, cell size {cellSize}");
+            DebugLog.Info($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid, cell size {cellSize}");
         }
         catch (Exception ex)
         {
@@ -134,7 +135,7 @@ public class GridManager : MonoBehaviour
         // Position grid so its center is at world origin
         _gridOrigin = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0);
 
-        Debug.Log($"GridManager: Auto-calculated gridOrigin = {_gridOrigin} for {gridWidth}x{gridHeight} grid");
+        DebugLog.Info($"GridManager: Auto-calculated gridOrigin = {_gridOrigin} for {gridWidth}x{gridHeight} grid");
     }
 
     /// <summary>
@@ -154,7 +155,7 @@ public class GridManager : MonoBehaviour
             if (_cachedCameraSetup != null)
             {
                 _cachedCameraSetup.SetupCamera();
-                Debug.Log("[GridManager] Camera setup complete");
+                DebugLog.Info("[GridManager] Camera setup complete");
             }
             else
             {
@@ -345,7 +346,7 @@ public class GridManager : MonoBehaviour
             // If there's already a non-permanent block here, destroy it
             if (placedBlocks.ContainsKey(gridIndex))
             {
-                Debug.Log($"[GridManager] Replacing existing block at index {gridIndex}");
+                DebugLog.Info($"[GridManager] Replacing existing block at index {gridIndex}");
                 placedBlocks[gridIndex].DestroyBlock();
             }
 
@@ -383,7 +384,7 @@ public class GridManager : MonoBehaviour
             placedBlocks[gridIndex] = newBlock;
             UpdateCursorState();
 
-            Debug.Log($"[GridManager] Successfully placed {blockType} block at index {gridIndex}");
+            DebugLog.Info($"[GridManager] Successfully placed {blockType} block at index {gridIndex}");
             return newBlock;
         }
         catch (Exception ex)
@@ -535,7 +536,7 @@ public class GridManager : MonoBehaviour
                 lemController.TurnAround();
                 // Update original placement data with new facing direction
                 originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, lemController.GetFacingRight());
-                Debug.Log($"Turned Lem around at index {gridIndex}");
+                DebugLog.Info($"Turned Lem around at index {gridIndex}");
             }
             return existingLem;
         }
@@ -577,7 +578,7 @@ public class GridManager : MonoBehaviour
             Destroy(lem);
             placedLems.Remove(gridIndex);
             originalLemPlacements.Remove(gridIndex);
-            Debug.Log($"Removed Lem at index {gridIndex}");
+            DebugLog.Info($"Removed Lem at index {gridIndex}");
         }
     }
 
@@ -618,7 +619,7 @@ public class GridManager : MonoBehaviour
             placedLems[placementData.gridIndex] = lem;
         }
 
-        Debug.Log($"Reset {originalLemPlacements.Count} Lem(s) to original positions");
+        DebugLog.Info($"Reset {originalLemPlacements.Count} Lem(s) to original positions");
     }
 
     public void CaptureOriginalKeyStates()
@@ -629,6 +630,22 @@ public class GridManager : MonoBehaviour
     public void RestoreOriginalKeyStates()
     {
         ApplyKeyStates(originalKeyStates);
+    }
+
+    public void CapturePlayModeSnapshot()
+    {
+        playModeSnapshot = CaptureLevelData();
+    }
+
+    public void RestorePlayModeSnapshot()
+    {
+        if (playModeSnapshot == null)
+        {
+            Debug.LogWarning("[GridManager] No play mode snapshot found to restore.");
+            return;
+        }
+
+        RestoreLevelData(playModeSnapshot);
     }
 
     /// <summary>
@@ -874,7 +891,7 @@ public class GridManager : MonoBehaviour
                 Debug.LogWarning("[GridManager] No CameraSetup found in scene");
             }
 
-            Debug.Log($"[GridManager] Grid refreshed: {gridWidth}x{gridHeight}, cell size {cellSize}");
+            DebugLog.Info($"[GridManager] Grid refreshed: {gridWidth}x{gridHeight}, cell size {cellSize}");
         }
         catch (Exception ex)
         {
@@ -947,7 +964,7 @@ public class GridManager : MonoBehaviour
         // Capture key states
         levelData.keyStates = CaptureKeyStates();
 
-        Debug.Log($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+        DebugLog.Info($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
         return levelData;
     }
 
@@ -1081,7 +1098,7 @@ public class GridManager : MonoBehaviour
 
         UpdateCursorState();
 
-        Debug.Log($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems");
+        DebugLog.Info($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems");
     }
 
     /// <summary>
@@ -1178,17 +1195,68 @@ public class GridManager : MonoBehaviour
 
     private bool IsIndexBlockedByTransporterPath(int index)
     {
-        TransporterBlock[] transporters = FindObjectsOfType<TransporterBlock>();
-        foreach (TransporterBlock transporter in transporters)
+        // Delegate to the generic method for backward compatibility
+        return IsIndexBlockedByAnyBlock(index, null);
+    }
+
+    /// <summary>
+    /// Checks if any placed block claims this index via GetBlockedIndices().
+    /// Used for placement validation - blocks can reserve grid spaces they don't occupy.
+    /// </summary>
+    /// <param name="index">Grid index to check</param>
+    /// <param name="excludeBlock">Optional block to exclude from the check (e.g., the block being placed)</param>
+    /// <returns>True if any block claims this index</returns>
+    public bool IsIndexBlockedByAnyBlock(int index, BaseBlock excludeBlock)
+    {
+        // Check all placed blocks
+        foreach (var kvp in placedBlocks)
         {
-            if (transporter == null) continue;
-            List<int> pathIndices = transporter.GetRoutePathIndices();
-            if (pathIndices.Contains(index))
+            BaseBlock block = kvp.Value;
+            if (block == null || block == excludeBlock) continue;
+
+            int[] blockedIndices = block.GetBlockedIndices();
+            if (blockedIndices != null && System.Array.IndexOf(blockedIndices, index) >= 0)
             {
                 return true;
             }
         }
+
+        // Check permanent blocks too
+        foreach (var kvp in permanentBlocks)
+        {
+            BaseBlock block = kvp.Value;
+            if (block == null || block == excludeBlock) continue;
+
+            int[] blockedIndices = block.GetBlockedIndices();
+            if (blockedIndices != null && System.Array.IndexOf(blockedIndices, index) >= 0)
+            {
+                return true;
+            }
+        }
+
         return false;
+    }
+
+    /// <summary>
+    /// Checks if there is any block (placed or permanent) at the given index.
+    /// </summary>
+    /// <param name="index">Grid index to check</param>
+    /// <returns>True if a block exists at this index</returns>
+    public bool HasBlockAtIndex(int index)
+    {
+        return GetBlockAtIndex(index) != null;
+    }
+
+    /// <summary>
+    /// Validates if a block can be placed at the given index using the block's own rules.
+    /// </summary>
+    /// <param name="block">The block to validate (or a template block for the type)</param>
+    /// <param name="targetIndex">Where to place the block</param>
+    /// <returns>True if placement is valid</returns>
+    public bool ValidateBlockPlacement(BaseBlock block, int targetIndex)
+    {
+        if (block == null) return false;
+        return block.CanBePlacedAt(targetIndex, this);
     }
 
     private bool HasBlocksOnIndices(List<int> indices)
@@ -1236,33 +1304,7 @@ public class GridManager : MonoBehaviour
 
     private static List<Vector2Int> BuildTransporterSteps(string[] routeSteps)
     {
-        List<Vector2Int> steps = new List<Vector2Int>();
-        if (routeSteps == null) return steps;
-
-        foreach (string raw in routeSteps)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            string token = raw.Trim().ToUpperInvariant();
-            char dir = token[0];
-            if (token.Length < 2 || !int.TryParse(token.Substring(1), out int count) || count <= 0) continue;
-
-            Vector2Int step = dir switch
-            {
-                'L' => new Vector2Int(-1, 0),
-                'R' => new Vector2Int(1, 0),
-                'U' => new Vector2Int(0, 1),
-                'D' => new Vector2Int(0, -1),
-                _ => Vector2Int.zero
-            };
-
-            if (step == Vector2Int.zero) continue;
-            for (int i = 0; i < count; i++)
-            {
-                steps.Add(step);
-            }
-        }
-
-        return steps;
+        return RouteParser.ParseRouteSteps(routeSteps);
     }
 
     private static LevelData.BlockData CreateBlockData(BaseBlock block, int index)
