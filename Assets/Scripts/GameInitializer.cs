@@ -166,7 +166,45 @@ public class GameInitializer : MonoBehaviour
         // Force refresh of all visualizations
         Invoke(nameof(DelayedRefresh), 0.1f);
 
+        // Check for pending level to load from UI navigation
+        Invoke(nameof(LoadPendingLevel), 0.2f);
+
         DebugLog.Info("=== Game Initializer: Setup Complete ===");
+    }
+
+    /// <summary>
+    /// Loads a level that was requested from the UI (WorldMap/MainMenu).
+    /// Checks PlayerPrefs for a pending level ID.
+    /// </summary>
+    private void LoadPendingLevel()
+    {
+        string pendingLevelId = PlayerPrefs.GetString("PendingLevelId", "");
+
+        if (!string.IsNullOrEmpty(pendingLevelId))
+        {
+            // Clear the pending level so it doesn't reload on scene restart
+            PlayerPrefs.DeleteKey("PendingLevelId");
+            PlayerPrefs.Save();
+
+            DebugLog.Info($"GameInitializer: Loading pending level: {pendingLevelId}");
+
+            // Try to load via LevelManager
+            if (LevelManager.Instance != null)
+            {
+                if (LevelManager.Instance.LoadLevel(pendingLevelId))
+                {
+                    DebugLog.Info($"GameInitializer: Successfully loaded level: {pendingLevelId}");
+                }
+                else
+                {
+                    Debug.LogWarning($"GameInitializer: Failed to load level: {pendingLevelId}");
+                }
+            }
+            else
+            {
+                Debug.LogWarning("GameInitializer: LevelManager not available to load level");
+            }
+        }
     }
 
     private void DelayedRefresh()
