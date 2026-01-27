@@ -20,7 +20,7 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **BlockColors** - Centralized color management for all visual elements
 - **BlockInventory** - Manages block counts per entry (supports flavors and shared groups)
 - **LevelBlockInventoryConfig** - Optional scene config for inventory entries
-- **RouteParser** - Shared utility for parsing transporter route strings
+- **RouteParser** - Canonical route utility for parsing, validating, and normalizing transporter routes
 - **Placement Validation** - Self-contained rules via virtual methods:
   - `CanBePlacedAt(index, grid)` - Check if placement is allowed
   - `GetBlockedIndices()` - Return grid spaces this block reserves
@@ -107,6 +107,7 @@ Assets/
 - **Crumbler** - Breakable blocks that darken and crumble when Lem exits (orange)
 - **Transporter** - Moving platform blocks with configurable routes (yellow)
   - Placement blocked if route path intersects existing blocks or other transporter routes
+  - Inventory preview renders a route icon for each unique route entry
 - **Key** - Blocks holding collectible keys (gold)
 - **Lock** - Blocks that accept keys to unlock (silver)
 
@@ -135,6 +136,11 @@ Assets/
 - Index-based grid addressing (0 to width*height-1)
 - Coordinate conversion utilities (index ↔ coordinates ↔ world position)
 - Validation for all grid operations
+
+### Route System
+- **Single source of truth**: `RouteParser.ParseRoute()` validates and expands route steps for transporters.
+- **Normalization**: `RouteParser.NormalizeRouteSteps()` and `RouteParser.NormalizeRouteKey()` ensure consistent keys and display tokens.
+- **Consumers**: Transporter movement, placement validation, inventory keys, and inventory UI route icons all use `RouteParser`.
 
 ## Development Guidelines
 

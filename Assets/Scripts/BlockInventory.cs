@@ -537,6 +537,11 @@ public class BlockInventory : MonoBehaviour
                 entry.entryId = entry.GetEntryId();
             }
 
+            if (entry.blockType == BlockType.Transporter)
+            {
+                ValidateTransporterEntry(entry);
+            }
+
             if (entry.isPairInventory && entry.pairSize < 2)
             {
                 entry.pairSize = 2;
@@ -648,14 +653,8 @@ public class BlockInventory : MonoBehaviour
 
     private static string NormalizeRouteSteps(string[] routeSteps)
     {
-        if (routeSteps == null || routeSteps.Length == 0) return string.Empty;
-        List<string> tokens = new List<string>();
-        foreach (string raw in routeSteps)
-        {
-            if (string.IsNullOrWhiteSpace(raw)) continue;
-            tokens.Add(raw.Trim().ToUpperInvariant());
-        }
-        return tokens.Count > 0 ? string.Join(",", tokens) : string.Empty;
+        string[] normalized = RouteParser.NormalizeRouteSteps(routeSteps);
+        return normalized != null && normalized.Length > 0 ? string.Join(",", normalized) : string.Empty;
     }
 
     private void ConsolidateTransporterEntries()
@@ -715,6 +714,22 @@ public class BlockInventory : MonoBehaviour
         if (target.isPairInventory != source.isPairInventory || target.pairSize != source.pairSize)
         {
             Debug.LogWarning("[BlockInventory] Transporter entries with matching routes have different pair settings. Using the first entry's values.");
+        }
+    }
+
+    private static void ValidateTransporterEntry(BlockInventoryEntry entry)
+    {
+        if (entry == null) return;
+
+        RouteParser.RouteData data = RouteParser.ParseRoute(entry.routeSteps, entry.flavorId);
+        if (!data.IsValid && !string.IsNullOrEmpty(data.error))
+        {
+            Debug.LogWarning($"[BlockInventory] Transporter entry '{entry.GetEntryId()}' has invalid route: {data.error}");
+        }
+
+        if (data.normalizedSteps != null && data.normalizedSteps.Length > 0)
+        {
+            entry.routeSteps = data.normalizedSteps;
         }
     }
 }

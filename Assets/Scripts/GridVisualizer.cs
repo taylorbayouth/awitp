@@ -9,6 +9,9 @@ public class GridVisualizer : MonoBehaviour
     [Header("Grid Line Settings")]
     public float lineWidth = RenderingConstants.GRID_LINE_WIDTH;
     public bool showGrid = true;
+    public Color gridLineColor = BlockColors.GridLine;
+    [Range(0f, 1f)]
+    public float gridLineOpacity = RenderingConstants.GRID_LINE_OPACITY;
 
     private GridManager gridManager;
     private GameObject gridLinesParent;
@@ -31,8 +34,8 @@ public class GridVisualizer : MonoBehaviour
         gridLinesParent = new GameObject("GridLines");
         gridLinesParent.transform.parent = transform;
 
-        Color gridColor = BlockColors.GridLine;
-        gridColor.a = RenderingConstants.GRID_LINE_OPACITY;
+        Color gridColor = gridLineColor;
+        gridColor.a = gridLineOpacity;
         float z = RenderingConstants.GRID_DEPTH;
 
         // Horizontal lines (along X axis, at each Y level)
