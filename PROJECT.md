@@ -18,8 +18,7 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **BaseBlock** - Base class for all block types with collision detection and placement validation
 - **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter, Key, Lock)
 - **BlockColors** - Centralized color management for all visual elements
-- **BlockInventory** - Manages block counts per entry (supports flavors and shared groups)
-- **LevelBlockInventoryConfig** - Optional scene config for inventory entries
+- **BlockInventory** - Manages block counts per entry (supports flavors and shared groups, loaded from LevelDefinition)
 - **RouteParser** - Canonical route utility for parsing, validating, and normalizing transporter routes
 - **Placement Validation** - Self-contained rules via virtual methods:
   - `CanBePlacedAt(index, grid)` - Check if placement is allowed
@@ -185,7 +184,7 @@ Assets/
 1. Create a level in the editor
 2. Press Ctrl+S (Cmd+S on Mac) to save
 3. Make changes or clear the level
-4. Press Ctrl+L (Cmd+L on Mac) to restore
+4. Restart Play (auto-loads the assigned LevelDefinition)
 
 ## Known Considerations
 

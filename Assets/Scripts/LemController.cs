@@ -70,6 +70,8 @@ public class LemController : MonoBehaviour
     private Transform glitchVisual;
     private Transform glitchPivot;
     private Vector3 lastGlitchRotationOffset;
+    private bool defaultUseGravity;
+    private bool defaultIsKinematic;
 
     #endregion
 
@@ -91,6 +93,8 @@ public class LemController : MonoBehaviour
         rb.useGravity = true;
         rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionZ;
         rb.collisionDetectionMode = CollisionDetectionMode.Continuous;
+        defaultUseGravity = rb.useGravity;
+        defaultIsKinematic = rb.isKinematic;
 
         // Create physics material to prevent sticking
         PhysicsMaterial physicsMaterial = new PhysicsMaterial("LemPhysics");
@@ -242,11 +246,23 @@ public class LemController : MonoBehaviour
     public void SetFrozen(bool frozen)
     {
         isFrozen = frozen;
-        if (rb != null && frozen && !rb.isKinematic)
-        {
-            rb.linearVelocity = Vector3.zero; // Stop movement when frozen
-        }
+        if (rb == null) return;
 
+        if (frozen)
+        {
+            if (!rb.isKinematic)
+            {
+                rb.linearVelocity = Vector3.zero; // Stop movement when frozen
+                rb.angularVelocity = Vector3.zero;
+            }
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+        else
+        {
+            rb.isKinematic = defaultIsKinematic;
+            rb.useGravity = defaultUseGravity;
+        }
     }
 
     private void UpdateFacingVisuals()

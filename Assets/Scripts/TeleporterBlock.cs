@@ -81,7 +81,7 @@ public class TeleporterBlock : BaseBlock
 
     protected override void OnPlayerReachCenter()
     {
-        LemController lem = currentPlayer != null ? currentPlayer : FindObjectOfType<LemController>();
+        LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
         if (lem == null) return;
 
         if (IsOnCooldown(lem))
@@ -102,7 +102,7 @@ public class TeleporterBlock : BaseBlock
 
     private TeleporterBlock FindMatchingTeleporter()
     {
-        TeleporterBlock[] teleporters = FindObjectsOfType<TeleporterBlock>();
+        TeleporterBlock[] teleporters = UnityEngine.Object.FindObjectsByType<TeleporterBlock>(FindObjectsSortMode.None);
         if (teleporters == null || teleporters.Length == 0) return null;
 
         string key = GetTeleportKey();
@@ -246,7 +246,7 @@ public class TeleporterBlock : BaseBlock
     /// </summary>
     public bool HasValidPair()
     {
-        TeleporterBlock[] teleporters = FindObjectsOfType<TeleporterBlock>();
+        TeleporterBlock[] teleporters = UnityEngine.Object.FindObjectsByType<TeleporterBlock>(FindObjectsSortMode.None);
         if (teleporters == null) return false;
 
         string key = GetTeleportKey();
@@ -334,7 +334,7 @@ public class TeleporterBlock : BaseBlock
     {
         if (!string.IsNullOrEmpty(flavorId)) return;
 
-        BlockInventory inventory = FindObjectOfType<BlockInventory>();
+        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         if (inventory == null) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntries();

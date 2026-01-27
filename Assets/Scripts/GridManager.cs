@@ -149,7 +149,7 @@ public class GridManager : MonoBehaviour
             // Cache CameraSetup reference to avoid repeated FindObjectOfType calls
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = UnityEngine.Object.FindObjectOfType<CameraSetup>();
+                _cachedCameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
             }
 
             if (_cachedCameraSetup != null)
@@ -291,7 +291,7 @@ public class GridManager : MonoBehaviour
                 BlockInventoryEntry resolvedForRoute = entry;
                 if (resolvedForRoute == null)
                 {
-                    BlockInventory routeInventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+                    BlockInventory routeInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
                     if (routeInventory != null)
                     {
                         resolvedForRoute = routeInventory.GetDefaultEntryForBlockType(blockType);
@@ -330,7 +330,7 @@ public class GridManager : MonoBehaviour
             }
 
             // Check 5: Inventory availability
-            BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+            BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
             BlockInventoryEntry resolvedEntry = entry;
             if (inventory != null && resolvedEntry == null)
             {
@@ -433,7 +433,7 @@ public class GridManager : MonoBehaviour
 
         BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
         newBlock.isPermanent = true;
-        ApplyEntryMetadata(newBlock, entry, UnityEngine.Object.FindObjectOfType<BlockInventory>());
+        ApplyEntryMetadata(newBlock, entry, UnityEngine.Object.FindAnyObjectByType<BlockInventory>());
         PositionBlock(newBlock, gridIndex);
 
         permanentBlocks[gridIndex] = newBlock;
@@ -552,11 +552,7 @@ public class GridManager : MonoBehaviour
             ClearAllLems();
         }
 
-        if (!TryGetLemFootPosition(gridIndex, out Vector3 footPosition))
-        {
-            Debug.LogWarning($"Cannot place Lem at index {gridIndex}: no ground block.");
-            return null;
-        }
+        Vector3 footPosition = GetLemFootPositionForIndex(gridIndex);
 
         GameObject lem = LemController.CreateLem(footPosition);
         placedLems[gridIndex] = lem;
@@ -605,11 +601,7 @@ public class GridManager : MonoBehaviour
         // Recreate Lems at original positions
         foreach (var placementData in originalLemPlacements.Values)
         {
-            if (!TryGetLemFootPosition(placementData.gridIndex, out Vector3 footPosition))
-            {
-                Debug.LogWarning($"Cannot reset Lem at index {placementData.gridIndex}: no ground block.");
-                continue;
-            }
+            Vector3 footPosition = GetLemFootPositionForIndex(placementData.gridIndex);
 
             GameObject lem = LemController.CreateLem(footPosition);
             LemController controller = lem.GetComponent<LemController>();
@@ -668,31 +660,15 @@ public class GridManager : MonoBehaviour
         return placedLems.TryGetValue(index, out GameObject lem) ? lem : null;
     }
 
-    private bool TryGetLemFootPosition(int gridIndex, out Vector3 footPosition)
+    private Vector3 GetLemFootPositionForIndex(int gridIndex)
     {
-        footPosition = Vector3.zero;
-
-        if (!IsValidIndex(gridIndex))
-        {
-            return false;
-        }
-
         Vector2Int coords = IndexToCoordinates(gridIndex);
-        for (int y = coords.y; y >= 0; y--)
-        {
-            int candidateIndex = CoordinatesToIndex(coords.x, y);
-            BaseBlock blockBelow = GetBlockAtIndex(candidateIndex);
-            if (blockBelow == null)
-            {
-                continue;
-            }
-
-            footPosition = blockBelow.transform.position;
-            footPosition.y += cellSize * 0.5f;
-            return true;
-        }
-
-        return false;
+        float halfCell = cellSize * 0.5f;
+        return gridOrigin + new Vector3(
+            (coords.x * cellSize) + halfCell,
+            coords.y * cellSize,
+            0.5f
+        );
     }
 
     #endregion
@@ -787,6 +763,7 @@ public class GridManager : MonoBehaviour
 
     public bool IsSpacePlaceable(int index)
     {
+        EnsurePlaceableSpacesSized();
         if (!IsValidIndex(index)) return false;
         if (IsPermanentBlockAtIndex(index)) return false;
         return placeableSpaces[index];
@@ -849,6 +826,8 @@ public class GridManager : MonoBehaviour
     {
         try
         {
+            EnsurePlaceableSpacesSized();
+
             // Cache component references to avoid repeated GetComponent/FindObjectOfType calls
             if (_cachedGridVisualizer == null)
             {
@@ -862,7 +841,7 @@ public class GridManager : MonoBehaviour
 
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = UnityEngine.Object.FindObjectOfType<CameraSetup>();
+                _cachedCameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
             }
 
             // Refresh grid lines
@@ -903,6 +882,17 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    private void EnsurePlaceableSpacesSized()
+    {
+        int expected = gridWidth * gridHeight;
+        if (expected <= 0) return;
+        if (placeableSpaces == null || placeableSpaces.Length != expected)
+        {
+            Debug.LogWarning("[GridManager] placeableSpaces size mismatch. Reinitializing to match grid dimensions.");
+            InitializePlaceableSpaces();
+        }
+    }
+
     #endregion
 
     #region Save/Load System
@@ -910,7 +900,7 @@ public class GridManager : MonoBehaviour
     /// <summary>
     /// Creates a LevelData object from the current grid state.
     /// </summary>
-    public LevelData CaptureLevelData()
+    public LevelData CaptureLevelData(bool includePlacedBlocks = true, bool includeKeyStates = true)
     {
         LevelData levelData = new LevelData
         {
@@ -919,7 +909,20 @@ public class GridManager : MonoBehaviour
             cellSize = cellSize
         };
 
-        BlockInventory inventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        if (inventory != null)
+        {
+            // Persist per-level inventory configuration so editor saves restore the same entries.
+            levelData.inventoryEntries = new List<BlockInventoryEntry>();
+            IReadOnlyList<BlockInventoryEntry> inventoryEntries = inventory.GetEntries();
+            foreach (BlockInventoryEntry entry in inventoryEntries)
+            {
+                if (entry != null)
+                {
+                    levelData.inventoryEntries.Add(entry.Clone());
+                }
+            }
+        }
 
         // Capture permanent blocks
         foreach (var kvp in permanentBlocks)
@@ -930,12 +933,15 @@ public class GridManager : MonoBehaviour
             }
         }
 
-        // Capture all placed blocks
-        foreach (var kvp in placedBlocks)
+        if (includePlacedBlocks)
         {
-            if (kvp.Value != null)
+            // Capture all placed blocks
+            foreach (var kvp in placedBlocks)
             {
-                levelData.blocks.Add(CreateBlockData(kvp.Value, kvp.Key));
+                if (kvp.Value != null)
+                {
+                    levelData.blocks.Add(CreateBlockData(kvp.Value, kvp.Key));
+                }
             }
         }
 
@@ -965,8 +971,11 @@ public class GridManager : MonoBehaviour
             levelData.lems.Add(lemData);
         }
 
-        // Capture key states
-        levelData.keyStates = CaptureKeyStates();
+        // Capture key states (runtime-only; skipped for designer saves)
+        if (includeKeyStates)
+        {
+            levelData.keyStates = CaptureKeyStates();
+        }
 
         DebugLog.Info($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
         return levelData;
@@ -992,7 +1001,15 @@ public class GridManager : MonoBehaviour
         BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         if (inventory != null)
         {
-            inventory.ResetInventory();
+            if (levelData.inventoryEntries != null && levelData.inventoryEntries.Count > 0)
+            {
+                // Restore inventory entries before placing blocks so inventory keys resolve correctly.
+                inventory.LoadInventoryEntries(levelData.inventoryEntries);
+            }
+            else
+            {
+                inventory.ResetInventory();
+            }
         }
 
         // Restore grid settings (if they changed, we need to reinitialize)
@@ -1006,6 +1023,10 @@ public class GridManager : MonoBehaviour
             CalculateGridOrigin();
             InitializePlaceableSpaces();
             RefreshGrid();
+        }
+        else
+        {
+            EnsurePlaceableSpacesSized();
         }
 
         // Restore placeable spaces
@@ -1179,7 +1200,7 @@ public class GridManager : MonoBehaviour
 
     public bool HasTransporterConflicts()
     {
-        TransporterBlock[] transporters = FindObjectsByType<TransporterBlock>(FindObjectsSortMode.None);
+        TransporterBlock[] transporters = UnityEngine.Object.FindObjectsByType<TransporterBlock>(FindObjectsSortMode.None);
         foreach (TransporterBlock transporter in transporters)
         {
             if (transporter == null) continue;
@@ -1381,7 +1402,7 @@ public class GridManager : MonoBehaviour
     private List<LevelData.KeyStateData> CaptureKeyStates()
     {
         List<LevelData.KeyStateData> states = new List<LevelData.KeyStateData>();
-        KeyItem[] keys = FindObjectsByType<KeyItem>(FindObjectsSortMode.None);
+        KeyItem[] keys = UnityEngine.Object.FindObjectsByType<KeyItem>(FindObjectsSortMode.None);
         foreach (KeyItem key in keys)
         {
             if (key == null) continue;

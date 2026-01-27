@@ -118,7 +118,7 @@ public class CenterTrigger : MonoBehaviour
     {
         if (_cachedEditorController == null)
         {
-            _cachedEditorController = UnityEngine.Object.FindObjectOfType<EditorController>();
+            _cachedEditorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
 
         return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;

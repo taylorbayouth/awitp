@@ -194,7 +194,10 @@ At this point you have a basic structure, but it's not a puzzle yet!
 2. **Check the console** - you should see "LEVEL SAVED" confirmation
 3. Your level is now saved to disk!
 
-**File Location**: Press `Ctrl+Shift+S` to see where levels are saved.
+**File Location**: Press `Ctrl+Shift+S` to see the active LevelDefinition asset path.
+
+**Designer-only**: Save/Load is for Taylor while authoring levels. Players do not have a save hotkey. Player progress is saved automatically only when a level is completed (all locks filled), and any in-progress block placements are discarded on restart.
+Designer saves persist permanent layout, Lem placement, placeable spaces, grid settings, and inventory config (not in-progress player block placements).
 
 ---
 
@@ -266,7 +269,7 @@ Now that you have a basic level, try adding:
 - Timed sequences
 
 **Configuration**:
-- Define routes in `LevelBlockInventoryConfig`
+- Define routes in the LevelDefinition's inventory entries
 - Format: `L` (left), `R` (right), `U` (up), `D` (down) + number of cells
 - Example: `U5` moves up 5 cells
 - Multiple steps: `L2 U3 R4 D1`
@@ -367,11 +370,13 @@ Each inventory slot represents one **inventory entry**:
 - **Max Count**: Total blocks available
 - **Current Count**: Blocks remaining (decrements on placement)
 
-### Creating Inventory Config
+### Configuring Inventory in LevelDefinition
 
-1. **Create an empty GameObject** in the scene
-2. **Add Component** → `LevelBlockInventoryConfig`
-3. **Configure entries** in Inspector:
+Inventory is configured within the **LevelDefinition** asset's JSON data. When designing levels:
+
+1. Create or select a **LevelDefinition** asset
+2. Edit the `levelDataJson` field to include inventory entries
+3. Inventory entries are stored in the `inventoryEntries` array
 
 #### Example: Basic Platform Level
 ```
@@ -702,7 +707,7 @@ One action triggers multiple consequences:
 **Solution**:
 1. Check the route path (inventory preview shows route icon)
 2. Remove blocking blocks
-3. Adjust route in `LevelBlockInventoryConfig` to avoid obstacles
+3. Adjust route in the LevelDefinition's inventory entries to avoid obstacles
 4. Place transporter in different location
 
 ---
@@ -759,11 +764,11 @@ One action triggers multiple consequences:
 
 ### Inventory shows wrong counts
 
-**Cause**: Inventory config might have errors or shared groups misconfigured.
+**Cause**: Inventory entries in LevelDefinition might have errors or shared groups misconfigured.
 
 **Solution**:
-1. Check `LevelBlockInventoryConfig` in Inspector
-2. Verify `maxCount` values
+1. Check the LevelDefinition asset's `levelDataJson` field
+2. Verify `maxCount` values in the inventory entries
 3. For shared groups, ensure `inventoryGroupId` matches
 4. For pairs (teleporters), ensure `isPairInventory: true` and `pairSize: 2`
 
@@ -799,8 +804,8 @@ One action triggers multiple consequences:
 
 #### Save/Load (All Modes)
 - `Ctrl+S` / `Cmd+S` - Save level
-- `Ctrl+L` / `Cmd+L` - Load level
-- `Ctrl+Shift+S` / `Cmd+Shift+S` - Show save location
+- `Ctrl+Shift+S` / `Cmd+Shift+S` - Show active LevelDefinition asset path
+  - Designer-only; player progress is auto-saved on completion
 
 ---
 

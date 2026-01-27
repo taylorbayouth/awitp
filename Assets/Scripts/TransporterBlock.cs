@@ -34,7 +34,7 @@ public class TransporterBlock : BaseBlock
     protected override void OnPlayerReachCenter()
     {
         if (isTransporting || !isArmed) return;
-        LemController lem = currentPlayer != null ? currentPlayer : FindObjectOfType<LemController>();
+        LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
         if (lem == null) return;
 
         List<Vector2Int> steps = BuildSteps();

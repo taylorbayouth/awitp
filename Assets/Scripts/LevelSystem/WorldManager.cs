@@ -34,7 +34,7 @@ public class WorldManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = FindObjectOfType<WorldManager>();
+                _instance = UnityEngine.Object.FindAnyObjectByType<WorldManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("WorldManager");

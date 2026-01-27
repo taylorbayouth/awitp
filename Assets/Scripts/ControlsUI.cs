@@ -20,7 +20,7 @@ public class ControlsUI : MonoBehaviour
     {
         if (editorController == null)
         {
-            editorController = FindObjectOfType<EditorController>();
+            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
     }
 

@@ -137,10 +137,10 @@ These features significantly improve the level creation workflow:
 ---
 
 ### 6. Visual Route Editor for Transporters
-**Current Issue**: Route configuration requires typing text strings like "L2 U3 R1" in Inspector.
+**Current Issue**: Route configuration requires typing text strings like "L2 U3 R1" in the LevelDefinition JSON.
 
 **Implementation Needed**:
-- [ ] Custom Inspector for `LevelBlockInventoryConfig`
+- [ ] Custom Inspector for LevelDefinition inventory entries
 - [ ] Visual grid for drawing routes
 - [ ] Click-and-drag route creation
 - [ ] Real-time validation (check for collisions)
@@ -149,7 +149,7 @@ These features significantly improve the level creation workflow:
 
 **Files to Create**:
 - `Assets/Scripts/Editor/RouteEditorWindow.cs` - Unity Editor window for route design
-- `Assets/Scripts/Editor/LevelBlockInventoryConfigEditor.cs` - Custom Inspector
+- `Assets/Scripts/Editor/LevelDefinitionInventoryEditor.cs` - Custom Inspector for inventory entries
 
 **Files to Modify**:
 - [RouteParser.cs](Assets/Scripts/RouteParser.cs) - Already handles parsing, just needs UI

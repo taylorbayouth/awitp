@@ -20,7 +20,7 @@ This document outlines the architecture needed to transform AWITP from a single-
 - Single level save/load system (JSON files)
 - Three game modes: Build Mode, Designer Mode (dev-only), Play Mode
 - Block/Lem instantiation via code (factory pattern in GridManager)
-- Inventory configuration per level (LevelBlockInventoryConfig)
+- Inventory configuration per level (stored in LevelDefinition assets)
 
 **What's Missing:**
 - Multiple level management

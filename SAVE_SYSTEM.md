@@ -2,7 +2,47 @@
 
 ## Overview
 
-The save system provides persistent level storage using JSON serialization. It captures all editor state (blocks, permanent blocks, placeable spaces, Lem placements) and can restore it exactly, even after Unity is closed.
+There are two separate persistence concerns in AWITP:
+
+1. **Designer authoring saves** (Cmd/Ctrl+S) - for Taylor only. Saves the editable level layout to JSON files so you can resume editing later.
+2. **Player progress** (auto-save on completion) - for players. Saves which levels/worlds have been completed/unlocked.
+
+This document covers both systems and clarifies what is (and is not) saved in each.
+
+### Designer Authoring Saves (Cmd/Ctrl+S)
+- **Purpose**: Save and reload editable level layouts while designing.
+- **Storage**: `LevelDefinition` assets (serialized `levelDataJson` inside the asset).
+- **Who uses it**: Designer only (Taylor). Players never use Cmd/Ctrl+S.
+- **What is saved**:
+  - Grid size
+  - Permanent block placements
+  - Lem placement
+  - Placeable space designations
+  - Inventory configuration
+  - Any future level authoring data (e.g., skyboxes)
+- **What is NOT saved**:
+  - Runtime positions of Lems or moving blocks during Play Mode
+  - In-progress player block placements
+
+**Play Mode rule**: Cmd/Ctrl+S is disabled while the in-game Play Mode is active. Exit Play Mode before saving.
+
+### Packaged Level Assets (LevelDefinition)
+- **Purpose**: Store shipping level content inside ScriptableObject assets.
+- **Storage**: `LevelDefinition.levelDataJson` (serialized LevelData embedded in the asset).
+- **Who uses it**: Runtime level loading via `LevelManager`. This is not a player save.
+
+### Player Progress Saves (Auto on Completion)
+- **Purpose**: Persist player progression (completed levels, unlocked worlds, best stats).
+- **Storage**: JSON file in `Application.persistentDataPath/progress.json`.
+- **Who uses it**: Players only.
+- **What is saved**:
+  - Levels completed
+  - Worlds unlocked
+  - Best time / blocks used / attempts
+- **What is NOT saved**:
+  - In-progress block placements in Build Mode
+  - Temporary edits made by the player before completion
+  - Unfinished level state after quitting
 
 ## Architecture
 
@@ -26,21 +66,31 @@ Serializable data structure that represents a complete level state.
 - Key states (location: World, KeyBlock, Lem, or LockBlock)
 - Metadata (level name, save timestamp)
 
-#### LevelSaveSystem.cs
-Static utility class handling file I/O operations.
+**Designer note**: Designer saves intentionally exclude runtime-only data (placed blocks and key states). Those fields are still part of `LevelData` for runtime snapshots and debugging.
 
-**Key Methods**:
-- `SaveLevel(levelData, levelName)` - Writes level to JSON file
-- `LoadLevel(levelName)` - Reads level from JSON file
-- `LevelExists(levelName)` - Checks if save file exists
-- `DeleteLevel(levelName)` - Removes save file
-- `GetSavePath()` - Returns save directory path
+#### LevelDefinition.cs (Designer Level Assets)
+ScriptableObject that stores level content as JSON in `levelDataJson`.
 
-**File Management**:
-- Uses `Application.persistentDataPath` for cross-platform compatibility
-- Creates `Levels/` subdirectory automatically
-- Default filename: `current_level.json`
-- Pretty-printed JSON for human readability
+**Designer Save Flow**:
+- Cmd/Ctrl+S captures `LevelData` from `GridManager`
+- The active `LevelDefinition` asset is updated via `LevelDefinition.SaveFromLevelData()`
+- Asset is saved via `UnityEditor.AssetDatabase.SaveAssets()` (editor only)
+
+#### LevelSaveSystem.cs (Legacy/Optional)
+Static utility for file-based JSON save/load. Not used by the designer hotkeys anymore.
+It can be kept for backups or removed later if desired.
+
+#### ProgressManager.cs (Player Progress)
+Singleton manager for tracking and persisting player progress.
+
+**Key Responsibilities**:
+- Mark levels complete on win
+- Unlock worlds based on completion
+- Save/load progress to disk (progress.json)
+
+**Notes**:
+- Progress is saved automatically on level completion.
+- No in-progress block placement data is stored for players.
 
 #### GridManager.cs (Save/Load Methods)
 Integration layer between the save system and game state.
@@ -56,50 +106,39 @@ Integration layer between the save system and game state.
 
 ## Data Flow
 
-### Saving a Level
+### Saving a Level (Designer)
 
 ```
 User presses Ctrl+S
     ↓
 EditorController.HandleSaveLoad()
     ↓
-GridManager.SaveLevel()
+GridManager.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false)
     ↓
-GridManager.CaptureLevelData()
-    ├─ Capture BlockInventory entries → LevelData.inventoryEntries
-    ├─ Iterate permanentBlocks dictionary → LevelData.permanentBlocks
-    ├─ Iterate placedBlocks dictionary → LevelData.blocks
-    ├─ Iterate placeableSpaces array → LevelData.placeableSpaceIndices
-    └─ Iterate originalLemPlacements → LevelData.lems
-    ↓
-LevelSaveSystem.SaveLevel(levelData)
+LevelDefinition.SaveFromLevelData(levelData)
     ├─ Convert LevelData to JSON with JsonUtility.ToJson()
-    ├─ Get file path from Application.persistentDataPath
-    └─ Write JSON to file with File.WriteAllText()
+    ├─ Store JSON in LevelDefinition.levelDataJson
+    └─ Save asset via AssetDatabase.SaveAssets() (editor only)
     ↓
 Success/failure reported to console
 ```
 
-### Loading a Level
+### Loading a Level (Designer)
 
 ```
-User presses Ctrl+L
+Auto-load on Play start (when a LevelDefinition is assigned)
     ↓
-EditorController.HandleSaveLoad()
+LevelManager.Start()
     ↓
-LevelSaveSystem.LevelExists()
-    ↓ (if exists)
-GridManager.LoadLevel()
-    ↓
-LevelSaveSystem.LoadLevel()
-    ├─ Read JSON from file with File.ReadAllText()
-    └─ Convert JSON to LevelData with JsonUtility.FromJson()
+LevelManager.LoadLevel(CurrentLevelDef)
+    └─ LevelDefinition.ToLevelData() (JsonUtility.FromJson)
     ↓
 GridManager.RestoreLevelData(levelData)
     ├─ ClearAllBlocks() - remove existing blocks
     ├─ ClearAllLems() - remove existing Lems
     ├─ ClearPlaceableSpaces() - reset placeable array
     ├─ Apply inventory entries (if present)
+    │   └─ Inventory entries are loaded before block placement so inventory keys/flavors resolve correctly
     ├─ Check if grid size changed → reinitialize if needed
     ├─ Restore placeableSpaces array from indices
     ├─ PlacePermanentBlock() for each saved permanent block
@@ -110,6 +149,10 @@ Refresh visuals and update cursor state
     ↓
 Success/failure reported to console
 ```
+
+**Play Mode rule**: Save/Load is blocked while the in-game Play Mode is active to prevent capturing runtime movement state.
+
+**Inventory**: Inventory starts empty. It's loaded from the LevelDefinition's `inventoryEntries` when a level is loaded.
 
 ## File Format
 
@@ -253,15 +296,12 @@ Application/[AppGUID]/Documents/Levels/
 /storage/emulated/0/Android/data/[PackageName]/files/Levels/
 ```
 
-### Accessing the Save Directory
+### Accessing the Designer Save Location
 
-At runtime:
-```csharp
-string savePath = LevelSaveSystem.GetSavePath();
-Debug.Log($"Levels saved to: {savePath}");
-```
+Designer saves live in the active **LevelDefinition** asset.
 
-In the editor, press **Ctrl+Shift+S** to log the path to console.
+- In the editor, press **Ctrl+Shift+S** to log the LevelDefinition asset path.
+- File-system save paths below apply only to legacy file-based saves (if used).
 
 ## Implementation Details
 
@@ -342,82 +382,42 @@ Blocks and Lems are validated against new grid size:
 
 ## Usage Examples
 
-### Basic Save/Load
+### Basic Designer Save/Load (LevelDefinition)
 
 ```csharp
-// Save current level
-if (GridManager.Instance.SaveLevel())
-{
-    Debug.Log("Level saved successfully");
-}
+LevelDefinition levelDef = LevelManager.Instance.CurrentLevelDef;
+if (levelDef == null) return;
 
-// Load saved level
-if (GridManager.Instance.LoadLevel())
-{
-    Debug.Log("Level loaded successfully");
-}
+// Save current authored layout (no in-progress player blocks)
+LevelData data = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
+levelDef.SaveFromLevelData(data);
+
+// Reload from the asset
+LevelManager.Instance.LoadLevel(levelDef);
 ```
 
-### Named Levels
+### Save to a Specific LevelDefinition Asset
 
 ```csharp
-// Save with custom name
-GridManager.Instance.SaveLevel("my_puzzle_level");
+// Save to a chosen asset (e.g., selected in inspector)
+public LevelDefinition targetLevel;
 
-// Load specific level
-GridManager.Instance.LoadLevel("my_puzzle_level");
-
-// Check if level exists
-if (LevelSaveSystem.LevelExists("my_puzzle_level"))
-{
-    Debug.Log("Level exists!");
-}
+LevelData data = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
+targetLevel.SaveFromLevelData(data);
 ```
 
-### Manual Capture and Restore
+### Manual Capture and Restore (Runtime Use)
 
 ```csharp
-// Capture level data without saving to file
+// Capture full runtime state (includes placed blocks and key states)
 LevelData data = GridManager.Instance.CaptureLevelData();
 
-// Modify data programmatically
-data.levelName = "Generated Level";
-data.blocks.Add(new LevelData.BlockData(BlockType.Default, 0));
-
-// Save modified data
-LevelSaveSystem.SaveLevel(data, "generated_level");
-
-// Later, load and restore
-LevelData loadedData = LevelSaveSystem.LoadLevel("generated_level");
-if (loadedData != null)
-{
-    GridManager.Instance.RestoreLevelData(loadedData);
-}
+// Restore directly (bypasses LevelDefinition)
+GridManager.Instance.RestoreLevelData(data);
 ```
 
-### Level Management
-
-```csharp
-// Get save directory path
-string savePath = LevelSaveSystem.GetSavePath();
-Debug.Log($"Levels saved to: {savePath}");
-
-// Delete a level
-if (LevelSaveSystem.DeleteLevel("old_level"))
-{
-    Debug.Log("Level deleted");
-}
-
-// List all saved levels (requires custom code)
-string[] levelFiles = Directory.GetFiles(
-    LevelSaveSystem.GetSavePath(),
-    "*.json"
-);
-foreach (string file in levelFiles)
-{
-    Debug.Log($"Found level: {Path.GetFileNameWithoutExtension(file)}");
-}
-```
+### Legacy File-Based Saves (Optional)
+`LevelSaveSystem` can still be used for file-based backups, but it is not used by designer hotkeys.
 
 ## Extending the System
 
@@ -441,7 +441,10 @@ Debug.Log($"Loading level with difficulty: {levelData.levelDifficulty}");
 
 **Versioning Consideration**: Old save files without new field will use default value (0 for int, null for reference types).
 
-### Supporting Multiple Level Slots
+### Supporting Multiple Level Slots (Legacy File Saves)
+
+These examples apply only if you choose to use `LevelSaveSystem` file-based saves.
+For LevelDefinition assets, "multiple slots" simply means multiple assets.
 
 Add UI for level slot selection:
 ```csharp
@@ -461,7 +464,7 @@ public void LoadFromSlot(int slot)
 }
 ```
 
-### Adding Autosave
+### Adding Autosave (Legacy File Saves)
 
 Implement periodic autosaving:
 ```csharp
@@ -480,7 +483,7 @@ private void Update()
 }
 ```
 
-### Custom Serialization Format
+### Custom Serialization Format (Legacy File Saves)
 
 To use a custom format instead of JSON:
 

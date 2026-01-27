@@ -428,7 +428,7 @@ public class BaseBlock : MonoBehaviour
                 // Use cached inventory reference to avoid expensive FindObjectOfType
                 if (_cachedInventory == null)
                 {
-                    _cachedInventory = UnityEngine.Object.FindObjectOfType<BlockInventory>();
+                    _cachedInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
                 }
 
                 if (_cachedInventory != null)
@@ -933,7 +933,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (_cachedEditorController == null)
         {
-            _cachedEditorController = UnityEngine.Object.FindObjectOfType<EditorController>();
+            _cachedEditorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
 
         return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;

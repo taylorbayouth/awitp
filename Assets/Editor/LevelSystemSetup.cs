@@ -136,7 +136,7 @@ public class LevelSystemSetup : EditorWindow
         so.ApplyModifiedProperties();
 
         // Add EventSystem
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -244,7 +244,7 @@ public class LevelSystemSetup : EditorWindow
         so.ApplyModifiedProperties();
 
         // Add EventSystem
-        if (FindObjectOfType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
         {
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -406,7 +406,7 @@ public class LevelSystemSetup : EditorWindow
     public static void AddVictoryScreenToScene()
     {
         // Find or create Canvas
-        Canvas canvas = FindObjectOfType<Canvas>();
+        Canvas canvas = FindAnyObjectByType<Canvas>();
         if (canvas == null)
         {
             GameObject canvasObj = new GameObject("Canvas");

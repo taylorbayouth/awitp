@@ -56,7 +56,7 @@
 1. **Permanent Blocks** (B key) - Fixed level architecture
 2. **Placeable Spaces** (Space key) - Black borders showing where players can place blocks
 3. **Starting Lems** (L key) - Initial character positions
-4. **Inventory** (via LevelBlockInventoryConfig) - What blocks players have access to
+4. **Inventory** (via LevelDefinition asset) - What blocks players have access to
 
 ---
 
@@ -66,6 +66,8 @@
 **Controls**:
 - **P** - Exit Play Mode (returns to Build Mode)
 - Lems walk automatically and interact with blocks
+
+**Physics Note**: Lems and physics are frozen in Build Mode and Designer Mode. They only move when Play Mode is active.
 
 **What You're Testing**:
 - Is the level solvable?
@@ -94,27 +96,25 @@ The cursor changes color to show what you can do:
 ### Save Your Level
 Press **Ctrl+S** (Windows/Linux) or **Cmd+S** (Mac)
 
-The level will be saved to a JSON file including:
-- All placed blocks (type and position)
+The level will be saved into the active **LevelDefinition** asset (stored as JSON in `levelDataJson`) including:
 - All permanent blocks (type and position)
 - Placeable space markings
 - Lem placements and facing directions
 - Grid settings (width, height, cell size)
 
-### Load Your Level
-Press **Ctrl+L** (Windows/Linux) or **Cmd+L** (Mac)
+**Designer-only**: This save/load flow is for Taylor (Designer Mode). Players do not have a save hotkey.
+Player progress is saved automatically when a level is completed (all locks filled with keys), and any in-progress block placements are discarded on restart.
+Cmd/Ctrl+S is disabled while the in-game Play Mode is active.
 
-This restores everything exactly as you saved it. If no save file exists, you'll see a warning message.
+### Load Your Level
+Levels auto-load on Play when a LevelDefinition is assigned in the scene. This restores everything exactly as you saved it.
 
 ### Find Save Location
 Press **Ctrl+Shift+S** (Windows/Linux) or **Cmd+Shift+S** (Mac)
 
-The console will show you the full path to where levels are saved.
+The console will show you the full path to the active LevelDefinition asset.
 
-**Default save location**:
-- Windows: `C:\Users\[Username]\AppData\LocalLow\[CompanyName]\[ProductName]\Levels\`
-- Mac: `~/Library/Application Support/[CompanyName]/[ProductName]/Levels/`
-- Linux: `~/.config/unity3d/[CompanyName]/[ProductName]/Levels/`
+**Note**: Designer saves are stored in assets (not in the persistent data path).
 
 ## Workflow: Creating a Level
 
@@ -244,7 +244,6 @@ The console will show you the full path to where levels are saved.
 
 ### Save/Load (All Modes)
 - **Ctrl+S / Cmd+S** - Save current level
-- **Ctrl+L / Cmd+L** - Load saved level
 - **Ctrl+Shift+S / Cmd+Shift+S** - Show save location in console
 
 ### Mode Switching
@@ -298,12 +297,14 @@ Edit `RenderingConstants.cs` to adjust:
 - **Opacity** - Transparency of grid lines
 
 ### Inventory Configuration
-Add a **LevelBlockInventoryConfig** component to an empty GameObject to define:
+Inventory is configured within the **LevelDefinition** asset's JSON data (`levelDataJson`).
+
+The `inventoryEntries` array in the level data defines:
 - Block entries (type + optional flavor)
 - Inventory counts per entry or shared `inventoryGroupId`
 - Transporter routes via `routeSteps` (placement is blocked if a route intersects existing blocks)
 
-Block inventory is saved with the level and restored on load.
+Block inventory is saved with the level and restored on load automatically when the level is loaded.
 
 ### Visual Customization
 Block visuals are defined by prefabs in `Resources/Blocks/`:
