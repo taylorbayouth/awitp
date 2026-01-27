@@ -1,0 +1,123 @@
+{
+  "levelId": "tutorial_03_teleportertwins",
+  "levelName": "Teleporter Twins",
+  "worldId": "world_tutorial",
+  "orderInWorld": 2,
+  "gridWidth": 12,
+  "gridHeight": 8,
+  "cellSize": 1.0,
+  "permanentBlocks": [
+    {
+      "blockType": 1,
+      "gridIndex": 0,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 1,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 2,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 5,
+      "gridIndex": 45,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 46,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 6,
+      "gridIndex": 82,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 83,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    },
+    {
+      "blockType": 1,
+      "gridIndex": 84,
+      "flavorId": "",
+      "routeSteps": [],
+      "inventoryKey": ""
+    }
+  ],
+  "blocks": [],
+  "placeableSpaceIndices": [
+    12,
+    13,
+    14,
+    24,
+    25,
+    26,
+    36,
+    37,
+    38,
+    48,
+    49,
+    50,
+    60,
+    61,
+    62,
+    72,
+    73,
+    74
+  ],
+  "lems": [
+    {
+      "gridIndex": 0,
+      "facingRight": true,
+      "worldPosition": {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.0
+      },
+      "hasWorldPosition": true
+    }
+  ],
+  "inventoryEntries": [
+    {
+      "blockType": 1,
+      "displayName": "Platform",
+      "flavorId": "",
+      "routeSteps": [],
+      "maxCount": 8,
+      "isPairInventory": false,
+      "pairSize": 1,
+      "inventoryGroupId": ""
+    },
+    {
+      "blockType": 2,
+      "displayName": "Teleporter A",
+      "flavorId": "A",
+      "routeSteps": [],
+      "maxCount": 2,
+      "isPairInventory": true,
+      "pairSize": 2,
+      "inventoryGroupId": ""
+    }
+  ],
+  "keyStates": []
+}
