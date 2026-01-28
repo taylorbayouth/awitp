@@ -304,12 +304,6 @@ public class LevelManager : MonoBehaviour
             // Restore the level data through GridManager
             _gridManager.RestoreLevelData(data);
 
-            // Configure inventory from level data
-            if (_blockInventory != null && data.inventoryEntries != null && data.inventoryEntries.Count > 0)
-            {
-                _blockInventory.LoadInventoryEntries(data.inventoryEntries);
-            }
-
             return true;
         }
         catch (Exception ex)

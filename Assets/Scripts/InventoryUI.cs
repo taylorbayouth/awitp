@@ -1,8 +1,9 @@
 using UnityEngine;
+using UnityEngine.UI;
 using System.Collections.Generic;
 
 /// <summary>
-/// Displays block inventory counts and current selection using OnGUI
+/// Displays block inventory counts and current selection using UGUI.
 /// </summary>
 [ExecuteAlways]
 public class InventoryUI : MonoBehaviour
@@ -19,26 +20,53 @@ public class InventoryUI : MonoBehaviour
     public float itemPadding = 6f;
     public float topMargin = 24f;
     public float leftMargin = 24f;
+    public float keyHintHeight = 20f;
+    public float keyHintSpacing = 4f;
 
-    [Header("Scaling")]
-    [Tooltip("UI scale multiplier (1.0 = normal, 0.5 = half size)")]
-    public float uiScale = 1.0f;
+    [Header("UGUI Settings")]
+    public Font font;
+    public Vector2 referenceResolution = new Vector2(1920f, 1080f);
+    [Range(0f, 1f)]
+    public float matchWidthOrHeight = 1f;
 
-    [Tooltip("Auto-scale based on screen resolution (recommended)")]
-    public bool autoScale = true;
+    [Header("Text Sizes")]
+    public int labelFontSize = 16;
+    public int subLabelFontSize = 13;
+    public int countFontSize = 20;
+    public int teleporterFontSize = 56;
+    public int cornerFontSize = 18;
 
-    private float _scaleFactor = 1.0f;
-    private float _lastScaleFactor = -1f;
+    [Header("Colors")]
+    public Color normalBackground = new Color(0.2f, 0.2f, 0.2f, 0.8f);
+    public Color selectedBackground = new Color(0f, 0f, 0f, 0.9f);
+    public Color subLabelColor = new Color(1f, 1f, 1f, 0.75f);
 
-    private GUIStyle normalStyle;
-    private GUIStyle selectedStyle;
-    private GUIStyle textStyle;
-    private GUIStyle labelStyle;
-    private GUIStyle subLabelStyle;
-    private GUIStyle cornerStyle;
-    private GUIStyle winStyle;
-    private GUIStyle teleporterLabelStyle;
-    private readonly Dictionary<string, Texture2D> transporterIconCache = new Dictionary<string, Texture2D>();
+    private Canvas _canvas;
+    private RectTransform _root;
+    private RectTransform _panel;
+    private VerticalLayoutGroup _layout;
+    private ContentSizeFitter _fitter;
+    private Text _statusText;
+    private Text _lockStatusText;
+    private Text _winText;
+
+    private readonly List<SlotUI> _slots = new List<SlotUI>();
+    private readonly Dictionary<string, Texture2D> _transporterIconCache = new Dictionary<string, Texture2D>();
+
+    private class SlotUI
+    {
+        public GameObject root;
+        public Image background;
+        public Image previewImage;
+        public RawImage previewRaw;
+        public Text label;
+        public Text subLabel;
+        public Text count;
+        public Text teleporterLabel;
+        public Text keyHint;
+        public BlockInventoryEntry entry;
+        public int index;
+    }
 
     private void Awake()
     {
@@ -57,7 +85,6 @@ public class InventoryUI : MonoBehaviour
 
         _instance = this;
 
-        // Find references if not assigned
         if (inventory == null)
         {
             inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
@@ -67,19 +94,28 @@ public class InventoryUI : MonoBehaviour
         {
             editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
+
+        if (font == null)
+        {
+            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
+        EnsureCanvas();
+        BuildStaticUI();
     }
 
-    private void OnGUI()
+    private void OnEnable()
     {
-        // In Unity Editor, OnGUI runs for multiple views (Scene, Game, etc.)
-        // Only render in the primary display (display 0) to prevent double-rendering
-#if UNITY_EDITOR
-        if (Event.current.displayIndex != 0)
+        if (font == null)
         {
-            return;
+            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
         }
-#endif
+        EnsureCanvas();
+        BuildStaticUI();
+    }
 
+    private void Update()
+    {
         if (inventory == null)
         {
             inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
@@ -90,224 +126,330 @@ public class InventoryUI : MonoBehaviour
             editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
 
-        // Calculate scale factor
-        if (autoScale)
+        UpdateUI();
+    }
+
+    private void EnsureCanvas()
+    {
+        if (_canvas != null) return;
+
+        _canvas = GetComponent<Canvas>();
+        if (_canvas == null)
         {
-            // Scale based on screen height (1080p = 1.0x, 720p = 0.67x, 4K = 2.0x)
-            _scaleFactor = (Screen.height / 1080f) * uiScale;
-        }
-        else
-        {
-            _scaleFactor = uiScale;
+            _canvas = gameObject.AddComponent<Canvas>();
         }
 
-        // Snap to quarter steps to keep IMGUI text/layout crisp.
-        _scaleFactor = Mathf.Max(0.25f, Mathf.Round(_scaleFactor * 4f) / 4f);
+        _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        _canvas.sortingOrder = 100;
 
-        InitializeStyles();
+        if (GetComponent<CanvasScaler>() == null)
+        {
+            CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = referenceResolution;
+            scaler.matchWidthOrHeight = matchWidthOrHeight;
+        }
+
+        if (GetComponent<GraphicRaycaster>() == null)
+        {
+            gameObject.AddComponent<GraphicRaycaster>();
+        }
+
+        _root = _canvas.GetComponent<RectTransform>();
+    }
+
+    private void BuildStaticUI()
+    {
+        if (_panel != null) return;
+
+        GameObject panelObj = new GameObject("InventoryPanel", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        panelObj.transform.SetParent(_root, false);
+        _panel = panelObj.GetComponent<RectTransform>();
+        _panel.anchorMin = new Vector2(0f, 1f);
+        _panel.anchorMax = new Vector2(0f, 1f);
+        _panel.pivot = new Vector2(0f, 1f);
+        _panel.anchoredPosition = new Vector2(leftMargin, -topMargin);
+
+        _layout = panelObj.GetComponent<VerticalLayoutGroup>();
+        _layout.spacing = spacing;
+        _layout.childAlignment = TextAnchor.UpperLeft;
+        _layout.childControlWidth = false;
+        _layout.childControlHeight = false;
+        _layout.childForceExpandWidth = false;
+        _layout.childForceExpandHeight = false;
+
+        _fitter = panelObj.GetComponent<ContentSizeFitter>();
+        _fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+        _fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+        _statusText = CreateText("Status", _root, labelFontSize, TextAnchor.UpperLeft, Color.yellow);
+        RectTransform statusRect = _statusText.GetComponent<RectTransform>();
+        statusRect.anchorMin = new Vector2(0f, 1f);
+        statusRect.anchorMax = new Vector2(0f, 1f);
+        statusRect.pivot = new Vector2(0f, 1f);
+        statusRect.anchoredPosition = new Vector2(leftMargin, -topMargin);
+        _statusText.gameObject.SetActive(false);
+
+        _lockStatusText = CreateText("LockStatus", _root, cornerFontSize, TextAnchor.UpperRight, Color.white);
+        RectTransform lockRect = _lockStatusText.GetComponent<RectTransform>();
+        lockRect.anchorMin = new Vector2(1f, 1f);
+        lockRect.anchorMax = new Vector2(1f, 1f);
+        lockRect.pivot = new Vector2(1f, 1f);
+        lockRect.anchoredPosition = new Vector2(-24f, -20f);
+
+        _winText = CreateText("WinText", _root, cornerFontSize, TextAnchor.UpperRight, new Color(0.8f, 1f, 0.8f));
+        RectTransform winRect = _winText.GetComponent<RectTransform>();
+        winRect.anchorMin = new Vector2(1f, 1f);
+        winRect.anchorMax = new Vector2(1f, 1f);
+        winRect.pivot = new Vector2(1f, 1f);
+        winRect.anchoredPosition = new Vector2(-24f, -46f);
+        _winText.text = string.Empty;
+    }
+
+    private void UpdateUI()
+    {
+        if (_panel == null) return;
+
+        GameMode mode = editorController != null ? editorController.currentMode : GameMode.Editor;
+        bool showInventory = !Application.isPlaying || mode != GameMode.Play;
+        _panel.gameObject.SetActive(showInventory);
 
         if (inventory == null)
         {
-            DrawStatusLabel("InventoryUI: No BlockInventory found");
+            ShowStatus("InventoryUI: No BlockInventory found");
             return;
         }
 
         if (Application.isPlaying && editorController == null)
         {
-            DrawStatusLabel("InventoryUI: No EditorController found");
+            ShowStatus("InventoryUI: No EditorController found");
             return;
         }
 
+        HideStatus();
+
         if (Application.isPlaying)
         {
-            DrawLockStatus();
+            UpdateLockStatus();
+        }
+        else
+        {
+            _lockStatusText.text = string.Empty;
+            _winText.text = string.Empty;
         }
 
-        if (!Application.isPlaying || editorController.currentMode != GameMode.Play)
-        {
-            GameMode mode = editorController != null ? editorController.currentMode : GameMode.Editor;
-            IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
-            bool showInfinite = mode == GameMode.LevelEditor;
-            int drawIndex = 0;
-            for (int i = 0; i < entries.Count; i++)
-            {
-                if (ShouldHideFromInventory(entries[i], mode)) continue;
-                bool isSelected = editorController != null && editorController.CurrentInventoryIndex == i;
-                bool showKeyHint = editorController != null;
-                DrawBlockSlot(entries[i], i, drawIndex, isSelected, showKeyHint, showInfinite);
-                drawIndex++;
-            }
+        if (!showInventory) return;
 
-            if (drawIndex == 0)
-            {
-                DrawStatusLabel("InventoryUI: No visible inventory entries");
-            }
+        IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
+        bool showInfinite = mode == GameMode.LevelEditor;
+
+        int drawIndex = 0;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (ShouldHideFromInventory(entries[i], mode)) continue;
+
+            SlotUI slot = EnsureSlot(drawIndex);
+            slot.entry = entries[i];
+            slot.index = i;
+            UpdateSlot(slot, showInfinite);
+            drawIndex++;
         }
 
-    }
+        TrimSlots(drawIndex);
 
-
-    private void InitializeStyles()
-    {
-        bool scaleChanged = !Mathf.Approximately(_lastScaleFactor, _scaleFactor);
-
-        if (normalStyle == null)
+        if (drawIndex == 0)
         {
-            normalStyle = new GUIStyle(GUI.skin.box);
-            normalStyle.normal.background = MakeTex(2, 2, new Color(0.2f, 0.2f, 0.2f, 0.8f));
-        }
-
-        if (selectedStyle == null)
-        {
-            selectedStyle = new GUIStyle(GUI.skin.box);
-            selectedStyle.normal.background = MakeTex(2, 2, new Color(0f, 0f, 0f, 0.9f));            selectedStyle.border = new RectOffset(3, 3, 3, 3);
-        }
-
-        if (textStyle == null)
-        {
-            textStyle = new GUIStyle(GUI.skin.label);
-            textStyle.alignment = TextAnchor.MiddleCenter;
-            textStyle.normal.textColor = Color.white;
-            textStyle.fontStyle = FontStyle.Bold;
-        }
-
-        if (labelStyle == null)
-        {
-            labelStyle = new GUIStyle(GUI.skin.label);
-            labelStyle.alignment = TextAnchor.MiddleCenter;
-            labelStyle.normal.textColor = Color.white;
-            labelStyle.fontStyle = FontStyle.Bold;
-        }
-
-        if (subLabelStyle == null)
-        {
-            subLabelStyle = new GUIStyle(GUI.skin.label);
-            subLabelStyle.alignment = TextAnchor.MiddleCenter;
-            subLabelStyle.normal.textColor = new Color(1f, 1f, 1f, 0.75f);
-        }
-
-        if (cornerStyle == null)
-        {
-            cornerStyle = new GUIStyle(GUI.skin.label);
-            cornerStyle.alignment = TextAnchor.UpperRight;
-            cornerStyle.normal.textColor = Color.white;
-            cornerStyle.fontStyle = FontStyle.Bold;
-        }
-
-        if (teleporterLabelStyle == null)
-        {
-            teleporterLabelStyle = new GUIStyle(GUI.skin.label);
-            teleporterLabelStyle.alignment = TextAnchor.MiddleCenter;
-            teleporterLabelStyle.normal.textColor = Color.white;
-            teleporterLabelStyle.fontStyle = FontStyle.Bold;
-        }
-
-        if (winStyle == null)
-        {
-            winStyle = new GUIStyle(GUI.skin.label);
-            winStyle.alignment = TextAnchor.UpperRight;
-            winStyle.normal.textColor = new Color(0.8f, 1f, 0.8f);
-            winStyle.fontStyle = FontStyle.Bold;
-        }
-
-        if (scaleChanged)
-        {
-            textStyle.fontSize = ScaleFont(20);
-            labelStyle.fontSize = ScaleFont(16);
-            subLabelStyle.fontSize = ScaleFont(13);
-            cornerStyle.fontSize = ScaleFont(18);
-            teleporterLabelStyle.fontSize = ScaleFont(56);
-            winStyle.fontSize = ScaleFont(20);
-            _lastScaleFactor = _scaleFactor;
+            ShowStatus("InventoryUI: No visible inventory entries");
         }
     }
 
-    private void DrawBlockSlot(BlockInventoryEntry entry, int index, int drawIndex, bool isSelected, bool showKeyHint, bool showInfinite)
+    private SlotUI EnsureSlot(int drawIndex)
     {
+        if (drawIndex < _slots.Count)
+        {
+            _slots[drawIndex].root.SetActive(true);
+            return _slots[drawIndex];
+        }
+
+        SlotUI slot = CreateSlot();
+        _slots.Add(slot);
+        return slot;
+    }
+
+    private void TrimSlots(int count)
+    {
+        for (int i = count; i < _slots.Count; i++)
+        {
+            _slots[i].root.SetActive(false);
+        }
+    }
+
+    private SlotUI CreateSlot()
+    {
+        GameObject root = new GameObject("InventorySlot", typeof(RectTransform), typeof(LayoutElement));
+        root.transform.SetParent(_panel, false);
+
+        LayoutElement layout = root.GetComponent<LayoutElement>();
+        layout.preferredWidth = boxSize;
+        layout.preferredHeight = boxSize + keyHintSpacing + keyHintHeight;
+
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.sizeDelta = new Vector2(boxSize, layout.preferredHeight);
+
+        GameObject bgObj = new GameObject("Background", typeof(RectTransform), typeof(Image));
+        bgObj.transform.SetParent(root.transform, false);
+        RectTransform bgRect = bgObj.GetComponent<RectTransform>();
+        bgRect.anchorMin = new Vector2(0f, 1f);
+        bgRect.anchorMax = new Vector2(0f, 1f);
+        bgRect.pivot = new Vector2(0f, 1f);
+        bgRect.anchoredPosition = Vector2.zero;
+        bgRect.sizeDelta = new Vector2(boxSize, boxSize);
+        Image bgImage = bgObj.GetComponent<Image>();
+        bgImage.color = normalBackground;
+
+        Text label = CreateText("Label", bgRect, labelFontSize, TextAnchor.UpperCenter, Color.white);
+        RectTransform labelRect = label.GetComponent<RectTransform>();
+        labelRect.anchorMin = new Vector2(0f, 1f);
+        labelRect.anchorMax = new Vector2(1f, 1f);
+        labelRect.pivot = new Vector2(0.5f, 1f);
+        labelRect.anchoredPosition = new Vector2(0f, -itemPadding);
+        labelRect.sizeDelta = new Vector2(0f, 18f);
+
+        Text subLabel = CreateText("SubLabel", bgRect, subLabelFontSize, TextAnchor.UpperCenter, subLabelColor);
+        RectTransform subRect = subLabel.GetComponent<RectTransform>();
+        subRect.anchorMin = new Vector2(0f, 1f);
+        subRect.anchorMax = new Vector2(1f, 1f);
+        subRect.pivot = new Vector2(0.5f, 1f);
+        subRect.anchoredPosition = new Vector2(0f, -(itemPadding + 18f));
+        subRect.sizeDelta = new Vector2(0f, 16f);
+
+        GameObject previewObj = new GameObject("Preview", typeof(RectTransform), typeof(Image));
+        previewObj.transform.SetParent(bgRect, false);
+        RectTransform previewRect = previewObj.GetComponent<RectTransform>();
+        float previewSize = boxSize * 0.4f;
+        previewRect.anchorMin = new Vector2(0.5f, 0.5f);
+        previewRect.anchorMax = new Vector2(0.5f, 0.5f);
+        previewRect.pivot = new Vector2(0.5f, 0.5f);
+        previewRect.anchoredPosition = new Vector2(0f, -4f);
+        previewRect.sizeDelta = new Vector2(previewSize, previewSize);
+        Image previewImage = previewObj.GetComponent<Image>();
+
+        GameObject previewRawObj = new GameObject("PreviewRaw", typeof(RectTransform), typeof(RawImage));
+        previewRawObj.transform.SetParent(previewRect, false);
+        RectTransform rawRect = previewRawObj.GetComponent<RectTransform>();
+        rawRect.anchorMin = new Vector2(0f, 0f);
+        rawRect.anchorMax = new Vector2(1f, 1f);
+        rawRect.offsetMin = Vector2.zero;
+        rawRect.offsetMax = Vector2.zero;
+        RawImage previewRaw = previewRawObj.GetComponent<RawImage>();
+        previewRaw.gameObject.SetActive(false);
+
+        Text teleporterLabel = CreateText("TeleporterLabel", previewRect, teleporterFontSize, TextAnchor.MiddleCenter, Color.white);
+
+        Text count = CreateText("Count", bgRect, countFontSize, TextAnchor.LowerCenter, Color.white);
+        RectTransform countRect = count.GetComponent<RectTransform>();
+        countRect.anchorMin = new Vector2(0f, 0f);
+        countRect.anchorMax = new Vector2(1f, 0f);
+        countRect.pivot = new Vector2(0.5f, 0f);
+        countRect.anchoredPosition = new Vector2(0f, itemPadding);
+        countRect.sizeDelta = new Vector2(0f, 18f);
+
+        Text keyHint = CreateText("KeyHint", rootRect, labelFontSize, TextAnchor.UpperCenter, Color.white);
+        RectTransform keyRect = keyHint.GetComponent<RectTransform>();
+        keyRect.anchorMin = new Vector2(0f, 0f);
+        keyRect.anchorMax = new Vector2(1f, 0f);
+        keyRect.pivot = new Vector2(0.5f, 0f);
+        keyRect.anchoredPosition = new Vector2(0f, 0f);
+        keyRect.sizeDelta = new Vector2(0f, keyHintHeight);
+
+        return new SlotUI
+        {
+            root = root,
+            background = bgImage,
+            previewImage = previewImage,
+            previewRaw = previewRaw,
+            label = label,
+            subLabel = subLabel,
+            count = count,
+            teleporterLabel = teleporterLabel,
+            keyHint = keyHint
+        };
+    }
+
+    private void UpdateSlot(SlotUI slot, bool showInfinite)
+    {
+        BlockInventoryEntry entry = slot.entry;
         if (entry == null) return;
 
-        float scaledBoxSize = Scale(boxSize);
-        float scaledSpacing = Scale(spacing);
-        float scaledItemPadding = Scale(itemPadding);
-        float scaledTopMargin = Scale(topMargin);
-        float scaledLeftMargin = Scale(leftMargin);
+        bool isSelected = editorController != null && editorController.CurrentInventoryIndex == slot.index;
+        slot.background.color = isSelected ? selectedBackground : normalBackground;
 
-        float xPos = Mathf.Round(GetViewLeft() + scaledLeftMargin);
-        float yPos = Mathf.Round(scaledTopMargin + (drawIndex * (scaledBoxSize + scaledSpacing)));
-        Rect boxRect = new Rect(xPos, yPos, scaledBoxSize, scaledBoxSize);
+        string blockName = entry.GetDisplayName();
+        slot.label.text = blockName;
 
-        // Draw background box
-        GUI.Box(boxRect, "", isSelected ? selectedStyle : normalStyle);
+        slot.subLabel.text = entry.isPairInventory ? "(pairs)" : string.Empty;
 
-        // Get inventory counts
         int available = inventory.GetDisplayAvailableCount(entry);
         int total = inventory.GetDisplayTotalCount(entry);
+        slot.count.text = showInfinite ? "INF" : $"{available}/{total}";
 
-        // Draw colored block preview in the center
+        string keyHint = slot.index < 9 ? $"[{slot.index + 1}]" : string.Empty;
+        slot.keyHint.text = keyHint;
+
         Color blockColor = GetColorForBlockType(entry.blockType);
         if (!showInfinite && available == 0)
         {
-            blockColor.a = 0.3f; // Dim if unavailable
+            blockColor.a = 0.3f;
         }
-
-        float previewSize = scaledBoxSize * 0.4f;
-        float previewX = xPos + (scaledBoxSize - previewSize) * 0.5f;
-        float previewY = yPos + (scaledBoxSize - previewSize) * 0.5f - Scale(4f);
-        Rect previewRect = new Rect(previewX, previewY, previewSize, previewSize);
 
         if (entry.blockType == BlockType.Transporter)
         {
-            if (!DrawTransporterPreview(entry, previewRect, blockColor))
+            if (TrySetTransporterPreview(entry, slot.previewRaw, blockColor, slot.previewImage.rectTransform.rect.size))
             {
-                DrawSolidPreview(previewRect, blockColor);
+                slot.previewImage.enabled = false;
+            }
+            else
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
             }
         }
         else
         {
-            DrawSolidPreview(previewRect, blockColor);
-        }
-
-        // Draw count text at bottom
-        Rect countRect = new Rect(xPos, yPos + scaledBoxSize - (Scale(18f) + scaledItemPadding), scaledBoxSize, Scale(18f));
-        string countText = showInfinite ? "INF" : $"{available}/{total}";
-        GUI.Label(countRect, countText, textStyle);
-
-        // Draw block type label at top (height increased to prevent clipping)
-        Rect labelRect = new Rect(xPos, yPos + scaledItemPadding, scaledBoxSize, Scale(18f));
-        string blockName = entry.GetDisplayName();
-        GUI.Label(labelRect, blockName, labelStyle);
-
-        // Draw sublabel for pair inventories
-        BlockInventoryEntry groupEntry = entry;
-        bool isPair = groupEntry != null && groupEntry.isPairInventory;
-        if (isPair)
-        {
-            Rect pairRect = new Rect(xPos, yPos + scaledItemPadding + Scale(18f), scaledBoxSize, Scale(16f));
-            GUI.Label(pairRect, "(pairs)", subLabelStyle);
+            slot.previewImage.enabled = true;
+            slot.previewImage.color = blockColor;
+            slot.previewRaw.gameObject.SetActive(false);
         }
 
         if (entry.blockType == BlockType.Teleporter)
         {
-            DrawTeleporterLabel(entry, previewRect);
+            slot.teleporterLabel.text = ExtractTeleporterLabel(entry);
         }
-
-        // Draw key hint
-        Rect keyRect = new Rect(xPos, yPos + scaledBoxSize + Scale(4f), scaledBoxSize, Scale(20f));
-        string keyHint = showKeyHint && index < 9 ? $"[{index + 1}]" : string.Empty;
-        if (!string.IsNullOrEmpty(keyHint))
+        else
         {
-            GUI.Label(keyRect, keyHint, labelStyle);
+            slot.teleporterLabel.text = string.Empty;
         }
     }
 
-    private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
+    private bool TrySetTransporterPreview(BlockInventoryEntry entry, RawImage rawImage, Color blockColor, Vector2 size)
     {
-        if (entry == null) return true;
-        if (mode == GameMode.LevelEditor) return false;
-        return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
+        string[] steps = ResolveRouteSteps(entry);
+        if (steps == null || steps.Length == 0) return false;
+
+        int textureSize = Mathf.RoundToInt(Mathf.Min(size.x, size.y));
+        if (textureSize <= 0) return false;
+
+        Texture2D icon = GetTransporterRouteTexture(steps, textureSize);
+        if (icon == null) return false;
+
+        rawImage.texture = icon;
+        rawImage.color = blockColor;
+        rawImage.gameObject.SetActive(true);
+        return true;
     }
 
-    private void DrawLockStatus()
+    private void UpdateLockStatus()
     {
         LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
         int totalLocks = locks.Length;
@@ -320,56 +462,59 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        float rightMargin = Scale(24f);
-        float topOffset = Scale(20f);
-        Rect statusRect = new Rect(0f, topOffset, Screen.width - rightMargin, Scale(24f));
-        GUI.Label(statusRect, $"{lockedCount} of {totalLocks}", cornerStyle);
+        _lockStatusText.text = totalLocks > 0 ? $"{lockedCount} of {totalLocks}" : string.Empty;
 
         if (editorController != null && editorController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
         {
-            Rect winRect = new Rect(0f, topOffset + Scale(26f), Screen.width - rightMargin, Scale(24f));
-            GUI.Label(winRect, "You win", winStyle);
+            _winText.text = "You win";
         }
-    }
-
-    private void DrawStatusLabel(string text)
-    {
-        if (labelStyle == null)
+        else
         {
-            labelStyle = new GUIStyle(GUI.skin.label)
-            {
-                alignment = TextAnchor.UpperLeft,
-                fontSize = 14,
-                fontStyle = FontStyle.Bold,
-                normal = { textColor = Color.yellow }
-            };
+            _winText.text = string.Empty;
         }
-
-        Rect rect = new Rect(GetViewLeft() + Scale(leftMargin), Scale(topMargin), Scale(520f), Scale(24f));
-        GUI.Label(rect, text, labelStyle);
     }
 
-    private float Scale(float value)
+    private void ShowStatus(string text)
     {
-        return Mathf.Round(value * _scaleFactor);
+        if (_statusText == null) return;
+        _statusText.text = text;
+        _statusText.gameObject.SetActive(true);
     }
 
-    private int ScaleFont(int value)
+    private void HideStatus()
     {
-        return Mathf.Max(1, Mathf.RoundToInt(value * _scaleFactor));
+        if (_statusText == null) return;
+        _statusText.gameObject.SetActive(false);
     }
 
-    private void DrawSolidPreview(Rect previewRect, Color blockColor)
+    private Text CreateText(string name, Transform parent, int fontSize, TextAnchor anchor, Color color)
     {
-        Color oldColor = GUI.color;
-        GUI.color = blockColor;
-        GUI.DrawTexture(previewRect, Texture2D.whiteTexture);
-        GUI.color = oldColor;
+        GameObject obj = new GameObject(name, typeof(RectTransform), typeof(Text));
+        obj.transform.SetParent(parent, false);
+        Text text = obj.GetComponent<Text>();
+        text.font = font;
+        text.fontSize = fontSize;
+        text.alignment = anchor;
+        text.color = color;
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        return text;
     }
 
-    private void DrawTeleporterLabel(BlockInventoryEntry entry, Rect previewRect)
+    private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
     {
-        if (entry == null) return;
+        if (entry == null) return true;
+        if (mode == GameMode.LevelEditor) return false;
+        return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
+    }
+
+    private Color GetColorForBlockType(BlockType blockType)
+    {
+        return BlockColors.GetColorForBlockType(blockType);
+    }
+
+    private static string ExtractTeleporterLabel(BlockInventoryEntry entry)
+    {
         string labelSource = entry.GetResolvedFlavorId();
         if (string.IsNullOrWhiteSpace(labelSource))
         {
@@ -379,17 +524,6 @@ public class InventoryUI : MonoBehaviour
         {
             labelSource = entry.GetDisplayName();
         }
-        string label = ExtractTeleporterLabel(labelSource);
-        if (string.IsNullOrWhiteSpace(label)) return;
-
-        GUI.BeginGroup(previewRect);
-        Rect localRect = new Rect(0f, 0f, previewRect.width, previewRect.height);
-        GUI.Label(localRect, label.ToUpperInvariant(), teleporterLabelStyle);
-        GUI.EndGroup();
-    }
-
-    private static string ExtractTeleporterLabel(string labelSource)
-    {
         if (string.IsNullOrWhiteSpace(labelSource)) return string.Empty;
         string trimmed = labelSource.Trim();
         string[] parts = trimmed.Split(new[] { ' ', '-', '_' }, System.StringSplitOptions.RemoveEmptyEntries);
@@ -398,28 +532,10 @@ public class InventoryUI : MonoBehaviour
         return token.Length > 1 ? token.Substring(0, 1) : token;
     }
 
-    private bool DrawTransporterPreview(BlockInventoryEntry entry, Rect previewRect, Color blockColor)
-    {
-        string[] steps = ResolveRouteSteps(entry);
-        if (steps == null || steps.Length == 0) return false;
-
-        int size = Mathf.RoundToInt(Mathf.Min(previewRect.width, previewRect.height));
-        if (size <= 0) return false;
-
-        Texture2D icon = GetTransporterRouteTexture(steps, size);
-        if (icon == null) return false;
-
-        Color oldColor = GUI.color;
-        GUI.color = blockColor;
-        GUI.DrawTexture(previewRect, icon);
-        GUI.color = oldColor;
-        return true;
-    }
-
     private Texture2D GetTransporterRouteTexture(string[] routeSteps, int size)
     {
         string cacheKey = BuildRouteCacheKey(routeSteps, size);
-        if (transporterIconCache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
+        if (_transporterIconCache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
         {
             return cached;
         }
@@ -427,7 +543,7 @@ public class InventoryUI : MonoBehaviour
         Texture2D texture = BuildTransporterRouteTexture(routeSteps, size);
         if (texture != null)
         {
-            transporterIconCache[cacheKey] = texture;
+            _transporterIconCache[cacheKey] = texture;
         }
         return texture;
     }
@@ -550,9 +666,9 @@ public class InventoryUI : MonoBehaviour
 
     private void ClearTransporterIconCache()
     {
-        if (transporterIconCache.Count == 0) return;
+        if (_transporterIconCache.Count == 0) return;
 
-        foreach (Texture2D texture in transporterIconCache.Values)
+        foreach (Texture2D texture in _transporterIconCache.Values)
         {
             if (texture == null) continue;
             if (Application.isPlaying)
@@ -565,42 +681,14 @@ public class InventoryUI : MonoBehaviour
             }
         }
 
-        transporterIconCache.Clear();
-    }
-
-    private float GetViewLeft()
-    {
-        Camera cam = Camera.main;
-        if (cam == null) return 0f;
-        return Mathf.Round(cam.ViewportToScreenPoint(new Vector3(0f, 0f, 0f)).x);
-    }
-
-    private Color GetColorForBlockType(BlockType blockType)
-    {
-        return BlockColors.GetColorForBlockType(blockType);
-    }
-
-    private string GetBlockTypeName(BlockType blockType)
-    {
-        return BlockColors.GetBlockTypeName(blockType);
-    }
-
-    private Texture2D MakeTex(int width, int height, Color col)
-    {
-        Color[] pix = new Color[width * height];
-        for (int i = 0; i < pix.Length; i++)
-        {
-            pix[i] = col;
-        }
-
-        Texture2D result = new Texture2D(width, height);
-        result.SetPixels(pix);
-        result.Apply();
-        return result;
+        _transporterIconCache.Clear();
     }
 
     public void SetVisible(bool visible)
     {
-        enabled = visible;
+        if (_canvas != null)
+        {
+            _canvas.enabled = visible;
+        }
     }
 }
