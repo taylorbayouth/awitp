@@ -2,161 +2,118 @@
 
 ## Overview
 
-There are two separate persistence concerns in AWITP:
+There are three persistence layers in AWITP:
 
-1. **Designer authoring saves** (Cmd/Ctrl+S) - for Taylor only. Saves the editable level layout to JSON files so you can resume editing later.
-2. **Player progress** (auto-save on completion) - for players. Saves which levels/worlds have been completed/unlocked.
+1. **Designer authoring saves (Ctrl/Cmd+S)** - writes the current authored level into a `LevelDefinition` asset (JSON stored in `levelDataJson`).
+2. **Player progress saves** - `ProgressManager` stores completion/unlock data in `progress.json`.
+3. **Legacy file-based level saves (optional)** - `LevelSaveSystem` writes `LevelData` JSON to disk in `Application.persistentDataPath/Levels/`.
 
-This document covers both systems and clarifies what is (and is not) saved in each.
+This document describes how each layer works and what data is (and is not) persisted.
 
-### Designer Authoring Saves (Cmd/Ctrl+S)
-- **Purpose**: Save and reload editable level layouts while designing.
-- **Storage**: `LevelDefinition` assets (serialized `levelDataJson` inside the asset).
-- **Who uses it**: Designer only (Taylor). Players never use Cmd/Ctrl+S.
-- **What is saved**:
-  - Grid size
-  - Permanent block placements
-  - Lem placement
-  - Placeable space designations
-  - Inventory configuration
-  - Any future level authoring data (e.g., skyboxes)
-- **What is NOT saved**:
-  - Runtime positions of Lems or moving blocks during Play Mode
-  - In-progress player block placements
+---
 
-**Play Mode rule**: Cmd/Ctrl+S is disabled while the in-game Play Mode is active. Exit Play Mode before saving.
+## Designer Authoring Saves (Ctrl/Cmd+S)
 
-### Packaged Level Assets (LevelDefinition)
-- **Purpose**: Store shipping level content inside ScriptableObject assets.
-- **Storage**: `LevelDefinition.levelDataJson` (serialized LevelData embedded in the asset).
-- **Who uses it**: Runtime level loading via `LevelManager`. This is not a player save.
+**Purpose**: Save the authored level layout while designing.
 
-### Player Progress Saves (Auto on Completion)
-- **Purpose**: Persist player progression (completed levels, unlocked worlds, best stats).
-- **Storage**: JSON file in `Application.persistentDataPath/progress.json`.
-- **Who uses it**: Players only.
-- **What is saved**:
-  - Levels completed
-  - Worlds unlocked
-  - Best time / blocks used / attempts
-- **What is NOT saved**:
-  - In-progress block placements in Build Mode
-  - Temporary edits made by the player before completion
-  - Unfinished level state after quitting
+**Where it goes**: `LevelDefinition.levelDataJson` (inside the ScriptableObject asset).
 
-## Architecture
+**Who uses it**: Designer only. Players never use the save hotkey.
 
-### Components
+**How it works**:
+- `EditorController.HandleSaveLoad()` checks for Ctrl/Cmd+S.
+- Requires `LevelManager.CurrentLevelDef` to be assigned.
+- Calls `GridManager.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false)`.
+- Writes JSON into the `LevelDefinition` via `SaveFromLevelData()`.
+- In editor, Unity saves the asset via `AssetDatabase.SaveAssets()`.
 
-#### LevelData.cs
-Serializable data structure that represents a complete level state.
+**Saved data**:
+- Grid settings (width, height, cellSize)
+- Permanent blocks
+- Placeable spaces (indices only, excluding cells with permanent blocks)
+- Lem placement (grid index + facing + worldPosition)
+- Inventory entries (cloned from `BlockInventory`)
 
-**Key Classes**:
-- `LevelData` - Root container for all level data
-- `LevelData.BlockData` - Stores block type and grid position
-- `LevelData.LemData` - Stores Lem position and facing direction
+**Not saved**:
+- Player-placed blocks from Build Mode
+- Key/lock runtime state (key pickups, key-in-lock, etc.)
+- Runtime block state (crumbler darkening, transporter position, etc.)
+- Pair credits (pair inventory resets on load)
 
-**Data Stored**:
-- Grid dimensions (width, height, cellSize)
-- Block placements (type and index for each block)
-- Permanent block placements (type and index for each block)
-- Placeable spaces (list of indices where blocks can be placed)
-- Lem placements (position and facing direction)
-- Inventory entries (block flavors, counts, grouping)
-- Key states (location: World, KeyBlock, Lem, or LockBlock)
-- Metadata (level name, save timestamp)
+**Play Mode rule**: Save/Load is blocked while `GameMode.Play` is active.
 
-**Designer note**: Designer saves intentionally exclude runtime-only data (placed blocks and key states). Those fields are still part of `LevelData` for runtime snapshots and debugging.
+---
 
-#### LevelDefinition.cs (Designer Level Assets)
-ScriptableObject that stores level content as JSON in `levelDataJson`.
+## Level Loading (Runtime + Editor)
 
-**Designer Save Flow**:
-- Cmd/Ctrl+S captures `LevelData` from `GridManager`
-- The active `LevelDefinition` asset is updated via `LevelDefinition.SaveFromLevelData()`
-- Asset is saved via `UnityEditor.AssetDatabase.SaveAssets()` (editor only)
+`LevelManager` loads the active `LevelDefinition` on start if `CurrentLevelDef` is assigned.
 
-#### LevelSaveSystem.cs (Legacy/Optional)
-Static utility for file-based JSON save/load. Not used by the designer hotkeys anymore.
-It can be kept for backups or removed later if desired.
-
-#### ProgressManager.cs (Player Progress)
-Singleton manager for tracking and persisting player progress.
-
-**Key Responsibilities**:
-- Mark levels complete on win
-- Unlock worlds based on completion
-- Save/load progress to disk (progress.json)
-
-**Notes**:
-- Progress is saved automatically on level completion.
-- No in-progress block placement data is stored for players.
-
-#### GridManager.cs (Save/Load Methods)
-Integration layer between the save system and game state.
-
-**Key Methods**:
-- `CaptureLevelData()` - Creates LevelData from current grid state
-- `RestoreLevelData(levelData)` - Applies LevelData to grid
-- `SaveLevel(levelName)` - High-level save operation
-- `LoadLevel(levelName)` - High-level load operation
-- `ClearAllBlocks()` - Removes all placed blocks
-- `ClearAllLems()` - Removes all placed Lems
-- `ClearPlaceableSpaces()` - Resets placeable space array
-
-## Data Flow
-
-### Saving a Level (Designer)
+**Load flow**:
 
 ```
-User presses Ctrl+S
-    ↓
-EditorController.HandleSaveLoad()
-    ↓
-GridManager.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false)
-    ↓
-LevelDefinition.SaveFromLevelData(levelData)
-    ├─ Convert LevelData to JSON with JsonUtility.ToJson()
-    ├─ Store JSON in LevelDefinition.levelDataJson
-    └─ Save asset via AssetDatabase.SaveAssets() (editor only)
-    ↓
-Success/failure reported to console
-```
-
-### Loading a Level (Designer)
-
-```
-Auto-load on Play start (when a LevelDefinition is assigned)
-    ↓
 LevelManager.Start()
     ↓
-LevelManager.LoadLevel(CurrentLevelDef)
-    └─ LevelDefinition.ToLevelData() (JsonUtility.FromJson)
+LevelDefinition.ToLevelData()
     ↓
 GridManager.RestoreLevelData(levelData)
-    ├─ ClearAllBlocks() - remove existing blocks
-    ├─ ClearAllLems() - remove existing Lems
-    ├─ ClearPlaceableSpaces() - reset placeable array
-    ├─ Apply inventory entries (if present)
-    │   └─ Inventory entries are loaded before block placement so inventory keys/flavors resolve correctly
-    ├─ Check if grid size changed → reinitialize if needed
-    ├─ Restore placeableSpaces array from indices
-    ├─ PlacePermanentBlock() for each saved permanent block
-    ├─ PlaceBlock() for each saved block
-    └─ PlaceLem() for each saved Lem
-    ↓
-Refresh visuals and update cursor state
-    ↓
-Success/failure reported to console
 ```
 
-**Play Mode rule**: Save/Load is blocked while the in-game Play Mode is active to prevent capturing runtime movement state.
+**RestoreLevelData behavior**:
+- Clears existing blocks, lems, and placeable spaces.
+- Loads inventory entries **before** placing blocks (so inventory keys resolve).
+- Resizes grid if needed (re-centers and refreshes visuals).
+- Restores placeable spaces.
+- Places permanent blocks, then placed blocks.
+- Places **only the first Lem** from the list (current gameplay supports a single Lem).
+- Applies key states (if present).
 
-**Inventory**: Inventory starts empty. It's loaded from the LevelDefinition's `inventoryEntries` when a level is loaded.
+**Asset defaults**: If the JSON is missing `gridWidth`, `gridHeight`, `cellSize`, or `levelName`, `LevelDefinition.ToLevelData()` fills them from the asset fields.
 
-## File Format
+---
 
-### JSON Structure
+## Play Mode Snapshot
+
+Play mode uses a runtime snapshot to restore the authored layout when exiting Play Mode:
+
+- Enter Play Mode → `GridManager.CapturePlayModeSnapshot()`
+- Exit Play Mode → `GridManager.RestorePlayModeSnapshot()`
+
+This snapshot uses **full** `CaptureLevelData()` (includes placed blocks + key states) so runtime changes can be undone.
+
+---
+
+## Player Progress Saves
+
+`ProgressManager` persists player progress to disk:
+
+- File: `Application.persistentDataPath/progress.json`
+- Auto-saves on level completion (if `_autoSave`), app pause, and app quit
+
+**Saved data includes**:
+- Completed level IDs
+- Unlocked world IDs
+- Per-level stats (attempts, best time, best blocks)
+- Current level/world IDs
+- Total play time
+- Last save timestamp
+
+---
+
+## Legacy File-Based Level Saves (Optional)
+
+`LevelSaveSystem` can save a `LevelData` JSON file to disk:
+
+- Folder: `Application.persistentDataPath/Levels/`
+- File name: `<levelName>.json`
+- Used by `GridManager.SaveLevel()` / `GridManager.LoadLevel()`
+
+This is **not** used by the Ctrl/Cmd+S designer workflow, but can be kept for backups or debugging.
+
+---
+
+## File Format (LevelData JSON)
+
+**Example (stored inside a LevelDefinition asset):**
 
 ```json
 {
@@ -165,22 +122,14 @@ Success/failure reported to console
   "cellSize": 1.0,
   "inventoryEntries": [
     {
-      "entryId": "Default",
-      "blockType": 0,
-      "displayName": "Default",
-      "inventoryGroupId": "",
-      "flavorId": "",
-      "routeSteps": null,
-      "maxCount": 999,
-      "currentCount": 999
-    },
-    {
       "entryId": "Teleporter_A",
       "blockType": 1,
       "displayName": "Teleporter A",
-      "inventoryGroupId": "Teleporter",
+      "inventoryGroupId": "",
       "flavorId": "A",
       "routeSteps": null,
+      "isPairInventory": true,
+      "pairSize": 2,
       "maxCount": 2,
       "currentCount": 2
     }
@@ -190,13 +139,8 @@ Success/failure reported to console
       "blockType": 0,
       "gridIndex": 45,
       "inventoryKey": "Default",
-      "flavorId": ""
-    },
-    {
-      "blockType": 1,
-      "gridIndex": 46,
-      "inventoryKey": "Teleporter",
-      "flavorId": "A"
+      "flavorId": "",
+      "routeSteps": null
     }
   ],
   "permanentBlocks": [
@@ -204,16 +148,26 @@ Success/failure reported to console
       "blockType": 2,
       "gridIndex": 12,
       "inventoryKey": "",
-      "flavorId": ""
+      "flavorId": "",
+      "routeSteps": null
     }
   ],
-  "placeableSpaceIndices": [
-    44, 45, 46, 54, 55, 56, 64, 65, 66
-  ],
+  "placeableSpaceIndices": [44, 45, 46, 54, 55, 56],
   "lems": [
     {
       "gridIndex": 45,
-      "facingRight": true
+      "facingRight": true,
+      "worldPosition": {"x": 0.0, "y": 0.5, "z": 0.5},
+      "hasWorldPosition": true
+    }
+  ],
+  "keyStates": [
+    {
+      "sourceKeyBlockIndex": 20,
+      "location": 0,
+      "targetIndex": -1,
+      "worldPosition": {"x": 0.0, "y": 0.0, "z": 0.0},
+      "hasWorldPosition": false
     }
   ],
   "levelName": "current_level",
@@ -223,53 +177,46 @@ Success/failure reported to console
 
 ### Field Descriptions
 
-**gridWidth** (int): Number of columns in the grid
-**gridHeight** (int): Number of rows in the grid
-**cellSize** (float): Size of each grid cell in world units
+**gridWidth / gridHeight / cellSize**: Grid configuration.
 
-**inventoryEntries** (array): Inventory configuration for this level
-- `entryId` (string): Unique id for the entry
-- `blockType` (int): BlockType enum value
-- `displayName` (string): Optional UI label
-- `inventoryGroupId` (string): Optional shared inventory group id
-- `flavorId` (string): Optional flavor identifier (e.g., Teleporter letter)
-- `routeSteps` (string[]): Optional transporter route steps
-- `maxCount` (int): Total number of blocks for this entry/group
-- `currentCount` (int): Current count (reset to max on load)
+**inventoryEntries** (array): Inventory configuration for this level.
+- `entryId` (string): Unique ID (auto-generated if missing).
+- `blockType` (int): `BlockType` enum value.
+- `displayName` (string): Optional UI label.
+- `inventoryGroupId` (string): Shared pool id for multiple entries.
+- `flavorId` (string): Teleporter/route flavor.
+- `routeSteps` (string[]): Transporter steps (L2, U1, etc.).
+- `isPairInventory` (bool): If true, `maxCount` is the number of **pairs/units** (not placements).
+- `pairSize` (int): Placements per unit (teleporters use 2).
+- `maxCount` (int): Total units available for the entry/group.
+- `currentCount` (int): Runtime value; **reset to max** on load.
 
-**blocks** (array): List of all placed blocks
-- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter, 4=Key, 5=Lock)
-- `gridIndex` (int): Linear index in grid (0 to width*height-1)
-- `inventoryKey` (string): Inventory group key used for counts
-- `flavorId` (string): Flavor identifier (e.g., A, L3,U1)
-- `routeSteps` (string[]): Transporter-only route steps (optional)
+**blocks / permanentBlocks**:
+- `blockType`, `gridIndex`, `inventoryKey`, `flavorId`, `routeSteps`.
+- `inventoryKey` is used to resolve shared inventory groups.
+- Transporter `routeSteps` are normalized on load; entries with the same route are consolidated.
 
-**permanentBlocks** (array): List of designer-placed permanent blocks
-- `blockType` (int): BlockType enum value (0=Default, 1=Teleporter, 2=Crumbler, 3=Transporter, 4=Key, 5=Lock)
-- `gridIndex` (int): Linear index in grid (0 to width*height-1)
-- `inventoryKey` (string): Inventory group key (optional)
-- `flavorId` (string): Flavor identifier (optional)
-- `routeSteps` (string[]): Transporter-only route steps (optional)
+**placeableSpaceIndices**: Indices where `placeable = true` (cells with permanent blocks are excluded).
 
-**keyStates** (array): Tracks the location of each key in the level
-- `keyLocation` (enum): Where the key is (0=World, 1=KeyBlock, 2=Lem, 3=LockBlock)
-- `sourceKeyBlockIndex` (int): Original KeyBlock grid index
-- `lockBlockIndex` (int): If locked, the LockBlock grid index
+**lems**:
+- `gridIndex`, `facingRight`
+- `worldPosition` + `hasWorldPosition` for precise placement (saved for editor consistency)
 
-**placeableSpaceIndices** (array): Grid indices where blocks can be placed during gameplay
-- Only stores indices where placeable = true
-- Empty array = no spaces are placeable
+**keyStates**:
+- `sourceKeyBlockIndex`: Original KeyBlock index
+- `location`: `KeyBlock`, `LockBlock`, `Lem`, or `World`
+- `targetIndex`: Lock/Lem index where applicable
+- `worldPosition` + `hasWorldPosition`: Used when a key is in the world
 
-**lems** (array): List of all placed Lems
-- `gridIndex` (int): Starting position in grid
-- `facingRight` (bool): Initial facing direction (true = right, false = left)
+---
 
-**levelName** (string): Name of the level (defaults to "current_level")
-**saveTimestamp** (string): ISO format timestamp when level was saved
+## Save Locations
 
-## Save Location
+### LevelDefinition asset path (designer saves)
+- Press **Ctrl/Cmd + Shift + S** to log the asset path in the console.
+- Path is only available in the Unity Editor.
 
-### Platform-Specific Paths
+### File-based LevelSaveSystem paths (legacy)
 
 **Windows**:
 ```
@@ -296,298 +243,12 @@ Application/[AppGUID]/Documents/Levels/
 /storage/emulated/0/Android/data/[PackageName]/files/Levels/
 ```
 
-### Accessing the Designer Save Location
-
-Designer saves live in the active **LevelDefinition** asset.
-
-- In the editor, press **Ctrl+Shift+S** to log the LevelDefinition asset path.
-- File-system save paths below apply only to legacy file-based saves (if used).
-
-## Implementation Details
-
-### Serialization Strategy
-
-**Why JSON?**
-- Human-readable and easily debuggable
-- Supported natively by Unity (JsonUtility)
-- Can be manually edited if needed
-- Compatible with version control systems
-- Easy to extend with new fields
-
-**Limitations**:
-- JsonUtility doesn't support dictionaries directly
-- Must convert to lists/arrays for serialization
-- No built-in versioning (must handle manually if format changes)
-
-### Data Optimization
-
-**Placeable Spaces**:
-- Stores only indices where `placeable = true`
-- Avoids storing large arrays of boolean flags
-- Reconstruction: Set all to false, then mark stored indices as true
-
-**Block Data**:
-- Stores only placed blocks (not empty grid cells)
-- Uses grid index instead of x,y coordinates (more compact)
-- Enum stored as integer for compatibility
-
-**Lem Data**:
-- Uses `originalLemPlacements` instead of `placedLems`
-- Ensures editor state is saved, not runtime state
-- Preserves initial facing direction for level design
-
-### Error Handling
-
-**Save Failures**:
-- Invalid path permissions → logged to console
-- Disk full → logged to console
-- Serialization errors → caught and logged
-- Returns `false` on failure
-
-**Load Failures**:
-- File not found → returns `null`, warning logged
-- Invalid JSON format → returns `null`, error logged
-- Missing required fields → handled by JsonUtility (uses defaults)
-- Returns `null` on failure
-
-**Recovery**:
-- Failed loads don't corrupt current level state
-- Original level remains intact if load fails
-- User can retry or create new level
-
-### Grid Size Changes
-
-When loading a level with different grid dimensions:
-1. Update `gridWidth`, `gridHeight`, `cellSize`
-2. Recalculate grid origin (recenters around world origin)
-3. Reinitialize placeable spaces array
-4. Refresh all visualizers
-5. Update camera to frame new grid size
-
-Blocks and Lems are validated against new grid size:
-- Invalid indices are skipped with a warning
-- Only valid placements are restored
-
-### Thread Safety
-
-**Not Thread-Safe**:
-- All save/load operations run on main Unity thread
-- File I/O is synchronous (blocks until complete)
-- No concurrent access protection needed
-
-**Future Consideration**:
-- Could be made async with `async/await`
-- Would improve responsiveness for large levels
-- Requires callback system for completion notification
-
-## Usage Examples
-
-### Basic Designer Save/Load (LevelDefinition)
-
-```csharp
-LevelDefinition levelDef = LevelManager.Instance.CurrentLevelDef;
-if (levelDef == null) return;
-
-// Save current authored layout (no in-progress player blocks)
-LevelData data = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
-levelDef.SaveFromLevelData(data);
-
-// Reload from the asset
-LevelManager.Instance.LoadLevel(levelDef);
-```
-
-### Save to a Specific LevelDefinition Asset
-
-```csharp
-// Save to a chosen asset (e.g., selected in inspector)
-public LevelDefinition targetLevel;
-
-LevelData data = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
-targetLevel.SaveFromLevelData(data);
-```
-
-### Manual Capture and Restore (Runtime Use)
-
-```csharp
-// Capture full runtime state (includes placed blocks and key states)
-LevelData data = GridManager.Instance.CaptureLevelData();
-
-// Restore directly (bypasses LevelDefinition)
-GridManager.Instance.RestoreLevelData(data);
-```
-
-### Legacy File-Based Saves (Optional)
-`LevelSaveSystem` can still be used for file-based backups, but it is not used by designer hotkeys.
-
-## Extending the System
-
-### Adding New Data Fields
-
-1. Add field to `LevelData` class:
-```csharp
-public int levelDifficulty;  // New field
-```
-
-2. Update `CaptureLevelData()`:
-```csharp
-levelData.levelDifficulty = CalculateDifficulty();
-```
-
-3. Update `RestoreLevelData()`:
-```csharp
-// Use loaded difficulty
-Debug.Log($"Loading level with difficulty: {levelData.levelDifficulty}");
-```
-
-**Versioning Consideration**: Old save files without new field will use default value (0 for int, null for reference types).
-
-### Supporting Multiple Level Slots (Legacy File Saves)
-
-These examples apply only if you choose to use `LevelSaveSystem` file-based saves.
-For LevelDefinition assets, "multiple slots" simply means multiple assets.
-
-Add UI for level slot selection:
-```csharp
-public void SaveToSlot(int slot)
-{
-    string levelName = $"level_slot_{slot}";
-    GridManager.Instance.SaveLevel(levelName);
-}
-
-public void LoadFromSlot(int slot)
-{
-    string levelName = $"level_slot_{slot}";
-    if (LevelSaveSystem.LevelExists(levelName))
-    {
-        GridManager.Instance.LoadLevel(levelName);
-    }
-}
-```
-
-### Adding Autosave (Legacy File Saves)
-
-Implement periodic autosaving:
-```csharp
-private float autosaveTimer = 0f;
-private const float AUTOSAVE_INTERVAL = 300f; // 5 minutes
-
-private void Update()
-{
-    autosaveTimer += Time.deltaTime;
-    if (autosaveTimer >= AUTOSAVE_INTERVAL)
-    {
-        autosaveTimer = 0f;
-        GridManager.Instance.SaveLevel("autosave");
-        Debug.Log("Level autosaved");
-    }
-}
-```
-
-### Custom Serialization Format (Legacy File Saves)
-
-To use a custom format instead of JSON:
-
-1. Create serialization class:
-```csharp
-public static class CustomLevelSerializer
-{
-    public static byte[] SerializeLevel(LevelData data)
-    {
-        // Custom binary serialization logic
-        using (MemoryStream ms = new MemoryStream())
-        using (BinaryWriter writer = new BinaryWriter(ms))
-        {
-            writer.Write(data.gridWidth);
-            writer.Write(data.gridHeight);
-            // ... serialize other fields
-            return ms.ToArray();
-        }
-    }
-
-    public static LevelData DeserializeLevel(byte[] data)
-    {
-        // Custom deserialization logic
-    }
-}
-```
-
-2. Update `LevelSaveSystem` to use custom serializer instead of JsonUtility.
-
-## Performance Considerations
-
-### Save Performance
-- Typical save time: <10ms for standard levels (100 blocks)
-- Dominated by file I/O, not serialization
-- Can save hundreds of times per second if needed
-
-### Load Performance
-- Typical load time: <20ms for standard levels
-- Includes clearing old state + placing all blocks/Lems
-- Block instantiation is the slowest part
-
-### Memory Usage
-- LevelData object: ~1-5 KB for typical levels
-- JSON file size: ~2-10 KB for typical levels
-- Minimal memory overhead
-
-### Optimization Opportunities
-- Use binary format for larger levels (10x smaller files)
-- Implement async loading for levels with 500+ blocks
-- Pool block GameObjects to avoid instantiation overhead
-- Cache last loaded level to avoid redundant file reads
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue**: "Failed to save level" error
-**Cause**: Insufficient permissions or disk space
-**Fix**: Check that save directory is writable
-
-**Issue**: Level loads but objects are missing
-**Cause**: Grid size changed or blocks out of bounds
-**Fix**: Check console for "Invalid grid index" warnings
-
-**Issue**: Loaded level looks different from saved version
-**Cause**: Colors/visuals changed in code but not in save data
-**Fix**: Visual properties aren't saved - only structural data
-
-**Issue**: Cannot load level after Unity update
-**Cause**: JsonUtility format may have changed
-**Fix**: May need to regenerate level files
-
-### Debugging Tips
-
-**Enable verbose logging**:
-```csharp
-Debug.Log($"Saving {levelData.blocks.Count} blocks");
-Debug.Log($"Placeable spaces: {levelData.placeableSpaceIndices.Count}");
-```
-
-**Inspect JSON files directly**:
-- Navigate to save directory
-- Open .json files in text editor
-- Verify data structure matches expectations
-
-**Validate save data**:
-```csharp
-LevelData data = GridManager.Instance.CaptureLevelData();
-Debug.Assert(data.blocks.Count > 0, "No blocks to save!");
-Debug.Assert(data.gridWidth > 0, "Invalid grid width!");
-```
-
-## Future Enhancements
-
-### Planned Features
-- Level metadata (author, description, tags)
-- Thumbnail generation (save screenshot with level)
-- Compression for large levels
-- Level validation (check if solvable)
-- Version numbering for format changes
-
-### Potential Improvements
-- Cloud save integration
-- Level sharing/import/export
-- Undo history serialization
-- Replay recording
-- Level analytics (completion rate, average time)
+---
+
+## Notes and Gotchas
+
+- **Inventory counts always reset on load**. `currentCount` is serialized but overwritten by `ResetInventory()`.
+- **Pair inventory** uses hidden credits. UI shows pair counts, not remaining credits.
+- **Only one Lem is restored** even if multiple `lems` entries exist.
+- **Placeable space indices** are not saved for cells that have permanent blocks.
+- **LevelSaveSystem** is optional; the editor hotkey does not write to disk files.

@@ -6,15 +6,15 @@
 
 **Game Structure**:
 - **Players** see: Build Mode (place blocks to solve puzzle) + Play Mode (test solution)
-- **Designers** see: Build Mode + Designer Mode (E key - create puzzles) + Play Mode
+- **Designers** see: Build Mode + Level Editor Mode (E key - create puzzles) + Play Mode
 
 **NEW: Multi-Level System**
-This guide describes the original Designer Mode workflow (still fully functional). The new multi-level system adds:
+This guide describes the Level Editor Mode workflow (still fully functional). The new multi-level system adds:
 - **Editor Tools**: Convert saved JSON levels into ScriptableObject assets (see [LEVEL-SYSTEM-SETUP-GUIDE.md](LEVEL-SYSTEM-SETUP-GUIDE.md))
 - **World System**: Group levels into worlds with progression
 - **UI Navigation**: Menu → World Map → Level Select → Game
 
-**Use this guide for**: Creating and testing individual levels in Designer Mode
+**Use this guide for**: Creating and testing individual levels in Level Editor Mode
 **Then use**: Editor tools to integrate levels into the world system
 
 ---
@@ -61,22 +61,22 @@ Good levels have:
 
 The editor has three distinct modes you'll switch between while creating levels.
 
-### Editor Mode (Blue-grey background)
-**Purpose**: Design your level's permanent structure
+### Build Mode (Blue-grey background)
+**Purpose**: Player-facing block placement using the level's inventory
 
 **What you can do**:
-- Place unlimited blocks to prototype your level layout
-- Test different configurations quickly
-- Build the "skeleton" of your puzzle
+- Place blocks on marked placeable spaces (consumes inventory)
+- Remove placed blocks (returns to inventory)
+- Cycle the inventory entries exactly like a player
 
 **Controls**:
 - `Arrow Keys / WASD` - Move cursor
-- `Space / Enter` - Place block
-- `Delete / Backspace` - Remove block
-- `1-9` or `[ ]` - Select block type
+- `Space / Enter` - Place block (from inventory)
+- `Delete / Backspace` - Remove placed block
+- `1-9` or `[ ]` - Select inventory entry
 - `E` - Switch to Level Editor Mode
 
-**Use this mode to**: Experiment freely with level layouts before committing to the puzzle design.
+**Use this mode to**: Test the puzzle under real player constraints.
 
 ---
 
@@ -90,12 +90,14 @@ The editor has three distinct modes you'll switch between while creating levels.
 
 **Controls**:
 - `Arrow Keys / WASD` - Move cursor
-- `Space / Enter` - Toggle placeable space (shows black border)
+- `Space / Enter` - Mark placeable space (adds black border)
+- `Delete / Backspace` - Clear placeable space + remove block or Lem
 - `B` - Place permanent block
 - `L` - Place/flip Lem
-- `Delete / Backspace` - Remove block or Lem
 - `1-9` or `[ ]` - Select block type for permanent blocks
-- `E` - Return to Editor Mode
+- `E` - Return to Build Mode
+
+**Note**: Level Editor Mode shows all block types with infinite counts for placement.
 
 **Use this mode to**: Transform your prototype into a real puzzle by limiting what players can do.
 
@@ -111,7 +113,7 @@ The editor has three distinct modes you'll switch between while creating levels.
 - You experience the level as a player would
 
 **Controls**:
-- `P` - Exit play mode (returns to Editor Mode)
+- `P` - Exit play mode (returns to Build Mode)
 - All other controls disabled
 
 **Use this mode to**: Verify your level is solvable and fun to play.
@@ -122,48 +124,36 @@ The editor has three distinct modes you'll switch between while creating levels.
 
 Let's create a simple level from scratch to learn the workflow.
 
-### Step 1: Prototype the Structure (Editor Mode)
+### Step 1: Lay Out the Permanent Structure (Level Editor Mode)
 
-1. **Start Unity and press Play** - You'll begin in Editor Mode
-2. **Move the cursor** with arrow keys to position (0, 0) - the bottom-left
-3. **Press `1`** to select Default blocks (cyan)
-4. **Create a starting platform**:
-   - Press `Space` 5 times while moving right to create a 5-block platform
-5. **Move cursor up and right** to create a gap
-6. **Create a landing platform**:
-   - Build another 5-block platform at a higher position
-7. **Press `P`** to enter Play Mode briefly - verify Lems can walk on your platforms
+1. **Start Unity and press Play** - You'll begin in Build Mode
+2. **Press `E`** to enter Level Editor Mode
+3. **Move the cursor** with arrow keys to position (0, 0) - the bottom-left
+4. **Press `1`** to select Default blocks (cyan)
+5. **Create a starting platform**:
+   - Press `B` while moving right to place a 5-block permanent platform
+6. **Move cursor up and right** to create a gap
+7. **Create a landing platform**:
+   - Place another 5-block permanent platform at a higher position
 
-At this point you have a basic structure, but it's not a puzzle yet!
+At this point you have the fixed structure, but it's not a puzzle yet!
 
 ---
 
 ### Step 2: Define Placeable Spaces (Level Editor Mode)
 
-1. **Press `E`** to enter Level Editor Mode
-2. **Mark placeable spaces**:
+1. **Mark placeable spaces**:
    - Move cursor to the gap between your two platforms
-   - Press `Space / Enter` to toggle placeable space marking
+   - Press `Space / Enter` to mark a placeable space
    - You'll see a **black border** appear - this means players can place blocks here
-3. **Mark 2-3 spaces** in the gap - enough for players to bridge the gap
+   - Use **Delete/Backspace** to clear a placeable space
+2. **Mark 2-3 spaces** in the gap - enough for players to bridge the gap
 
 **Design Tip**: The number of placeable spaces determines difficulty. Fewer spaces = harder puzzle.
 
 ---
 
-### Step 3: Convert to Permanent Blocks (Level Editor Mode)
-
-1. **Still in Level Editor Mode**, move cursor to your first platform
-2. **Press `1`** to select Default blocks
-3. **Press `B`** (not Space!) to place as a permanent block
-4. **Repeat** for all blocks in your platforms - convert your prototype to permanent architecture
-
-**Important**: Permanent blocks (placed with `B`) are fixed and cannot be removed by players.
-
----
-
-### Step 4: Place the Lem (Level Editor Mode)
-
+### Step 3: Place the Lem (Level Editor Mode)
 1. **Move cursor** to the leftmost block of your starting platform
 2. **Press `L`** to place a Lem
 3. **Verify direction**:
@@ -175,7 +165,7 @@ At this point you have a basic structure, but it's not a puzzle yet!
 
 ---
 
-### Step 5: Test Your Level (Play Mode)
+### Step 4: Test Your Level (Play Mode)
 
 1. **Press `P`** to enter Play Mode
 2. **Watch the Lem**:
@@ -188,11 +178,11 @@ At this point you have a basic structure, but it's not a puzzle yet!
 
 ---
 
-### Step 6: Save Your Level
+### Step 5: Save Your Level
 
 1. **Press `Ctrl+S`** (Windows/Linux) or `Cmd+S` (Mac)
 2. **Check the console** - you should see "LEVEL SAVED" confirmation
-3. Your level is now saved to disk!
+3. Your level is now saved to the LevelDefinition asset.
 
 **File Location**: Press `Ctrl+Shift+S` to see the active LevelDefinition asset path.
 
@@ -201,7 +191,7 @@ Designer saves persist permanent layout, Lem placement, placeable spaces, grid s
 
 ---
 
-### Step 7: Add Complexity (Optional)
+### Step 6: Add Complexity (Optional)
 
 Now that you have a basic level, try adding:
 
@@ -365,14 +355,19 @@ The inventory system controls what blocks players can place and in what quantiti
 
 Each inventory slot represents one **inventory entry**:
 - **Block Type**: Default, Teleporter, Crumbler, etc.
-- **Flavor ID**: For teleporters (A, B, C) or transporters (route variant)
+- **Display Name** (optional): Label shown in the UI
+- **Flavor ID**: For teleporters (A, B, C) or transporter variants
 - **Route Steps**: For transporters - defines movement path
-- **Max Count**: Total blocks available
-- **Current Count**: Blocks remaining (decrements on placement)
+- **Inventory Group ID**: Shared pool key for multiple entries
+- **Max Count**: Total *units* available (pairs if `isPairInventory` is true)
+- **Current Count**: Runtime value; resets to max on load
+- **Pair Inventory**: `isPairInventory` + `pairSize` (teleporters use 2 placements per unit)
+
+**Pair inventory behavior**: The UI shows remaining *pairs/units*, not remaining individual placements. After placing the first block of a pair, the count won’t drop until the pair is completed.
 
 ### Configuring Inventory in LevelDefinition
 
-Inventory is configured within the **LevelDefinition** asset's JSON data. When designing levels:
+Inventory is configured within the **LevelDefinition** asset (Inspector → “Inventory Configuration”, or edit `levelDataJson`). When designing levels:
 
 1. Create or select a **LevelDefinition** asset
 2. Edit the `levelDataJson` field to include inventory entries
@@ -407,7 +402,7 @@ Entry 1:
   Pair Size: 2
 ```
 
-**Important**: Teleporters use `isPairInventory=true` with `pairSize=2`, meaning each "pair" costs 2 blocks.
+**Important**: Teleporters use `isPairInventory=true` with `pairSize=2`, meaning each **pair** grants two placements. The pair count drops after the second placement.
 
 #### Example: Transporter with Route
 ```
@@ -443,16 +438,18 @@ Entry 1:
 
 Both entries draw from the same pool of 15 blocks - placing one reduces the count for both.
 
-### Designer Mode (Level Editor Mode)
+**Note**: If entries in a group have different `maxCount`, the first value wins and the rest are normalized.
+
+### Level Editor Mode (Designer)
 
 When in Level Editor Mode:
-- All blocks show **infinite supply** (999)
+- All block types show **infinite supply** (INF)
 - You're designing the level, not playing it
 - Place permanent blocks freely
 
-When in Editor Mode or Play Mode:
+When in Build Mode or Play Mode:
 - Inventory limits apply
-- Counts decrement on placement
+- Counts decrement on placement (pairs decrement after both placements)
 - Reflects player experience
 
 ---
@@ -554,8 +551,8 @@ When in Editor Mode or Play Mode:
 
 ### The Iteration Loop
 
-1. **Design**: Create level structure in Editor Mode
-2. **Define**: Set constraints in Level Editor Mode
+1. **Design**: Create level structure in Level Editor Mode
+2. **Define**: Set constraints (placeable spaces) in Level Editor Mode
 3. **Test**: Play in Play Mode - Can you solve it?
 4. **Observe**: Watch for issues (too hard? too easy? confusing?)
 5. **Adjust**: Return to Level Editor Mode and tweak
@@ -678,13 +675,13 @@ One action triggers multiple consequences:
 
 ### "Cannot place block at index X: space is not placeable"
 
-**Cause**: You're in Editor Mode or Play Mode, trying to place a block in a non-placeable space.
+**Cause**: You're in Build Mode or Play Mode, trying to place a block in a non-placeable space.
 
 **Solution**:
 1. Press `E` to enter Level Editor Mode
 2. Move cursor to the desired space
 3. Press `Space` to mark it as placeable (black border appears)
-4. Return to Editor Mode or Play Mode
+4. Return to Build Mode or Play Mode
 
 ---
 
@@ -781,7 +778,7 @@ One action triggers multiple consequences:
 #### Navigation (All Modes)
 - `Arrow Keys` or `WASD` - Move cursor
 
-#### Editor Mode
+#### Build Mode
 - `Space` / `Enter` - Place block
 - `Delete` / `Backspace` - Remove block
 - `1-9` - Select block entry (first 9)
@@ -790,13 +787,13 @@ One action triggers multiple consequences:
 - `P` - Enter Play Mode
 
 #### Level Editor Mode
-- `Space` / `Enter` - Toggle placeable space
+- `Space` / `Enter` - Mark placeable space
+- `Delete` / `Backspace` - Clear placeable space + remove block or Lem
 - `B` - Place permanent block
 - `L` - Place/flip Lem
-- `Delete` / `Backspace` - Remove block or Lem
 - `1-9` - Select block type
 - `[` / `]` - Cycle block types
-- `E` - Return to Editor Mode
+- `E` - Return to Build Mode
 - `P` - Enter Play Mode
 
 #### Play Mode
@@ -826,9 +823,11 @@ One action triggers multiple consequences:
 
 | Property | Purpose | Example |
 |----------|---------|---------|
+| entryId | Unique id (auto-generated) | "Teleporter_A" |
 | displayName | UI label | "Platform" |
 | blockType | Block enum | Default |
 | maxCount | Total available | 10 |
+| currentCount | Runtime remaining (resets on load) | 10 |
 | flavorId | Variant ID | "A" for teleporter A |
 | routeSteps | Transporter path | ["U5", "R3"] |
 | inventoryGroupId | Shared pool | "platforms" |
@@ -859,7 +858,7 @@ One action triggers multiple consequences:
 | Cursor | Green | Empty placeable space |
 | Border | Black | Placeable space marking |
 | Border | Grey | Non-placeable space (in Level Editor) |
-| Background | Blue-grey | Editor Mode |
+| Background | Blue-grey | Build Mode |
 | Background | Dark grey | Level Editor Mode |
 | Background | Black + skybox | Play Mode |
 
@@ -912,7 +911,7 @@ This guide is comprehensive for the **current** system, but here are features th
 You now have everything you need to create compelling levels in A Walk in the Park!
 
 **Remember**:
-1. Start simple - prototype in Editor Mode
+1. Start simple - prototype in Level Editor Mode
 2. Add constraints - define puzzle in Level Editor Mode
 3. Test relentlessly - iterate in Play Mode
 4. Think like a player - is it fun and fair?

@@ -40,7 +40,8 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 
 #### Save/Load System
 - **LevelData** - Serializable data structure for level state
-- **LevelSaveSystem** - Handles file I/O for saving/loading levels to JSON
+- **LevelDefinition** - ScriptableObject that stores LevelData JSON inside assets
+- **LevelSaveSystem** - Optional file I/O for saving/loading LevelData JSON to disk
 
 ### Game Modes
 
@@ -125,10 +126,11 @@ Assets/
 - Configurable line widths and opacity in RenderingConstants.cs
 
 ### Save System
-- Saves to `Application.persistentDataPath/Levels/`
+- Designer saves write LevelData JSON into `LevelDefinition` assets (`levelDataJson`)
+- Optional file saves use `Application.persistentDataPath/Levels/`
 - JSON format for easy editing and debugging
-- Stores: grid settings, block placements, placeable spaces, Lem placements
-- Automatic timestamping for save files
+- Stores: grid settings, block placements, placeable spaces, Lem placements, inventory entries
+- Automatic timestamping for LevelData snapshots
 
 ### Grid System
 - Automatic centering around world origin

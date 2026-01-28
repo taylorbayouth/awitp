@@ -83,9 +83,6 @@ public class LevelManager : MonoBehaviour
     [Tooltip("Reference to BlockInventory (auto-found if null)")]
     [SerializeField] private BlockInventory _blockInventory;
 
-    [Tooltip("Reference to EditorController (auto-found if null)")]
-    [SerializeField] private EditorController _editorController;
-
     [Header("State")]
     [Tooltip("Whether a level is currently loaded")]
     [SerializeField] private bool _levelLoaded = false;
@@ -98,7 +95,6 @@ public class LevelManager : MonoBehaviour
 
     [Tooltip("Number of blocks placed by player")]
     private int _blocksPlacedCount;
-    private float _nextEditorControllerSearchTime;
 
     // Cache for loaded level definitions
     private Dictionary<string, LevelDefinition> _levelDefCache = new Dictionary<string, LevelDefinition>();
@@ -175,17 +171,8 @@ public class LevelManager : MonoBehaviour
         if (_levelLoaded && !_levelCompletedThisSession)
         {
             // Only check in play mode
-            if (_editorController == null)
-            {
-                float now = Time.realtimeSinceStartup;
-                if (now >= _nextEditorControllerSearchTime)
-                {
-                    _editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
-                    _nextEditorControllerSearchTime = now + 1f;
-                }
-            }
-
-            if (_editorController != null && _editorController.currentMode == GameMode.Play)
+            EditorController editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            if (editorController != null && editorController.currentMode == GameMode.Play)
             {
                 if (CheckLevelComplete())
                 {
@@ -598,11 +585,6 @@ public class LevelManager : MonoBehaviour
         if (_blockInventory == null)
         {
             _blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
-        }
-
-        if (_editorController == null)
-        {
-            _editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
     }
 
