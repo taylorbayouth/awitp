@@ -133,17 +133,6 @@ public class CrumblerBlock : BaseBlock
 {
     protected override void OnPlayerExit()
     {
-        // Darken color
-        Renderer renderer = GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            renderer.material.color = Color.Lerp(
-                renderer.material.color,
-                Color.black,
-                0.5f
-            );
-        }
-
         // Schedule destruction
         Destroy(gameObject, 1f);
     }

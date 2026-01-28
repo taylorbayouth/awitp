@@ -12,6 +12,19 @@ The level system implementation includes:
 
 ---
 
+## Current UI Flow (MainMenu -> Overworld -> Master)
+
+The current implementation uses:
+- **MainMenu** scene as the entry point
+- **Overworld** scene for world selection and level lists
+- **Master** scene for gameplay
+
+Overworld reads `WorldData` from `Assets/Resources/Levels/Worlds` and `LevelDefinition` assets from `Assets/Resources/Levels/LevelDefinitions`. Level buttons store the selected level id, then load `Master`, which reads the pending id and loads the definition.
+
+UGUI `Text` components must have a valid font assigned. For built-in fonts, use `LegacyRuntime.ttf` to avoid "No Font Asset has been assigned."
+
+---
+
 ## Part 1: Create Level Definition Assets
 
 ### Step 1: Import JSON Level Data
@@ -68,7 +81,6 @@ Fill in the fields:
 - World Name: `Tutorial Island`
 - Description: `Learn the basics of A Walk in the Park`
 - Order in Game: `0`
-- Visual Color: Choose a nice color (e.g., cyan/blue)
 
 ### Step 3: Add Level References
 
@@ -302,7 +314,7 @@ Fill in the fields:
 1. Right-click Canvas (or create if doesn't exist) > UI > Panel
 2. Rename to "VictoryPanel"
 3. Make it full screen (stretch anchor)
-4. Background color: semi-transparent black (0, 0, 0, 180)
+4. Background: semi-transparent panel
 
 ### Step 3: Add Victory Screen Elements
 
@@ -462,6 +474,18 @@ Currently, Lems are created programmatically. To use a prefab:
 ### "Level not found: tutorial_01_firststeps"
 
 **Solution**: Check that LevelDefinition assets were created correctly and have matching levelIds.
+
+### "Overworld shows no levels"
+
+**Solution**: Verify `LevelDefinition.worldId` matches the `WorldData.worldId`, and that LevelDefinition assets live under `Assets/Resources/Levels/LevelDefinitions`.
+
+### "Overworld level text is missing"
+
+**Solution**: Assign a valid font to the template Text components. For built-in fonts, use `LegacyRuntime.ttf`.
+
+### "Overworld level buttons overlap"
+
+**Solution**: The button positions are set at runtime by the UI script/layout. Use the template as a sizing reference, and adjust spacing in the UI script or layout group instead of moving the template manually.
 
 ### Victory screen doesn't appear
 

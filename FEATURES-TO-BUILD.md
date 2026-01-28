@@ -214,7 +214,7 @@ These features add polish but aren't essential:
 **Implementation Needed**:
 - [ ] Minimap UI in corner of screen
 - [ ] Zoomed-out view of entire grid
-- [ ] Blocks rendered as colored dots
+- [ ] Blocks rendered as dots
 - [ ] Cursor position indicator
 - [ ] Click minimap to jump cursor
 - [ ] Toggle visibility
@@ -345,18 +345,18 @@ These features enhance the experience but aren't urgent:
 ---
 
 ### 16. Accessibility Features
-**Colorblind Mode**: Alternative color schemes for block types
+**Accessibility Mode**: Alternative visual cues for block types
 **Control Remapping**: Custom keybindings
 **Text Size Options**: Adjustable UI text
 
 **Implementation Needed**:
 - [ ] Settings menu with accessibility options
-- [ ] Alternative color palettes
+- [ ] Alternative visual cues
 - [ ] Keybinding rebind UI
 - [ ] Text size slider
 
 **Files to Modify**:
-- [BlockColors.cs](Assets/Scripts/BlockColors.cs) - Support multiple color schemes
+- Support multiple visual cue schemes
 - Create new `InputManager.cs` for rebindable controls
 
 **Estimated Complexity**: Medium

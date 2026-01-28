@@ -187,7 +187,6 @@ Assets/
 │   │   ├── KeyBlock.cs
 │   │   ├── LockBlock.cs
 │   │   ├── BlockType.cs
-│   │   ├── BlockColors.cs
 │   │   └── BlockInventory.cs
 │   ├── LevelSystem/                 # NEW
 │   │   ├── LevelData.cs             # Enhanced level data

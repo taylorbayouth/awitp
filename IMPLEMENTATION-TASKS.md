@@ -68,14 +68,12 @@ DefaultBlock block = blockObj.GetComponent<DefaultBlock>();
 - Use existing prefabs (Block_Key, Block_Lock) as reference if they exist
 - Ensure proper colliders
 - Ensure CenterTrigger child
-- Assign correct colors via BlockColors
 - Test basic behavior
 
 **Verification**:
 - [ ] All 6 block prefabs exist
 - [ ] Each has correct script component
 - [ ] Each has CenterTrigger child
-- [ ] Colors match BlockColors definitions
 
 ---
 
@@ -925,8 +923,8 @@ public class ProgressManager : MonoBehaviour {
    - Show locked/unlocked state
    - Click world → load LevelSelect scene with worldId
 4. Add visual feedback:
-   - Locked worlds: greyed out, padlock icon
-   - Unlocked worlds: colored, clickable
+   - Locked worlds: disabled, padlock icon
+   - Unlocked worlds: clickable
    - Completed worlds: checkmark
 
 **Code Structure**:

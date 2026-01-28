@@ -17,7 +17,6 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 #### Block System
 - **BaseBlock** - Base class for all block types with collision detection and placement validation
 - **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter, Key, Lock)
-- **BlockColors** - Centralized color management for all visual elements
 - **BlockInventory** - Manages block counts per entry (supports flavors and shared groups, loaded from LevelDefinition)
 - **RouteParser** - Canonical route utility for parsing, validating, and normalizing transporter routes
 - **Placement Validation** - Self-contained rules via virtual methods:
@@ -71,7 +70,6 @@ Assets/
 │   │   └── PlaceableSpaceVisualizer.cs
 │   ├── Blocks/
 │   │   ├── BaseBlock.cs             # Base block class
-│   │   ├── BlockColors.cs           # Color definitions
 │   │   └── BlockInventory.cs        # Block count management
 │   ├── Characters/
 │   │   ├── LemController.cs         # Lem AI and movement
@@ -96,20 +94,20 @@ Assets/
 
 ### Level Editor
 - Real-time block placement and editing
-- Visual feedback with color-coded cursor states
+- Visual feedback for cursor states
 - Lem placement and orientation control
 - Placeable space marking system
 - Save/load levels to persistent storage
 
 ### Block Types
-- **Default** - Standard platform blocks (cyan)
-- **Teleporter** - Paired teleport blocks (magenta) - requires exactly one matching pair
-- **Crumbler** - Breakable blocks that darken and crumble when Lem exits (orange)
-- **Transporter** - Moving platform blocks with configurable routes (yellow)
+- **Default** - Standard platform blocks
+- **Teleporter** - Paired teleport blocks - requires exactly one matching pair
+- **Crumbler** - Breakable blocks that crumble when Lem exits
+- **Transporter** - Moving platform blocks with configurable routes
   - Placement blocked if route path intersects existing blocks or other transporter routes
   - Inventory preview renders a route icon for each unique route entry
-- **Key** - Blocks holding collectible keys (gold)
-- **Lock** - Blocks that accept keys to unlock (silver)
+- **Key** - Blocks holding collectible keys
+- **Lock** - Blocks that accept keys to unlock
 
 ### Rendering Features
 - Configurable line widths for grid, borders, and cursor
@@ -148,13 +146,12 @@ Assets/
 ### Code Organization
 - Keep related functionality together in regions
 - Use summary comments for all public methods
-- Centralize constants in dedicated classes (RenderingConstants, BlockColors)
+- Centralize constants in dedicated classes (RenderingConstants)
 - Follow Unity naming conventions (PascalCase for public, camelCase for private)
 
 ### Adding New Block Types
 1. Add new entry to BlockType enum
-2. Add color to BlockColors.GetColorForBlockType()
-3. Create a new class extending BaseBlock with specialized behavior
+2. Create a new class extending BaseBlock with specialized behavior
 4. Override template methods as needed:
    - `OnPlayerEnter()` - Called when Lem enters block
    - `OnPlayerExit()` - Called when Lem exits block
@@ -169,7 +166,7 @@ Assets/
 
 ### Modifying Rendering
 - Update RenderingConstants.cs for depth, sorting, or line width changes
-- Opacity changes are applied through Color.a in the rendering components
+- Opacity changes are applied through alpha values in the rendering components
 - Maintain depth separation to avoid z-fighting
 
 ## Testing
@@ -194,6 +191,13 @@ Assets/
 - Line widths below 0.01f may appear inconsistent due to sub-pixel rendering
 - Use thicker lines (0.03-0.05f) for interactive elements (cursor, borders)
 - Grid can use thinner lines (0.01f) as it's a background reference
+
+### Overworld UI
+- Overworld builds world cards and level buttons from `WorldData` and `LevelDefinition` assets under `Resources`.
+- `LevelDefinition.worldId` must match `WorldData.worldId` or levels will not appear under the world.
+- Level launch uses a pending level id (stored before loading `Master`), so ensure the Master scene loads the pending id on start.
+- UGUI `Text` requires a valid font assignment; use `LegacyRuntime.ttf` for built-in fonts to avoid missing mesh errors.
+- Level button positions are controlled by the UI script/layout at runtime, so the template's manual position will be overridden.
 
 ### Performance
 - Grid system is optimized for up to 100x100 grids

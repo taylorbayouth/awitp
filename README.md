@@ -18,25 +18,25 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
   - **Play Mode**: Test levels with active Lem AI
 - **Real-Time Testing**: Switch to Play mode instantly to test your level
 - **Persistent Storage**: Save levels to JSON files (Ctrl+S)
-- **Visual Feedback**: Color-coded cursor shows placeable/editable states
+- **Visual Feedback**: Cursor indicates placeable/editable states
 
 ## Core Gameplay
 
 ### Player Experience
-1. Start with a grid containing permanent blocks and marked placeable spaces (black borders)
+1. Start with a grid containing permanent blocks and marked placeable spaces (borders)
 2. Use limited block inventory to create paths for Lems
 3. Lems walk autonomously - they turn at walls and fall off edges
-4. Navigate Lems to collect keys (gold blocks)
-5. Bring keys to locks (silver blocks) to fill them
+4. Navigate Lems to collect keys
+5. Bring keys to locks to fill them
 6. **Win Condition**: All locks filled with keys
 
 ### Block Types
-- **Default (Cyan)**: Solid platforms
-- **Crumbler (Orange)**: Breaks after Lem exits - one-time use
-- **Transporter (Yellow)**: Moving platforms following predefined routes
-- **Teleporter (Magenta)**: Paired instant transport
-- **Key (Gold)**: Collectible items that attach to Lems
-- **Lock (Silver)**: Goal markers that accept keys
+- **Default**: Solid platforms
+- **Crumbler**: Breaks after Lem exits - one-time use
+- **Transporter**: Moving platforms following predefined routes
+- **Teleporter**: Paired instant transport
+- **Key**: Collectible items that attach to Lems
+- **Lock**: Goal markers that accept keys
 
 ### Grid System
 - **Dynamic Grid Manager**: Configurable grid size and cell dimensions
@@ -45,7 +45,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Coordinate Conversion**: Utilities for index ↔ coordinates ↔ world position
 
 ### Block System
-- **6 Block Types**: Default (cyan), Teleporter (magenta), Crumbler (orange), Transporter (yellow), Key (gold), Lock (silver)
+- **6 Block Types**: Default, Teleporter, Crumbler, Transporter, Key, Lock
 - **CenterTrigger System**: Precise detection when Lem reaches center/top of block
 - **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
 - **Inventory Management**: Per-level inventory entries with optional flavors and shared groups
@@ -86,13 +86,12 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 ### Visualization
 
 **GridVisualizer** - Renders grid lines
-**PlaceableSpaceVisualizer** - Shows placeable (black) vs non-placeable (grey) borders
-**GridCursor** - Visual cursor with state-based coloring
+**PlaceableSpaceVisualizer** - Shows placeable vs non-placeable borders
+**GridCursor** - Visual cursor with state-based states
 **InventoryUI** - UGUI overlay display of block inventory
 
 ### Utilities
 
-**BlockColors** - Centralized color definitions for all block types
 **RenderingConstants** - Z-layer heights and render queue values
 **GameInitializer** - Auto-setup of all game systems
 
@@ -117,7 +116,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 ### Designer Controls (Dev-Only)
 
 #### Level Editor Mode (Press E to access)
-- **Space / Enter**: Mark placeable space (black border)
+- **Space / Enter**: Mark placeable space (border)
 - **B**: Place permanent block
 - **L**: Place/flip Lem character
 - **Delete / Backspace**: Remove block or Lem (also clears placeable space)
@@ -145,6 +144,12 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **[IMPLEMENTATION-TASKS.md](IMPLEMENTATION-TASKS.md)** - Roadmap for level system implementation
 - **[FEATURES-TO-BUILD.md](FEATURES-TO-BUILD.md)** - Future features and improvements
 
+### Overworld UI Notes
+- **Data source**: Overworld reads `WorldData` from `Assets/Resources/Levels/Worlds` and `LevelDefinition` assets from `Assets/Resources/Levels/LevelDefinitions`.
+- **World matching**: `LevelDefinition.worldId` must match `WorldData.worldId` to appear under that world.
+- **Level launch**: Clicking a level stores the level id, then loads `Master`, which reads the pending level id and loads the definition.
+- **Fonts**: UGUI `Text` needs a valid font assignment. For built-in fonts, use `LegacyRuntime.ttf` to avoid "No Font Asset has been assigned."
+
 ### API Examples
 
 **Save/Load:**
@@ -171,7 +176,6 @@ Assets/
 │   ├── BaseBlock.cs                # Base block class with placement validation
 │   ├── CenterTrigger.cs            # Precise center detection system
 │   ├── BlockType.cs                # Block type enum (6 types)
-│   ├── BlockColors.cs              # Centralized color definitions
 │   ├── BlockInventory.cs           # Block count management
 │   ├── CrumblerBlock.cs            # Crumbling block implementation
 │   ├── TransporterBlock.cs         # Moving platform block with route validation
@@ -233,14 +237,14 @@ Assets/
 1. Open Unity and load the Master.unity scene
 2. Press Play to start
 3. Use arrow keys or WASD to move the cursor
-4. Press 1-9 to select blocks from inventory and Space to place them in black-bordered spaces
+4. Press 1-9 to select blocks from inventory and Space to place them in bordered spaces
 5. Press P to test your solution in Play Mode
 6. Collect all keys and fill all locks to win
 
 ### Designing a Level
 1. Press E to enter Level Editor Mode (dev-only)
 2. Press B to place permanent blocks
-3. Press Space to mark placeable spaces (black borders)
+3. Press Space to mark placeable spaces (borders)
 4. Press L to place starting Lems
 5. Press E to return to Build Mode
 6. Press P to test your level
@@ -264,7 +268,7 @@ Built with Unity 2022+ using C# scripting.
 - **State Management**: GameMode enum with mode-specific behaviors
 - **Event-Driven**: Lem placement tracking for reset functionality
 - **Separation of Concerns**: Visualization separated from logic
-- **Centralized Constants**: BlockColors and RenderingConstants utilities
+- **Centralized Constants**: RenderingConstants utilities
 - **Performance Optimization**: Cached component references to avoid FindObjectOfType
 - **Error Handling**: Comprehensive try-catch blocks with detailed logging
 - **Self-Contained Validation**: Blocks define their own placement rules via virtual methods
@@ -290,7 +294,7 @@ Built with Unity 2022+ using C# scripting.
 When adding new features:
 1. Document code with XML summary comments
 2. Update relevant .md files
-3. Add constants to RenderingConstants.cs or BlockColors.cs
+3. Add constants to RenderingConstants.cs
 4. Use regions to organize code
 5. Add comprehensive error handling with try-catch blocks
 6. Include Debug.Log statements for critical operations

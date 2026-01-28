@@ -61,7 +61,7 @@ Good levels have:
 
 The editor has three distinct modes you'll switch between while creating levels.
 
-### Build Mode (Blue-grey background)
+### Build Mode
 **Purpose**: Player-facing block placement using the level's inventory
 
 **What you can do**:
@@ -80,7 +80,7 @@ The editor has three distinct modes you'll switch between while creating levels.
 
 ---
 
-### Level Editor Mode (Dark grey background)
+### Level Editor Mode
 **Purpose**: Define the player's puzzle constraints
 
 **What you can do**:
@@ -90,7 +90,7 @@ The editor has three distinct modes you'll switch between while creating levels.
 
 **Controls**:
 - `Arrow Keys / WASD` - Move cursor
-- `Space / Enter` - Mark placeable space (adds black border)
+- `Space / Enter` - Mark placeable space (adds a border)
 - `Delete / Backspace` - Clear placeable space + remove block or Lem
 - `B` - Place permanent block
 - `L` - Place/flip Lem
@@ -129,7 +129,7 @@ Let's create a simple level from scratch to learn the workflow.
 1. **Start Unity and press Play** - You'll begin in Build Mode
 2. **Press `E`** to enter Level Editor Mode
 3. **Move the cursor** with arrow keys to position (0, 0) - the bottom-left
-4. **Press `1`** to select Default blocks (cyan)
+4. **Press `1`** to select Default blocks
 5. **Create a starting platform**:
    - Press `B` while moving right to place a 5-block permanent platform
 6. **Move cursor up and right** to create a gap
@@ -145,7 +145,7 @@ At this point you have the fixed structure, but it's not a puzzle yet!
 1. **Mark placeable spaces**:
    - Move cursor to the gap between your two platforms
    - Press `Space / Enter` to mark a placeable space
-   - You'll see a **black border** appear - this means players can place blocks here
+   - You'll see a border appear - this means players can place blocks here
    - Use **Delete/Backspace** to clear a placeable space
 2. **Mark 2-3 spaces** in the gap - enough for players to bridge the gap
 
@@ -680,7 +680,7 @@ One action triggers multiple consequences:
 **Solution**:
 1. Press `E` to enter Level Editor Mode
 2. Move cursor to the desired space
-3. Press `Space` to mark it as placeable (black border appears)
+3. Press `Space` to mark it as placeable (a border appears)
 4. Return to Build Mode or Play Mode
 
 ---
@@ -709,7 +709,7 @@ One action triggers multiple consequences:
 
 ---
 
-### Cursor is red and won't place blocks
+### Cursor shows "not placeable" and won't place blocks
 
 **Cause**: Current space is marked as non-placeable.
 
@@ -748,6 +748,27 @@ One action triggers multiple consequences:
 2. Press `Ctrl+Shift+S` to find save location
 3. Delete `current_level.json` to start fresh
 4. Recreate level from scratch
+
+---
+
+### Overworld shows no levels for a world
+
+**Cause**: The `LevelDefinition.worldId` does not match the `WorldData.worldId`, or the asset is not under `Resources/Levels/LevelDefinitions`.
+
+**Solution**:
+1. Open the LevelDefinition asset and verify its `worldId`
+2. Confirm a matching `WorldData` asset exists under `Resources/Levels/Worlds`
+3. Ensure the LevelDefinition asset is stored under `Resources/Levels/LevelDefinitions`
+
+---
+
+### Overworld level text is missing
+
+**Cause**: UGUI Text components do not have a valid font assigned.
+
+**Solution**:
+1. Assign a font on the template Text components (e.g., `LegacyRuntime.ttf`)
+2. Enter Play mode to verify the cloned level buttons inherit the font
 
 ---
 
@@ -858,8 +879,8 @@ One action triggers multiple consequences:
 | Cursor | Green | Empty placeable space |
 | Border | Black | Placeable space marking |
 | Border | Grey | Non-placeable space (in Level Editor) |
-| Background | Blue-grey | Build Mode |
-| Background | Dark grey | Level Editor Mode |
+| Background | Build Mode |
+| Background | Level Editor Mode |
 | Background | Black + skybox | Play Mode |
 
 ---
