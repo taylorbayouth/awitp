@@ -15,9 +15,9 @@ public class WorldCardUI : MonoBehaviour
     public Button levelButtonPrefab;
 
     [Header("Theme Colors")]
-    public Color lockedColor = new Color(0.05f, 0.05f, 0.05f, 1f);
-    public Color inProgressColor = new Color(0.9f, 0.45f, 0.1f, 1f);
-    public Color completeColor = new Color(0.1f, 0.6f, 0.2f, 1f);
+    public Color lockedColor = Color.black;
+    public Color inProgressColor = new Color(1f, 0.55f, 0.1f, 1f);
+    public Color unlockedColor = new Color(0.1f, 0.75f, 0.2f, 1f);
     public Color titleColor = Color.white;
     public Color statusColor = Color.white;
     public Color levelTextColor = Color.white; // Changed to white for better visibility
@@ -36,14 +36,28 @@ public class WorldCardUI : MonoBehaviour
     private WorldData _world;
     private OverworldUI _owner;
 
-    public void Initialize(WorldData world, OverworldUI owner, string statusLabel, bool isUnlocked, bool isComplete)
+    public void Initialize(WorldData world, OverworldUI owner, string statusLabel, bool isUnlocked, bool isComplete, bool isInProgress, bool isAvailable)
     {
         _world = world;
         _owner = owner;
 
+        if (backgroundImage == null || (backgroundImage != null && !backgroundImage.transform.IsChildOf(transform)))
+        {
+            backgroundImage = GetComponent<Image>();
+        }
+
+        // Always find titleText fresh - don't trust serialized references from prefab
+        titleText = FindTextByName("CardTitle");
+        statusText = FindTextByName("CardStatus");
+
+        // Debug
+        Debug.Log($"[WorldCardUI] Initialize for world '{(world != null ? world.worldId : "null")}': titleText={(titleText != null ? titleText.name : "NULL")}, statusText={(statusText != null ? statusText.name : "NULL")}");
+
         if (titleText != null)
         {
-            titleText.text = world != null && !string.IsNullOrEmpty(world.worldName) ? world.worldName : "World";
+            string worldName = world != null && !string.IsNullOrEmpty(world.worldName) ? world.worldName : "World";
+            titleText.text = worldName;
+            Debug.Log($"[WorldCardUI] Set title to '{worldName}'");
             if (defaultFont != null)
             {
                 titleText.font = defaultFont;
@@ -77,17 +91,17 @@ public class WorldCardUI : MonoBehaviour
 
         if (backgroundImage != null)
         {
-            if (isComplete)
+            if (!isUnlocked)
             {
-                backgroundImage.color = completeColor;
+                backgroundImage.color = lockedColor;
             }
-            else if (isUnlocked)
+            else if (isInProgress)
             {
                 backgroundImage.color = inProgressColor;
             }
             else
             {
-                backgroundImage.color = lockedColor;
+                backgroundImage.color = unlockedColor;
             }
         }
 
@@ -97,6 +111,21 @@ public class WorldCardUI : MonoBehaviour
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(HandleClick);
         }
+    }
+
+    private Text FindTextByName(string targetName)
+    {
+        Text[] texts = GetComponentsInChildren<Text>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            Text t = texts[i];
+            if (t != null && t.name == targetName)
+            {
+                return t;
+            }
+        }
+
+        return null;
     }
 
     public void SetLevels(System.Collections.Generic.List<LevelDefinition> levels, bool isUnlocked)

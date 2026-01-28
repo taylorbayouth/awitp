@@ -24,6 +24,10 @@ public class OverworldUI : MonoBehaviour
     [Header("Navigation")]
     [Tooltip("Scene to load when a level is selected.")]
     public string gameSceneName = "Master";
+    [Tooltip("Scene to load when backing out to main menu.")]
+    public string mainMenuSceneName = "MainMenu";
+    [Tooltip("Optional back button to return to main menu.")]
+    public Button backButton;
 
     [Header("Font Override")]
     [Tooltip("Force legacy built-in Arial font on all Overworld text.")]
@@ -68,6 +72,12 @@ public class OverworldUI : MonoBehaviour
                 subtitleText.font.RequestCharactersInTexture(subtitleText.text, subtitleText.fontSize, subtitleText.fontStyle);
                 subtitleText.SetAllDirty();
             }
+        }
+
+        if (backButton != null)
+        {
+            backButton.onClick.RemoveAllListeners();
+            backButton.onClick.AddListener(OnBackToMainMenu);
         }
 
         BuildWorldCards();
@@ -157,14 +167,25 @@ public class OverworldUI : MonoBehaviour
             rect.anchoredPosition = new Vector2(x, y);
 
             bool isUnlocked = WorldManager.Instance != null && WorldManager.Instance.IsWorldUnlocked(world.worldId);
-            bool isComplete = WorldManager.Instance != null && WorldManager.Instance.IsWorldComplete(world.worldId);
+            if (!isUnlocked)
+            {
+                // Locked worlds should not be visible or accessible - destroy the card we just created
+                Destroy(card.gameObject);
+                continue;
+            }
 
-            string statusLabel = isComplete ? "World Complete" : (isUnlocked ? "World In Progress" : "Locked");
+            int completedLevels = WorldManager.Instance != null ? WorldManager.Instance.GetCompletedLevelCount(world.worldId) : 0;
+            int totalLevels = world != null ? world.LevelCount : 0;
+            bool isComplete = totalLevels > 0 && completedLevels >= totalLevels;
+            bool hasProgress = completedLevels > 0 && !isComplete;
+            bool isAvailable = !hasProgress && !isComplete;
+
+            string statusLabel = isComplete ? "Unlocked" : (hasProgress ? "In Progress" : "Unlocked");
             string worldId = world != null ? world.worldId : string.Empty;
             List<LevelDefinition> levels = LoadLevelsForWorld(worldId);
             Debug.Log($"[OverworldUI] World '{worldId}' has {levels.Count} levels from Resources.");
 
-            card.Initialize(world, this, statusLabel, isUnlocked, isComplete);
+            card.Initialize(world, this, statusLabel, isUnlocked, isComplete, hasProgress, isAvailable);
             card.verboseLogs = verboseLogs;
             card.SetLevels(levels, isUnlocked);
         }
@@ -235,6 +256,12 @@ public class OverworldUI : MonoBehaviour
 
         Debug.Log($"[OverworldUI] Loading level: {level.levelName} ({level.levelId})");
         SceneManager.LoadScene(gameSceneName);
+    }
+
+    public void OnBackToMainMenu()
+    {
+        Debug.Log("[OverworldUI] Back to main menu");
+        SceneManager.LoadScene(mainMenuSceneName);
     }
 
     private void ApplyFontToAllText(Font font)

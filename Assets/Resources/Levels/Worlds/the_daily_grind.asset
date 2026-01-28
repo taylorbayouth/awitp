@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b2cecfdcaebe44acbeb2347bf60af5a, type: 3}
+  m_Name: the_daily_grind
+  m_EditorClassIdentifier: Assembly-CSharp::WorldData
+  worldId: the_daily_grind
+  worldName: The Daily Grind
+  description: 
+  orderInGame: 1
+  worldIcon: {fileID: 0}
+  themeColor: {r: 0, g: 1, b: 1, a: 1}
+  levels:
+  - {fileID: 11400000, guid: e03a83ca0a8b417a825470bc3bb65f85, type: 2}
+  - {fileID: 11400000, guid: 4ad55ccc20064927b34d4bfa45f5226a, type: 2}
