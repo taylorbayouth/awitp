@@ -49,6 +49,10 @@ public class InventoryUI : MonoBehaviour
     private Text _statusText;
     private Text _lockStatusText;
     private Text _winText;
+    private float _nextReferenceRefreshTime;
+    private float _nextLockStatusRefreshTime;
+    private int _cachedTotalLocks;
+    private int _cachedLockedCount;
 
     private readonly List<SlotUI> _slots = new List<SlotUI>();
     private readonly Dictionary<string, Texture2D> _transporterIconCache = new Dictionary<string, Texture2D>();
@@ -85,15 +89,7 @@ public class InventoryUI : MonoBehaviour
 
         _instance = this;
 
-        if (inventory == null)
-        {
-            inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
-        }
-
-        if (editorController == null)
-        {
-            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
-        }
+        TryResolveReferences(true);
 
         if (font == null)
         {
@@ -116,17 +112,29 @@ public class InventoryUI : MonoBehaviour
 
     private void Update()
     {
+        if (inventory == null || (Application.isPlaying && editorController == null))
+        {
+            TryResolveReferences(false);
+        }
+
+        UpdateUI();
+    }
+
+    private void TryResolveReferences(bool force)
+    {
+        float now = Time.realtimeSinceStartup;
+        if (!force && now < _nextReferenceRefreshTime) return;
+        _nextReferenceRefreshTime = now + 1f;
+
         if (inventory == null)
         {
             inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
-        if (Application.isPlaying && editorController == null)
+        if (editorController == null)
         {
             editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
         }
-
-        UpdateUI();
     }
 
     private void EnsureCanvas()
@@ -451,20 +459,25 @@ public class InventoryUI : MonoBehaviour
 
     private void UpdateLockStatus()
     {
-        LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
-        int totalLocks = locks.Length;
-        int lockedCount = 0;
-        foreach (LockBlock lockBlock in locks)
+        float now = Time.realtimeSinceStartup;
+        if (now >= _nextLockStatusRefreshTime)
         {
-            if (lockBlock != null && lockBlock.HasKeyLocked())
+            _nextLockStatusRefreshTime = now + 0.2f;
+            LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
+            _cachedTotalLocks = locks.Length;
+            _cachedLockedCount = 0;
+            foreach (LockBlock lockBlock in locks)
             {
-                lockedCount++;
+                if (lockBlock != null && lockBlock.HasKeyLocked())
+                {
+                    _cachedLockedCount++;
+                }
             }
         }
 
-        _lockStatusText.text = totalLocks > 0 ? $"{lockedCount} of {totalLocks}" : string.Empty;
+        _lockStatusText.text = _cachedTotalLocks > 0 ? $"{_cachedLockedCount} of {_cachedTotalLocks}" : string.Empty;
 
-        if (editorController != null && editorController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
+        if (editorController != null && editorController.currentMode == GameMode.Play && _cachedTotalLocks > 0 && _cachedLockedCount >= _cachedTotalLocks)
         {
             _winText.text = "You win";
         }
