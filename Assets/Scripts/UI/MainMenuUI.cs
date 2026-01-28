@@ -18,6 +18,9 @@ public class MainMenuUI : MonoBehaviour
     [Tooltip("Button to quit the application")]
     public Button quitButton;
 
+    [Tooltip("Button to reset player progress")]
+    public Button resetProgressButton;
+
     [Tooltip("Text displaying game title")]
     public Text titleText;
 
@@ -44,6 +47,11 @@ public class MainMenuUI : MonoBehaviour
         if (quitButton != null)
         {
             quitButton.onClick.AddListener(OnQuit);
+        }
+
+        if (resetProgressButton != null)
+        {
+            resetProgressButton.onClick.AddListener(OnResetProgress);
         }
 
         // Initialize managers
@@ -107,5 +115,18 @@ public class MainMenuUI : MonoBehaviour
         #else
             Application.Quit();
         #endif
+    }
+
+    private void OnResetProgress()
+    {
+        if (ProgressManager.Instance != null)
+        {
+            ProgressManager.Instance.ResetProgress();
+            Debug.Log("[MainMenuUI] Progress reset");
+        }
+        else
+        {
+            Debug.LogWarning("[MainMenuUI] ProgressManager not available to reset progress");
+        }
     }
 }

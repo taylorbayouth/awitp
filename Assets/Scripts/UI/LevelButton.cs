@@ -92,7 +92,7 @@ public class LevelButton : MonoBehaviour
             }
             else
             {
-                statsText.text = "Not completed";
+                statsText.text = "Incomplete";
             }
         }
 
