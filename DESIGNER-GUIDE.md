@@ -3,7 +3,7 @@
 **Audience**: This guide is for you, Taylor (the game designer/developer), to create puzzle levels.
 
 **What Players See**: Build Mode + Play Mode (they toggle with P)
-**What You See**: Build Mode + Designer Mode (you access with E) + Play Mode
+**What You See**: Build Mode + Level Editor Mode (press E) + Play Mode
 
 ---
 
@@ -11,7 +11,7 @@
 
 1. Open Unity and load the Master.unity scene
 2. Press Play to enter Build Mode
-3. Press **E** to enter **Designer Mode** - create level structure here
+3. Press **E** to enter **Level Editor Mode** - create level structure here
 4. Press **P** to test your level in **Play Mode**
 
 ## Game Modes
@@ -22,34 +22,28 @@
 **Controls**:
 - **Arrow Keys / WASD** - Move cursor
 - **Space / Enter** - Place block at cursor (from inventory)
-- **Delete / Backspace** - Remove block at cursor
-- **1-9 Keys** - Switch block entry (first 9 slots)
+- **Delete / Backspace** - Remove placed block at cursor (permanent blocks are locked)
+- **1-9 Keys** - Switch block entry (first 9 slots shown in the inventory UI)
 - **[ / ]** - Cycle block entries
-  - 1 = Default (cyan platform)
-  - 2 = Teleporter (magenta) - must be placed in pairs
-  - 3 = Crumbler (orange)
-  - 4 = Transporter (yellow)
-  - 5 = Key (gold)
-  - 6 = Lock (silver)
 - **P** - Toggle Play Mode to test solution
 
-**Note**: Players ONLY have access to Build Mode and Play Mode. They do NOT have the E key (Designer Mode).
+**Note**: Players ONLY have access to Build Mode and Play Mode. They do NOT have the E key (Level Editor Mode).
 
 ---
 
-### Designer Mode (Dev-Only - Press E)
-**Purpose**: Create level structure - permanent blocks, placeable spaces, Lems, inventory
+### Level Editor Mode (Dev-Only - Press E)
+**Purpose**: Create level structure - permanent blocks, placeable spaces, Lems, inventory config
 
 **This mode is for you to design levels. Players never see this.**
 
 **Controls**:
 - **Arrow Keys / WASD** - Move cursor
-- **Space / Enter** - Toggle placeable space (shows black border where players can place blocks)
+- **Space / Enter** - Mark placeable space (adds black border)
+- **Delete / Backspace** - Clear placeable space + remove block or Lem at cursor
 - **1-9 Keys** - Select block type for permanent blocks
 - **[ / ]** - Cycle block types
 - **B** - Place permanent block (fixed architecture, cannot be removed by players)
 - **L** - Place starting Lem (press again to flip direction)
-- **Delete / Backspace** - Remove block or Lem at cursor
 - **E** - Return to Build Mode
 
 **What You're Creating**:
@@ -67,7 +61,7 @@
 - **P** - Exit Play Mode (returns to Build Mode)
 - Lems walk automatically and interact with blocks
 
-**Physics Note**: Lems and physics are frozen in Build Mode and Designer Mode. They only move when Play Mode is active.
+**Physics Note**: Lems and physics are frozen in Build Mode and Level Editor Mode. They only move when Play Mode is active.
 
 **What You're Testing**:
 - Is the level solvable?
@@ -86,7 +80,7 @@ The cursor changes color to show what you can do:
 - **Yellow** - Space has a block (you can edit/remove it)
 - **Green** - Space is empty and placeable (players CAN place blocks here)
 
-### In Designer Mode:
+### In Level Editor Mode:
 - **Grey** - Empty space
 - **Yellow** - Has block (permanent or placeable)
 - **Green** - Placeable space marked (shows black border)
@@ -98,11 +92,15 @@ Press **Ctrl+S** (Windows/Linux) or **Cmd+S** (Mac)
 
 The level will be saved into the active **LevelDefinition** asset (stored as JSON in `levelDataJson`) including:
 - All permanent blocks (type and position)
-- Placeable space markings
-- Lem placements and facing directions
+- Placeable space markings (indices only)
+- Lem placements (grid index + facing)
 - Grid settings (width, height, cell size)
+- Inventory entries (block types, counts, routes, groups)
 
-**Designer-only**: This save/load flow is for Taylor (Designer Mode). Players do not have a save hotkey.
+**Not saved**: player-placed blocks, key states, or other runtime play data.
+**Requirement**: A `LevelDefinition` must be assigned in `LevelManager` or the save hotkey will warn and do nothing.
+
+**Designer-only**: This save/load flow is for Taylor (Level Editor Mode). Players do not have a save hotkey.
 Player progress is saved automatically when a level is completed (all locks filled with keys), and any in-progress block placements are discarded on restart.
 Cmd/Ctrl+S is disabled while the in-game Play Mode is active.
 
@@ -120,20 +118,20 @@ The console will show you the full path to the active LevelDefinition asset.
 
 **Understanding the Process**:
 1. **Prototype** in Build Mode (optional - test player experience)
-2. **Design** in Designer Mode (create the puzzle structure)
+2. **Design** in Level Editor Mode (create the puzzle structure)
 3. **Test** in Play Mode (verify it works)
 4. **Iterate** (repeat until perfect)
 
 ---
 
-### Step 1: Enter Designer Mode
+### Step 1: Enter Level Editor Mode
 1. Start Unity and press Play (you'll be in Build Mode)
-2. Press **E** to enter Designer Mode
+2. Press **E** to enter Level Editor Mode
 3. You're now creating the level structure
 
 ---
 
-### Step 2: Create Permanent Architecture (Designer Mode)
+### Step 2: Create Permanent Architecture (Level Editor Mode)
 1. Press **1-9** or **[ ]** to select block type
 2. Press **B** to place permanent blocks (fixed architecture)
 3. Build the skeleton of your puzzle:
@@ -146,12 +144,12 @@ The console will show you the full path to the active LevelDefinition asset.
 
 ---
 
-### Step 3: Mark Placeable Spaces (Designer Mode)
-1. Still in Designer Mode
+### Step 3: Mark Placeable Spaces (Level Editor Mode)
+1. Still in Level Editor Mode
 2. Move cursor to spaces where players should be able to place blocks
-3. Press **Space/Enter** to toggle placeable space marking
+3. Press **Space/Enter** to mark the space as placeable
    - A **black border** appears - this is where players can place blocks
-   - Placeable spaces show a black border
+   - To clear a placeable space, use **Delete/Backspace**
 4. To add fixed geometry, press **B** to place a permanent block (uses the selected block type)
    - Permanent blocks are always non-placeable for players
 5. Think about:
@@ -159,7 +157,7 @@ The console will show you the full path to the active LevelDefinition asset.
    - Are there multiple solutions?
    - Is the level solvable with the available spaces?
 
-### Step 3: Position Lems (Level Editor Mode)
+### Step 4: Position Lems (Level Editor Mode)
 1. Still in Level Editor Mode
 2. Move cursor to where you want a Lem to start
 3. Press **L** to place a Lem
@@ -169,7 +167,7 @@ The console will show you the full path to the active LevelDefinition asset.
 4. Press **L** again to flip the Lem's direction
 5. Press Delete/Backspace to remove a Lem
 
-### Step 4: Test Your Level (Play Mode)
+### Step 5: Test Your Level (Play Mode)
 1. Press **P** to enter Play Mode
 2. Watch the Lems walk and interact with blocks
 3. Verify that:
@@ -178,7 +176,7 @@ The console will show you the full path to the active LevelDefinition asset.
    - Blocks behave as expected
 4. Press **P** to exit Play Mode and return to editing
 
-### Step 5: Save Your Work
+### Step 6: Save Your Work
 1. Press **Ctrl+S** (or **Cmd+S** on Mac)
 2. Check the console for "LEVEL SAVED" confirmation
 3. Your level persists even after closing Unity
@@ -207,7 +205,7 @@ The console will show you the full path to the active LevelDefinition asset.
 ### Lem Placement
 - Place Lems on stable blocks, not in mid-air
 - Consider starting direction - does it create challenge?
-- Multiple Lems can create coordination puzzles
+- Only one Lem is supported; placing a new one replaces the old
 
 ### Testing
 - Test immediately after major changes
@@ -219,55 +217,51 @@ The console will show you the full path to the active LevelDefinition asset.
 ### Navigation (All Modes)
 - **Arrow Keys / WASD** - Move cursor around grid
 
-### Editor Mode
-- **Space / Enter** - Place selected block type
-- **Delete / Backspace** - Remove block
-- **1** - Select Default block
-- **2** - Select Teleporter block
-- **3** - Select Crumbler block
-- **4** - Select Transporter block
-- **5** - Select Key block
-- **6** - Select Lock block
+### Build Mode
+- **Space / Enter** - Place selected inventory entry
+- **Delete / Backspace** - Remove placed block
+- **1-9** - Select inventory entry (first 9 slots shown in UI)
+- **[ / ]** - Cycle inventory entries
 - **E** - Switch to Level Editor Mode
 
 ### Level Editor Mode
-- **Space / Enter** - Toggle placeable space marking
+- **Space / Enter** - Mark placeable space
+- **Delete / Backspace** - Clear placeable space + remove block or Lem
 - **1-9** - Select block entry for permanent blocks
 - **[ / ]** - Cycle block entries
 - **B** - Place permanent block (uses selected block type)
 - **L** - Place/flip Lem
-- **Delete / Backspace** - Remove block or Lem
-- **E** - Return to Editor Mode
+- **E** - Return to Build Mode
 
 ### Play Mode
-- **P** - Exit Play Mode (returns to Editor Mode)
+- **P** - Exit Play Mode (returns to Build Mode)
 
 ### Save/Load (All Modes)
 - **Ctrl+S / Cmd+S** - Save current level
 - **Ctrl+Shift+S / Cmd+Shift+S** - Show save location in console
 
 ### Mode Switching
-- **E** - Toggle between Editor and Level Editor modes
+- **E** - Toggle between Build Mode and Level Editor Mode
 - **P** - Toggle Play Mode on/off
 
 ## Troubleshooting
 
 ### "Cannot place block at index X: space is not placeable"
-**Solution**: You're in Editor Mode but trying to place a block in a non-placeable space. Either:
+**Solution**: You're in Build Mode but trying to place a block in a non-placeable space. Either:
 - Switch to Level Editor Mode (press E) and mark the space as placeable
 - Move to a different space that's already marked as placeable
 
-### "Cannot remove permanent block in Editor mode"
-**Cause**: Permanent blocks are locked while in Editor Mode
+### "Cannot remove permanent block in Build mode"
+**Cause**: Permanent blocks are locked while in Build Mode
 **Solution**: Press E to switch to Level Editor Mode, then delete the block
 
 ### Cursor is red and I can't place anything
 **Cause**: The current space is marked as non-placeable
 **Solution**: Press E to enter Level Editor Mode, then press Space to mark it as placeable
 
-### "No saved level found"
-**Cause**: You haven't saved a level yet, or the save file was deleted
-**Solution**: Create and save a level first with Ctrl+S before trying to load
+### "No LevelDefinition loaded"
+**Cause**: The current scene has no LevelDefinition assigned in `LevelManager`
+**Solution**: Assign a LevelDefinition and press Play so the level can load
 
 ### Lem falls through blocks
 **Cause**: Lem was placed in mid-air or on a block that was removed
@@ -297,12 +291,18 @@ Edit `RenderingConstants.cs` to adjust:
 - **Opacity** - Transparency of grid lines
 
 ### Inventory Configuration
-Inventory is configured within the **LevelDefinition** asset's JSON data (`levelDataJson`).
+Inventory is configured inside the **LevelDefinition** asset (Inspector → “Inventory Configuration” foldout, or edit `levelDataJson` directly).
 
-The `inventoryEntries` array in the level data defines:
+The `inventoryEntries` list defines:
 - Block entries (type + optional flavor)
-- Inventory counts per entry or shared `inventoryGroupId`
-- Transporter routes via `routeSteps` (placement is blocked if a route intersects existing blocks)
+- Shared counts via `inventoryGroupId`
+- Pair inventory (`isPairInventory` + `pairSize`, used for teleporters)
+- Transporter routes via `routeSteps` (route entries are normalized and combined by route key)
+
+**Notes**:
+- Build Mode shows only configured entries (Key/Lock are hidden).
+- Level Editor Mode shows all block types with infinite counts for placement.
+- Transporter routes reserve their path; blocks cannot be placed on reserved indices.
 
 Block inventory is saved with the level and restored on load automatically when the level is loaded.
 
@@ -320,38 +320,9 @@ Edit `BlockColors.cs` to change:
 
 ## File Format
 
-Levels are saved as JSON files with this structure:
-```json
-{
-  "gridWidth": 10,
-  "gridHeight": 10,
-  "cellSize": 1.0,
-  "inventoryEntries": [
-    {
-      "entryId": "Default",
-      "blockType": 0,
-      "displayName": "Default",
-      "inventoryGroupId": "",
-      "flavorId": "",
-      "routeSteps": null,
-      "maxCount": 999,
-      "currentCount": 999
-    }
-  ],
-  "blocks": [
-    {"blockType": 0, "gridIndex": 45, "inventoryKey": "Default", "flavorId": ""},
-    {"blockType": 1, "gridIndex": 46, "inventoryKey": "Teleporter", "flavorId": "A"}
-  ],
-  "placeableSpaceIndices": [44, 45, 46, 54, 55, 56],
-  "lems": [
-    {"gridIndex": 45, "facingRight": true}
-  ],
-  "levelName": "current_level",
-  "saveTimestamp": "2026-01-25 12:34:56"
-}
-```
+Levels are stored as JSON inside **LevelDefinition** assets (not standalone files). The full schema is documented in `SAVE_SYSTEM.md`.
 
-You can manually edit these files if needed, but be careful with the format!
+If you use the legacy `LevelSaveSystem` for file-based backups, the JSON structure is the same.
 
 ## Getting Help
 

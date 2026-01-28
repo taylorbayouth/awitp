@@ -14,7 +14,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - Comprehensive designer tools for creating puzzle levels
 - **Three Game Modes**:
   - **Build Mode**: Place blocks from inventory (player experience)
-  - **Designer Mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
+  - **Level Editor Mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
   - **Play Mode**: Test levels with active Lem AI
 - **Real-Time Testing**: Switch to Play mode instantly to test your level
 - **Persistent Storage**: Save levels to JSON files (Ctrl+S)
@@ -62,10 +62,10 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Grid-Based Placement**: Lems snap to grid positions on blocks
 
 ### Save/Load System
-- **Comprehensive State**: Saves blocks, placeable spaces, Lems, and grid settings
+- **Designer Saves**: Level layouts are saved into `LevelDefinition` assets (`levelDataJson`) via Ctrl/Cmd+S (editor only)
+- **Legacy File Saves**: Optional `LevelSaveSystem` writes LevelData JSON to `Application.persistentDataPath/Levels`
+- **Player Progress**: `ProgressManager` saves progress to `progress.json`
 - **JSON Format**: Human-readable, debuggable, version-control friendly
-- **Cross-Platform**: Uses Application.persistentDataPath for compatibility
-- **Auto-Timestamping**: Tracks when levels were saved
 
 ### Visual System
 - **Depth-Based Layering**: Cursor > Borders > Blocks >= Grid
@@ -88,7 +88,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 **GridVisualizer** - Renders grid lines
 **PlaceableSpaceVisualizer** - Shows placeable (black) vs non-placeable (grey) borders
 **GridCursor** - Visual cursor with state-based coloring
-**InventoryUI** - OnGUI display of block inventory
+**InventoryUI** - UGUI overlay display of block inventory
 
 ### Utilities
 
@@ -116,11 +116,11 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 ### Designer Controls (Dev-Only)
 
-#### Designer Mode (Press E to access)
-- **Space / Enter**: Toggle placeable space marking (black border)
+#### Level Editor Mode (Press E to access)
+- **Space / Enter**: Mark placeable space (black border)
 - **B**: Place permanent block
 - **L**: Place/flip Lem character
-- **Delete / Backspace**: Remove block or Lem
+- **Delete / Backspace**: Remove block or Lem (also clears placeable space)
 - **1-9**: Select block type for permanent blocks
 - **[ / ]**: Cycle block types
 - **E**: Return to Build Mode
@@ -130,14 +130,14 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Ctrl+Shift+S / Cmd+Shift+S**: Show save location in console
 
 #### Mode Switching
-- **E**: Toggle Designer Mode on/off (dev-only)
+- **E**: Toggle Level Editor Mode on/off (dev-only)
 - **P**: Toggle Play Mode on/off
 
 ## Documentation
 
 ### For Designers
 - **[HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md)** - Complete guide to designing puzzle levels
-- **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Designer Mode controls and workflow
+- **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Level Editor Mode controls and workflow
 - **[LEVEL-SYSTEM-DESIGN.md](LEVEL-SYSTEM-DESIGN.md)** - Architecture for multi-level progression system
 
 ### For Developers
@@ -238,7 +238,7 @@ Assets/
 6. Collect all keys and fill all locks to win
 
 ### Designing a Level
-1. Press E to enter Designer Mode (dev-only)
+1. Press E to enter Level Editor Mode (dev-only)
 2. Press B to place permanent blocks
 3. Press Space to mark placeable spaces (black borders)
 4. Press L to place starting Lems
