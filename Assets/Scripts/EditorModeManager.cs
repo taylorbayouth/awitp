@@ -17,6 +17,7 @@ public class EditorModeManager : MonoBehaviour
     private GridVisualizer gridVisualizer;
 
     private GameMode previousMode = GameMode.Editor;
+    private float _nextEditorControllerSearchTime;
 
     private void Awake()
     {
@@ -55,8 +56,12 @@ public class EditorModeManager : MonoBehaviour
     {
         if (editorController == null)
         {
-            // Try to find it if not found
-            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            float now = Time.realtimeSinceStartup;
+            if (now >= _nextEditorControllerSearchTime)
+            {
+                editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+                _nextEditorControllerSearchTime = now + 1f;
+            }
             return;
         }
 
