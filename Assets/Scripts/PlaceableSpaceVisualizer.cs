@@ -9,6 +9,8 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
 {
     [Header("Visual Settings")]
     public Color placeableColor = BlockColors.PlaceableBorder;
+    [Tooltip("Line width for placeable space borders")]
+    public float borderLineWidth = RenderingConstants.BORDER_LINE_WIDTH;
 
     private GridManager gridManager;
     private Dictionary<int, GameObject> placeableBorders = new Dictionary<int, GameObject>();
@@ -17,6 +19,16 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
     private void Awake()
     {
         gridManager = GetComponent<GridManager>();
+    }
+
+    private void OnValidate()
+    {
+        if (!Application.isPlaying) return;
+        if (gridManager == null) gridManager = GetComponent<GridManager>();
+        if (gridManager != null)
+        {
+            RefreshVisuals();
+        }
     }
 
     public void RefreshVisuals()
@@ -56,7 +68,7 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
         borderObj.SetActive(isVisible);
 
         BorderRenderer border = borderObj.AddComponent<BorderRenderer>();
-        border.Initialize(placeableColor, gridManager.cellSize, RenderingConstants.BORDER_DEPTH, RenderingConstants.BORDER_SORTING, RenderingConstants.BORDER_LINE_WIDTH);
+        border.Initialize(placeableColor, gridManager.cellSize, RenderingConstants.BORDER_DEPTH, RenderingConstants.BORDER_SORTING, borderLineWidth);
 
         placeableBorders[index] = borderObj;
     }

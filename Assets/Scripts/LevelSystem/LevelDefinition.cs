@@ -61,13 +61,13 @@ public class LevelDefinition : ScriptableObject
         {
             LevelData data = JsonUtility.FromJson<LevelData>(levelDataJson);
 
-            // Override grid settings from this asset if they differ
+            // Apply asset defaults only when JSON is missing/invalid.
             if (data != null)
             {
-                data.gridWidth = gridWidth;
-                data.gridHeight = gridHeight;
-                data.cellSize = cellSize;
-                data.levelName = levelName;
+                if (data.gridWidth <= 0) data.gridWidth = gridWidth;
+                if (data.gridHeight <= 0) data.gridHeight = gridHeight;
+                if (data.cellSize <= 0f) data.cellSize = cellSize;
+                if (string.IsNullOrEmpty(data.levelName)) data.levelName = levelName;
             }
 
             return data;
