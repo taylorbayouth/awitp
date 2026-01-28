@@ -3,13 +3,16 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Main menu UI controller.
-/// Provides entry point to the game with options to start, view worlds, or quit.
+/// Start screen UI controller.
+/// Provides entry point to load a game or quit.
 /// </summary>
 public class MainMenuUI : MonoBehaviour
 {
     [Header("UI References")]
-    [Tooltip("Button to start the game (loads world map)")]
+    [Tooltip("Button to load the game (preferred)")]
+    public Button loadGameButton;
+
+    [Tooltip("Legacy start button (used if loadGameButton is not assigned)")]
     public Button startGameButton;
 
     [Tooltip("Button to quit the application")]
@@ -18,16 +21,24 @@ public class MainMenuUI : MonoBehaviour
     [Tooltip("Text displaying game title")]
     public Text titleText;
 
+    [Tooltip("Optional subtitle text under the title")]
+    public Text subtitleText;
+
     [Header("Settings")]
-    [Tooltip("Name of the world map scene to load")]
-    public string worldMapSceneName = "WorldMap";
+    [Tooltip("Name of the overworld scene to load")]
+    public string overworldSceneName = "Overworld";
 
     private void Start()
     {
+        // Make sure the mouse is usable on the start screen
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
         // Setup button listeners
-        if (startGameButton != null)
+        Button effectiveLoadButton = loadGameButton != null ? loadGameButton : startGameButton;
+        if (effectiveLoadButton != null)
         {
-            startGameButton.onClick.AddListener(OnStartGame);
+            effectiveLoadButton.onClick.AddListener(OnLoadGame);
         }
 
         if (quitButton != null)
@@ -44,7 +55,16 @@ public class MainMenuUI : MonoBehaviour
             titleText.text = "A Walk in the Park";
         }
 
-        Debug.Log("[MainMenuUI] Main menu loaded");
+        if (subtitleText != null)
+        {
+            subtitleText.text = "A game by Taylor Bayouth";
+        }
+        else if (titleText != null)
+        {
+            titleText.text = "A Walk in the Park\nA game by Taylor Bayouth";
+        }
+
+        Debug.Log("[MainMenuUI] Start screen loaded");
     }
 
     private void InitializeManagers()
@@ -72,10 +92,10 @@ public class MainMenuUI : MonoBehaviour
         }
     }
 
-    private void OnStartGame()
+    private void OnLoadGame()
     {
-        Debug.Log("[MainMenuUI] Starting game - loading world map");
-        SceneManager.LoadScene(worldMapSceneName);
+        Debug.Log("[MainMenuUI] Loading game - loading overworld");
+        SceneManager.LoadScene(overworldSceneName);
     }
 
     private void OnQuit()

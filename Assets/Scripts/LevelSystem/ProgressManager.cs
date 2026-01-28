@@ -414,8 +414,8 @@ public class ProgressManager : MonoBehaviour
                 // Create new progress data
                 _progressData = new GameProgressData();
 
-                // Unlock first world by default
-                _progressData.UnlockWorld("world_tutorial");
+                // Unlock first world by default (tutorial world)
+                _progressData.UnlockWorld("tutorial");
 
                 Debug.Log("[ProgressManager] Created new progress data");
             }
@@ -428,7 +428,7 @@ public class ProgressManager : MonoBehaviour
 
             // Create fresh progress on error
             _progressData = new GameProgressData();
-            _progressData.UnlockWorld("world_tutorial");
+            _progressData.UnlockWorld("tutorial");
         }
     }
 
@@ -440,7 +440,7 @@ public class ProgressManager : MonoBehaviour
         Debug.Log("[ProgressManager] Resetting all progress");
 
         _progressData = new GameProgressData();
-        _progressData.UnlockWorld("world_tutorial");
+        _progressData.UnlockWorld("tutorial");
 
         // Delete save file
         if (File.Exists(_savePath))

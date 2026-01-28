@@ -38,7 +38,7 @@
 
 **Controls**:
 - **Arrow Keys / WASD** - Move cursor
-- **Space / Enter** - Mark placeable space (adds black border)
+- **Space / Enter** - Mark placeable space (adds a border)
 - **Delete / Backspace** - Clear placeable space + remove block or Lem at cursor
 - **1-9 Keys** - Select block type for permanent blocks
 - **[ / ]** - Cycle block types
@@ -48,7 +48,7 @@
 
 **What You're Creating**:
 1. **Permanent Blocks** (B key) - Fixed level architecture
-2. **Placeable Spaces** (Space key) - Black borders showing where players can place blocks
+2. **Placeable Spaces** (Space key) - Borders showing where players can place blocks
 3. **Starting Lems** (L key) - Initial character positions
 4. **Inventory** (via LevelDefinition asset) - What blocks players have access to
 
@@ -73,17 +73,17 @@
 
 ## Cursor States
 
-The cursor changes color to show what you can do:
+The cursor changes state to show what you can do:
 
 ### In Build Mode:
-- **Red** - Space is not placeable (players cannot place blocks here)
-- **Yellow** - Space has a block (you can edit/remove it)
-- **Green** - Space is empty and placeable (players CAN place blocks here)
+- **Not placeable** - Space is not placeable (players cannot place blocks here)
+- **Occupied** - Space has a block (you can edit/remove it)
+- **Placeable** - Space is empty and placeable (players can place blocks here)
 
 ### In Level Editor Mode:
-- **Grey** - Empty space
-- **Yellow** - Has block (permanent or placeable)
-- **Green** - Placeable space marked (shows black border)
+- **Empty** - Empty space
+- **Occupied** - Has block (permanent or placeable)
+- **Placeable** - Placeable space marked (shows a border)
 
 ## Saving and Loading
 
@@ -148,7 +148,7 @@ The console will show you the full path to the active LevelDefinition asset.
 1. Still in Level Editor Mode
 2. Move cursor to spaces where players should be able to place blocks
 3. Press **Space/Enter** to mark the space as placeable
-   - A **black border** appears - this is where players can place blocks
+   - A border appears - this is where players can place blocks
    - To clear a placeable space, use **Delete/Backspace**
 4. To add fixed geometry, press **B** to place a permanent block (uses the selected block type)
    - Permanent blocks are always non-placeable for players
@@ -255,7 +255,7 @@ The console will show you the full path to the active LevelDefinition asset.
 **Cause**: Permanent blocks are locked while in Build Mode
 **Solution**: Press E to switch to Level Editor Mode, then delete the block
 
-### Cursor is red and I can't place anything
+### Cursor shows "not placeable" and I can't place anything
 **Cause**: The current space is marked as non-placeable
 **Solution**: Press E to enter Level Editor Mode, then press Space to mark it as placeable
 
@@ -270,9 +270,6 @@ The console will show you the full path to the active LevelDefinition asset.
 ### Level doesn't load correctly
 **Cause**: Save file may be corrupted or from an incompatible version
 **Solution**: Check the console for specific error messages. You may need to recreate the level.
-
-### Grid lines are hard to see
-**Solution**: Adjust `GRID_LINE_OPACITY` in RenderingConstants.cs (0.0 = transparent, 1.0 = opaque)
 
 ## Advanced Features
 
@@ -310,13 +307,6 @@ Block inventory is saved with the level and restored on load automatically when 
 Block visuals are defined by prefabs in `Resources/Blocks/`:
 - Each block type has its own prefab (e.g., Block_Key.prefab, Block_Lock.prefab)
 - Prefabs can include custom meshes, materials, and child objects
-- Fallback colors are defined in `BlockColors.cs` for blocks without prefabs
-
-Edit `BlockColors.cs` to change:
-- Fallback block type colors
-- Cursor colors (placeable, editable, non-placeable)
-- Grid line color
-- Placeable border color
 
 ## File Format
 
