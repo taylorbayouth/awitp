@@ -10,10 +10,6 @@ public class GameInitializer : MonoBehaviour
     [Header("Auto-Setup")]
     public bool autoSetupOnStart = true;
 
-    [Header("Skybox")]
-    public Material skyboxMaterial;
-    public bool useDefaultSkyboxIfNone = true;
-
     private void Start()
     {
         if (autoSetupOnStart && Application.isPlaying)
@@ -88,17 +84,17 @@ public class GameInitializer : MonoBehaviour
             DebugLog.Info("GameInitializer: Added BlockInventory");
         }
 
-        // IMPORTANT: Add EditorModeManager BEFORE EditorController
-        // so EditorController can find it in Awake
-        if (gridManager.GetComponent<EditorModeManager>() == null)
+        // IMPORTANT: Add GameModeManager BEFORE BuilderController
+        // so BuilderController can find it in Awake
+        if (gridManager.GetComponent<GameModeManager>() == null)
         {
-            gridManager.gameObject.AddComponent<EditorModeManager>();
+            gridManager.gameObject.AddComponent<GameModeManager>();
         }
 
-        if (gridManager.GetComponent<EditorController>() == null)
+        if (gridManager.GetComponent<BuilderController>() == null)
         {
-            gridManager.gameObject.AddComponent<EditorController>();
-            DebugLog.Info("GameInitializer: Added EditorController");
+            gridManager.gameObject.AddComponent<BuilderController>();
+            DebugLog.Info("GameInitializer: Added BuilderController");
         }
 
         if (gridManager.GetComponent<ControlsUI>() == null)
@@ -108,9 +104,9 @@ public class GameInitializer : MonoBehaviour
         }
 
         // Verify they're both present
-        EditorController ec = gridManager.GetComponent<EditorController>();
-        EditorModeManager emm = gridManager.GetComponent<EditorModeManager>();
-        DebugLog.Info($"GameInitializer: EditorController present: {ec != null}, EditorModeManager present: {emm != null}");
+        BuilderController ec = gridManager.GetComponent<BuilderController>();
+        GameModeManager emm = gridManager.GetComponent<GameModeManager>();
+        DebugLog.Info($"GameInitializer: BuilderController present: {ec != null}, GameModeManager present: {emm != null}");
 
         // Setup Inventory UI
         if (UnityEngine.Object.FindAnyObjectByType<InventoryUI>() == null)
@@ -118,7 +114,7 @@ public class GameInitializer : MonoBehaviour
             GameObject uiObj = new GameObject("InventoryUI");
             InventoryUI inventoryUI = uiObj.AddComponent<InventoryUI>();
             inventoryUI.inventory = gridManager.GetComponent<BlockInventory>();
-            inventoryUI.editorController = ec;
+            inventoryUI.builderController = ec;
             DebugLog.Info("GameInitializer: Added InventoryUI");
         }
 
@@ -145,22 +141,6 @@ public class GameInitializer : MonoBehaviour
         else
         {
             Debug.LogWarning("GameInitializer: Main Camera not found!");
-        }
-
-        // Setup skybox
-        if (skyboxMaterial != null)
-        {
-            RenderSettings.skybox = skyboxMaterial;
-            DebugLog.Info("GameInitializer: Skybox set from assigned material");
-        }
-        else if (useDefaultSkyboxIfNone && RenderSettings.skybox == null)
-        {
-            Material defaultSkybox = Resources.GetBuiltinResource<Material>("Default-Skybox.mat");
-            if (defaultSkybox != null)
-            {
-                RenderSettings.skybox = defaultSkybox;
-                DebugLog.Info("GameInitializer: Default skybox applied");
-            }
         }
 
         // Setup lighting for non-metallic look

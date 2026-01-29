@@ -203,7 +203,7 @@ Now that you have a basic level, try adding:
 
 ## Block Types Reference
 
-### Default Block (Cyan) - Type 1
+### Walk Block (Cyan) - Type 1
 **Behavior**: Solid, permanent platform
 
 **Mechanics**:
@@ -354,7 +354,7 @@ The inventory system controls what blocks players can place and in what quantiti
 ### Understanding Inventory Entries
 
 Each inventory slot represents one **inventory entry**:
-- **Block Type**: Default, Teleporter, Crumbler, etc.
+- **Block Type**: Walk, Teleporter, Crumbler, etc.
 - **Display Name** (optional): Label shown in the UI
 - **Flavor ID**: For teleporters (A, B, C) or transporter variants
 - **Route Steps**: For transporters - defines movement path
@@ -377,7 +377,7 @@ Inventory is configured within the **LevelDefinition** asset (Inspector → “I
 ```
 Entry 0:
   Display Name: "Platform"
-  Block Type: Default
+  Block Type: Walk
   Max Count: 10
   Flavor ID: (leave empty)
   Route Steps: (leave empty)
@@ -425,13 +425,13 @@ Multiple entries can share the same inventory pool:
 ```
 Entry 0:
   Display Name: "Small Platform"
-  Block Type: Default
+  Block Type: Walk
   Inventory Group ID: "platforms"
   Max Count: 15
 
 Entry 1:
   Display Name: "Large Platform"
-  Block Type: Default
+  Block Type: Walk
   Inventory Group ID: "platforms"
   Max Count: 15
 ```
@@ -846,7 +846,7 @@ One action triggers multiple consequences:
 |----------|---------|---------|
 | entryId | Unique id (auto-generated) | "Teleporter_A" |
 | displayName | UI label | "Platform" |
-| blockType | Block enum | Default |
+| blockType | Block enum | Walk |
 | maxCount | Total available | 10 |
 | currentCount | Runtime remaining (resets on load) | 10 |
 | flavorId | Variant ID | "A" for teleporter A |

@@ -114,7 +114,7 @@ public class LevelDefinitionEditor : Editor
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("+ Add Entry", GUILayout.Width(100)))
         {
-            inventoryEntries.Add(new BlockInventoryEntry(BlockType.Default, 10));
+            inventoryEntries.Add(new BlockInventoryEntry(BlockType.Walk, 10));
         }
         if (GUILayout.Button("Clear All", GUILayout.Width(100)))
         {

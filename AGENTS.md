@@ -324,7 +324,7 @@ Recent improvements added comprehensive logging:
 ```
 [BaseBlock] Player entered trigger on Crumbler block at index 42
 [BaseBlock] Player reached center of Transporter block at index 15
-[BaseBlock] Player exited trigger on Default block at index 8
+[BaseBlock] Player exited trigger on Walk block at index 8
 ```
 
 ### Scene View Visualization

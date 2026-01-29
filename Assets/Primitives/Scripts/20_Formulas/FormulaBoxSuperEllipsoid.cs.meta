@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: affc536efbdee4ef3906bc0e383794b3
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/20_Formulas/FormulaBoxSuperEllipsoid.cs
+  uploadId: 771750

@@ -21,8 +21,8 @@ public class BaseBlock : MonoBehaviour
     [Tooltip("Globally unique identifier for this block instance")]
     public string uniqueID;
 
-    [Tooltip("Defines behavior type (Default, Teleporter, Crumbler, Transporter)")]
-    public BlockType blockType = BlockType.Default;
+    [Tooltip("Defines behavior type (Walk, Teleporter, Crumbler, Transporter, Key, Lock)")]
+    public BlockType blockType = BlockType.Walk;
 
     [Tooltip("Linear index in GridManager's coordinate system")]
     public int gridIndex = -1;
@@ -125,7 +125,7 @@ public class BaseBlock : MonoBehaviour
 
     // Cached reference to BlockInventory to avoid repeated FindObjectOfType calls
     private static BlockInventory _cachedInventory;
-    private static EditorController _cachedEditorController;
+    private static BuilderController _cachedBuilderController;
 
     #endregion
 
@@ -233,6 +233,18 @@ public class BaseBlock : MonoBehaviour
             Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
+                // Ensure renderer has at least one material
+                if (renderer.sharedMaterials == null || renderer.sharedMaterials.Length == 0 || renderer.sharedMaterial == null)
+                {
+                    DebugLog.Info($"[BaseBlock] Renderer on {type} block has no material, creating default material");
+                    // Try multiple shader fallbacks for compatibility
+                    Shader shader = Shader.Find("Universal Render Pipeline/Lit") ??
+                                   Shader.Find("Standard") ??
+                                   Shader.Find("Diffuse");
+                    Material defaultMat = new Material(shader);
+                    renderer.material = defaultMat;
+                }
+
                 Color blockColor = BlockColors.GetColorForBlockType(type);
                 renderer.material.color = blockColor;
                 block.originalColor = blockColor;
@@ -290,10 +302,10 @@ public class BaseBlock : MonoBehaviour
                 DebugLog.Info($"[BaseBlock] Added TeleporterBlock component to {blockObj.name}");
                 break;
 
-            case BlockType.Default:
+            case BlockType.Walk:
             default:
-                block = blockObj.AddComponent<BaseBlock>();
-                DebugLog.Info($"[BaseBlock] Added BaseBlock component to {blockObj.name}");
+                block = blockObj.AddComponent<WalkBlock>();
+                DebugLog.Info($"[BaseBlock] Added WalkBlock component to {blockObj.name}");
                 break;
         }
 
@@ -316,9 +328,9 @@ public class BaseBlock : MonoBehaviour
                 return block is LockBlock;
             case BlockType.Teleporter:
                 return block is TeleporterBlock;
-            case BlockType.Default:
+            case BlockType.Walk:
             default:
-                return block.GetType() == typeof(BaseBlock);
+                return block is WalkBlock;
         }
     }
 
@@ -367,6 +379,18 @@ public class BaseBlock : MonoBehaviour
         MeshFilter rootMesh = GetComponent<MeshFilter>();
         MeshRenderer rootRenderer = GetComponent<MeshRenderer>();
 
+        // If root has no valid mesh, add a cube as fallback
+        if (rootMesh == null || rootMesh.sharedMesh == null)
+        {
+            if (rootMesh == null)
+            {
+                rootMesh = gameObject.AddComponent<MeshFilter>();
+            }
+            // Use Unity's built-in cube mesh
+            rootMesh.sharedMesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
+            Debug.LogWarning($"[BaseBlock] {gameObject.name} missing mesh, added cube fallback");
+        }
+
         MeshFilter visualMesh = visualRoot.GetComponent<MeshFilter>();
         MeshRenderer visualRenderer = visualRoot.GetComponent<MeshRenderer>();
 
@@ -380,12 +404,20 @@ public class BaseBlock : MonoBehaviour
         {
             visualRenderer = visualRoot.gameObject.AddComponent<MeshRenderer>();
             visualRenderer.sharedMaterials = rootRenderer.sharedMaterials;
-            visualRenderer.enabled = rootRenderer.enabled;
+            visualRenderer.enabled = true;
         }
 
-        if (rootRenderer != null && visualRenderer != null)
+        // Only disable root renderer if Visual has both mesh and renderer
+        bool visualHasValidSetup = (visualMesh != null && visualMesh.sharedMesh != null && visualRenderer != null);
+        if (rootRenderer != null && visualRenderer != null && visualHasValidSetup)
         {
             rootRenderer.enabled = false;
+        }
+        else if (rootRenderer != null && !visualHasValidSetup)
+        {
+            // Keep root renderer enabled if Visual setup is incomplete
+            rootRenderer.enabled = true;
+            Debug.LogWarning($"[BaseBlock] {gameObject.name} using root renderer (Visual setup incomplete)");
         }
 
         if (autoNormalizeVisualScale && visualMesh != null && visualMesh.sharedMesh != null)
@@ -398,7 +430,7 @@ public class BaseBlock : MonoBehaviour
             }
         }
 
-        blockRenderer = visualRoot.GetComponentInChildren<Renderer>();
+        blockRenderer = visualRoot.GetComponent<Renderer>();
         if (blockRenderer == null)
         {
             blockRenderer = GetComponent<Renderer>();
@@ -406,7 +438,39 @@ public class BaseBlock : MonoBehaviour
 
         if (blockRenderer != null)
         {
-            originalColor = blockRenderer.material.color;
+            // Ensure renderer is enabled
+            blockRenderer.enabled = true;
+
+            // Check if material needs to be created/fixed
+            bool needsNewMaterial = blockRenderer.sharedMaterials == null ||
+                                   blockRenderer.sharedMaterials.Length == 0 ||
+                                   blockRenderer.sharedMaterial == null ||
+                                   blockRenderer.sharedMaterial.shader == null;
+
+            if (needsNewMaterial)
+            {
+                // Try multiple shader fallbacks for compatibility
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ??
+                               Shader.Find("Standard") ??
+                               Shader.Find("Diffuse");
+
+                if (shader == null)
+                {
+                    Debug.LogError($"[BaseBlock] No shader found for {gameObject.name}!");
+                }
+                else
+                {
+                    Material defaultMat = new Material(shader);
+                    Color blockColor = BlockColors.GetColorForBlockType(blockType);
+                    defaultMat.color = blockColor;
+                    blockRenderer.material = defaultMat;
+                    originalColor = blockColor;
+                }
+            }
+            else
+            {
+                originalColor = blockRenderer.material.color;
+            }
         }
         else
         {
@@ -931,12 +995,12 @@ public class BaseBlock : MonoBehaviour
 
     private static bool IsPlayModeActive()
     {
-        if (_cachedEditorController == null)
+        if (_cachedBuilderController == null)
         {
-            _cachedEditorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            _cachedBuilderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
         }
 
-        return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;
+        return _cachedBuilderController != null && _cachedBuilderController.currentMode == GameMode.Play;
     }
 
     #endregion

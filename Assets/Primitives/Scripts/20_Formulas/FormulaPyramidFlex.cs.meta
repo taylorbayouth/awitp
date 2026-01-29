@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ab77f2f2bfc0b40cbaa4c7785d051452
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/20_Formulas/FormulaPyramidFlex.cs
+  uploadId: 771750

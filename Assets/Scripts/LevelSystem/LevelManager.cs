@@ -171,8 +171,8 @@ public class LevelManager : MonoBehaviour
         if (_levelLoaded && !_levelCompletedThisSession)
         {
             // Only check in play mode
-            EditorController editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
-            if (editorController != null && editorController.currentMode == GameMode.Play)
+            BuilderController builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            if (builderController != null && builderController.currentMode == GameMode.Play)
             {
                 if (CheckLevelComplete())
                 {

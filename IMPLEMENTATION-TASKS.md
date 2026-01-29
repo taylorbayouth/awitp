@@ -17,19 +17,19 @@ This document provides concrete, actionable tasks for implementing the level sys
 
 ## Phase 1: Prefab Migration ✅ 90% COMPLETE
 
-### Task 1.1: Create Default Block Prefab
+### Task 1.1: Create Walk Block Prefab
 **Priority**: Critical
 **Estimated Time**: 30 minutes
 
 **Steps**:
-1. In Unity, create empty GameObject named "Block_Default"
+1. In Unity, create empty GameObject named "Block_Walk"
 2. Add SpriteRenderer (or keep existing visual setup)
 3. Add BoxCollider with proper size
-4. Add `DefaultBlock` script component
+4. Add `WalkBlock` script component
 5. Create child GameObject "CenterTrigger"
    - Add SphereCollider, set Is Trigger = true
    - Add `CenterTrigger` script component
-6. Save as prefab: `Assets/Resources/Blocks/Block_Default.prefab`
+6. Save as prefab: `Assets/Resources/Blocks/Block_Walk.prefab`
 7. Test: Load prefab in code and verify it works
 
 **Code Change**:
@@ -37,12 +37,12 @@ This document provides concrete, actionable tasks for implementing the level sys
 // OLD (in GridManager or similar):
 GameObject blockObj = new GameObject("Block");
 blockObj.AddComponent<BoxCollider>();
-DefaultBlock block = blockObj.AddComponent<DefaultBlock>();
+WalkBlock block = blockObj.AddComponent<WalkBlock>();
 
 // NEW:
-GameObject prefab = Resources.Load<GameObject>("Blocks/Block_Default");
+GameObject prefab = Resources.Load<GameObject>("Blocks/Block_Walk");
 GameObject blockObj = Instantiate(prefab, position, Quaternion.identity);
-DefaultBlock block = blockObj.GetComponent<DefaultBlock>();
+WalkBlock block = blockObj.GetComponent<WalkBlock>();
 ```
 
 **Verification**:

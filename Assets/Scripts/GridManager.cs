@@ -977,6 +977,13 @@ public class GridManager : MonoBehaviour
             levelData.keyStates = CaptureKeyStates();
         }
 
+        // Capture camera settings
+        CameraSetup cameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+        if (cameraSetup != null)
+        {
+            levelData.cameraSettings = cameraSetup.ExportSettings();
+        }
+
         DebugLog.Info($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
         return levelData;
     }
@@ -1119,6 +1126,18 @@ public class GridManager : MonoBehaviour
         if (visualizer != null)
         {
             visualizer.RefreshVisuals();
+        }
+
+        // Restore camera settings
+        CameraSetup cameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+        if (cameraSetup != null && levelData.cameraSettings != null)
+        {
+            cameraSetup.ImportSettings(levelData.cameraSettings);
+        }
+        else if (cameraSetup != null)
+        {
+            // No saved camera settings, refresh camera with current settings
+            cameraSetup.RefreshCamera();
         }
 
         UpdateCursorState();

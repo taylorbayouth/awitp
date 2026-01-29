@@ -140,7 +140,7 @@ public class BlockInventory : MonoBehaviour
 
     public IReadOnlyList<BlockInventoryEntry> GetEntriesForMode(GameMode mode)
     {
-        if (mode == GameMode.LevelEditor)
+        if (mode == GameMode.Designer)
         {
             return GetDesignerEntries();
         }
@@ -297,7 +297,7 @@ public class BlockInventory : MonoBehaviour
 
     public void ReturnBlock(BlockInventoryEntry entry)
     {
-        ReturnBlockByKey(GetInventoryKey(entry), entry != null ? entry.blockType : BlockType.Default);
+        ReturnBlockByKey(GetInventoryKey(entry), entry != null ? entry.blockType : BlockType.Walk);
     }
 
     public void ReturnBlock(string inventoryKey, BlockType fallbackType)

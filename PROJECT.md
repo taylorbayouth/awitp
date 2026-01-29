@@ -16,7 +16,7 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 
 #### Block System
 - **BaseBlock** - Base class for all block types with collision detection and placement validation
-- **BlockType** enum - Defines available block types (Default, Teleporter, Crumbler, Transporter, Key, Lock)
+- **BlockType** enum - Defines available block types (Walk, Teleporter, Crumbler, Transporter, Key, Lock)
 - **BlockInventory** - Manages block counts per entry (supports flavors and shared groups, loaded from LevelDefinition)
 - **RouteParser** - Canonical route utility for parsing, validating, and normalizing transporter routes
 - **Placement Validation** - Self-contained rules via virtual methods:

@@ -6,7 +6,7 @@ using UnityEngine;
 public class ControlsUI : MonoBehaviour
 {
     [Header("References")]
-    public EditorController editorController;
+    public BuilderController builderController;
 
     [Header("Layout")]
     public float rightMargin = 24f;
@@ -18,19 +18,19 @@ public class ControlsUI : MonoBehaviour
 
     private void Awake()
     {
-        if (editorController == null)
+        if (builderController == null)
         {
-            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
         }
     }
 
     private void OnGUI()
     {
-        if (editorController == null) return;
+        if (builderController == null) return;
 
         EnsureStyle();
 
-        string[] lines = GetLinesForMode(editorController.currentMode);
+        string[] lines = GetLinesForMode(builderController.currentMode);
         if (lines == null || lines.Length == 0) return;
 
         float lineHeight = textStyle.lineHeight > 0 ? textStyle.lineHeight : (fontSize + 6f);
@@ -58,7 +58,7 @@ public class ControlsUI : MonoBehaviour
     {
         switch (mode)
         {
-            case GameMode.Editor:
+            case GameMode.Builder:
                 return new[]
                 {
                     "Move: Arrow / WASD",
@@ -68,7 +68,7 @@ public class ControlsUI : MonoBehaviour
                     "Level Editor: E",
                     "Play: P"
                 };
-            case GameMode.LevelEditor:
+            case GameMode.Designer:
                 return new[]
                 {
                     "Move: Arrow / WASD",

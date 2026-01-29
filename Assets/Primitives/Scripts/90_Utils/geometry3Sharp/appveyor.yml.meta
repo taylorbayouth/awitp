@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: dc758c9c2c52d440eab5fc7ebcfe117e
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/90_Utils/geometry3Sharp/appveyor.yml
+  uploadId: 771750
