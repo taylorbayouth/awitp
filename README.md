@@ -31,7 +31,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 6. **Win Condition**: All locks filled with keys
 
 ### Block Types
-- **Default**: Solid platforms
+- **Walk**: Solid platforms
 - **Crumbler**: Breaks after Lem exits - one-time use
 - **Transporter**: Moving platforms following predefined routes
 - **Teleporter**: Paired instant transport
@@ -45,7 +45,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Coordinate Conversion**: Utilities for index ↔ coordinates ↔ world position
 
 ### Block System
-- **6 Block Types**: Default, Teleporter, Crumbler, Transporter, Key, Lock
+- **6 Block Types**: Walk, Teleporter, Crumbler, Transporter, Key, Lock
 - **CenterTrigger System**: Precise detection when Lem reaches center/top of block
 - **Player Detection**: Dual trigger/collision detection for reliable Lem interaction
 - **Inventory Management**: Per-level inventory entries with optional flavors and shared groups

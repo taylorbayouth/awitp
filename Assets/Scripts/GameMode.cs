@@ -1,12 +1,13 @@
 /// <summary>
 /// Defines the different game modes.
+/// Note: Renamed from "Editor/LevelEditor" to avoid confusion with Unity's Editor classes.
 /// </summary>
 public enum GameMode
 {
     /// <summary>
-    /// Editor: Player places blocks to create an obstacle course.
+    /// Builder: Player places blocks to create an obstacle course.
     /// </summary>
-    Editor,
+    Builder,
 
     /// <summary>
     /// Play: Lem walks and physics runs. Test your course!
@@ -14,8 +15,8 @@ public enum GameMode
     Play,
 
     /// <summary>
-    /// Level Editor (Designer Mode): Place Lem and mark placeable spaces.
-    /// Press E to toggle this mode.
+    /// Designer: Design level layout, place Lem and mark placeable spaces.
+    /// Press E to toggle between Builder and Designer modes.
     /// </summary>
-    LevelEditor
+    Designer
 }

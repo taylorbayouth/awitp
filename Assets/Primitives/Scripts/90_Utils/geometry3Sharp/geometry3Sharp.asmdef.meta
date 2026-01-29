@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 723405fd48dd74e0c83e6ada1c4f69ea
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/90_Utils/geometry3Sharp/geometry3Sharp.asmdef
+  uploadId: 771750

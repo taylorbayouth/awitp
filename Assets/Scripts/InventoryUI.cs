@@ -12,7 +12,7 @@ public class InventoryUI : MonoBehaviour
 
     [Header("References")]
     public BlockInventory inventory;
-    public EditorController editorController;
+    public BuilderController builderController;
 
     [Header("UI Settings")]
     public float boxSize = 110f;
@@ -90,9 +90,9 @@ public class InventoryUI : MonoBehaviour
             inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
-        if (editorController == null)
+        if (builderController == null)
         {
-            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
         }
 
         if (font == null)
@@ -121,9 +121,9 @@ public class InventoryUI : MonoBehaviour
             inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
         }
 
-        if (Application.isPlaying && editorController == null)
+        if (Application.isPlaying && builderController == null)
         {
-            editorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
         }
 
         UpdateUI();
@@ -210,7 +210,7 @@ public class InventoryUI : MonoBehaviour
     {
         if (_panel == null) return;
 
-        GameMode mode = editorController != null ? editorController.currentMode : GameMode.Editor;
+        GameMode mode = builderController != null ? builderController.currentMode : GameMode.Builder;
         bool showInventory = !Application.isPlaying || mode != GameMode.Play;
         _panel.gameObject.SetActive(showInventory);
 
@@ -220,9 +220,9 @@ public class InventoryUI : MonoBehaviour
             return;
         }
 
-        if (Application.isPlaying && editorController == null)
+        if (Application.isPlaying && builderController == null)
         {
-            ShowStatus("InventoryUI: No EditorController found");
+            ShowStatus("InventoryUI: No BuilderController found");
             return;
         }
 
@@ -241,7 +241,7 @@ public class InventoryUI : MonoBehaviour
         if (!showInventory) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
-        bool showInfinite = mode == GameMode.LevelEditor;
+        bool showInfinite = mode == GameMode.Designer;
 
         int drawIndex = 0;
         for (int i = 0; i < entries.Count; i++)
@@ -381,7 +381,7 @@ public class InventoryUI : MonoBehaviour
         BlockInventoryEntry entry = slot.entry;
         if (entry == null) return;
 
-        bool isSelected = editorController != null && editorController.CurrentInventoryIndex == slot.index;
+        bool isSelected = builderController != null && builderController.CurrentInventoryIndex == slot.index;
         slot.background.color = isSelected ? selectedBackground : normalBackground;
 
         string blockName = entry.GetDisplayName();
@@ -464,7 +464,7 @@ public class InventoryUI : MonoBehaviour
 
         _lockStatusText.text = totalLocks > 0 ? $"{lockedCount} of {totalLocks}" : string.Empty;
 
-        if (editorController != null && editorController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
+        if (builderController != null && builderController.currentMode == GameMode.Play && totalLocks > 0 && lockedCount >= totalLocks)
         {
             _winText.text = "You win";
         }
@@ -504,7 +504,7 @@ public class InventoryUI : MonoBehaviour
     private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
     {
         if (entry == null) return true;
-        if (mode == GameMode.LevelEditor) return false;
+        if (mode == GameMode.Designer) return false;
         return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
     }
 

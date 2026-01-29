@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 56ef4125d8211495fbe4314b68fbcbcb
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/90_Utils/geometry3Sharp/math/Ray3.cs
+  uploadId: 771750

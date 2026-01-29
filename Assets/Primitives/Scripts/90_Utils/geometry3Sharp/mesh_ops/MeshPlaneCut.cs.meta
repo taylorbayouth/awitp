@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0ee25a2e3de7a4b4eaa7bb4c481b80d6
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/90_Utils/geometry3Sharp/mesh_ops/MeshPlaneCut.cs
+  uploadId: 771750

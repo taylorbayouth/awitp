@@ -55,6 +55,105 @@ This document outlines the architecture needed to transform AWITP from a single-
 
 ---
 
+## Block System Overview
+
+### Block Type Reference
+
+All blocks inherit from `BaseBlock` which provides core functionality:
+- Collision/trigger detection with Lem
+- CenterTrigger for precise position detection
+- Template methods for behavior customization
+- Grid positioning and placement validation
+
+| Block Type | Class | Description | Key Behavior |
+|------------|-------|-------------|--------------|
+| **Walk** | `WalkBlock` | Simple walkable platform | No special behavior - just a solid surface |
+| **Crumbler** | `CrumblerBlock` | Breaks after walking on it | Darkens when Lem reaches center, crumbles when Lem exits |
+| **Teleporter** | `TeleporterBlock` | Instant transport between pairs | Teleports Lem to paired teleporter (matched by flavorId) |
+| **Transporter** | `TransporterBlock` | Moves Lem along a path | Follows route steps (e.g., "U4R2L1") to move Lem |
+| **Key** | `KeyBlock` | Collectible item | Transfers key to Lem on center reach, then self-destructs |
+| **Lock** | `LockBlock` | Goal/victory block | Accepts key from Lem on center reach, changes visual when filled |
+
+### Block Inheritance Hierarchy
+
+```
+BaseBlock (abstract parent)
+├── WalkBlock           → Simple platform
+├── CrumblerBlock       → Breaks after use
+├── TeleporterBlock     → Instant transport
+├── TransporterBlock    → Path-based movement
+├── KeyBlock            → Collectible
+└── LockBlock           → Goal
+```
+
+### BaseBlock Template Methods
+
+Subclasses override these to implement custom behavior:
+
+```csharp
+// Called when Lem enters the block (trigger or collision)
+protected virtual void OnPlayerEnter() { }
+
+// Called when Lem exits the block (trigger or collision)
+protected virtual void OnPlayerExit() { }
+
+// Called when Lem reaches the precise center point
+protected virtual void OnPlayerReachCenter() { }
+```
+
+### Block Behavior Details
+
+**WalkBlock** (BlockType.Walk)
+- File: `WalkBlock.cs`
+- Prefab: `Block_Walk.prefab`
+- Behavior: Intentionally empty - inherits all from BaseBlock
+- Usage: Basic platform blocks, foundations, walls
+
+**CrumblerBlock** (BlockType.Crumbler)
+- File: `CrumblerBlock.cs`
+- Prefab: `Block_Crumbler.prefab`
+- Behavior:
+  - `OnPlayerReachCenter()`: Darkens color, applies "cracked" material
+  - `OnPlayerExit()`: Waits `crumbleDelay` seconds, then self-destructs
+- Usage: One-way paths, timed sequences, resource management puzzles
+
+**TeleporterBlock** (BlockType.Teleporter)
+- File: `TeleporterBlock.cs`
+- Prefab: `Block_Teleporter.prefab` (includes TeleportLabel child)
+- Behavior:
+  - Uses `flavorId` to pair with another teleporter (e.g., "A", "B", "C")
+  - `OnPlayerReachCenter()`: Teleports Lem to paired teleporter's position
+  - `ValidateGroupPlacement()`: Ensures paired teleporter exists
+- Usage: Multi-level navigation, shortcuts, complex routing
+
+**TransporterBlock** (BlockType.Transporter)
+- File: `TransporterBlock.cs`
+- Prefab: `Block_Transporter.prefab`
+- Behavior:
+  - Uses route steps (e.g., "U4", "R2", "L1", "D3") to define path
+  - `OnPlayerReachCenter()`: Moves Lem along route, reversing on second use
+  - `GetBlockedIndices()`: Reserves all grid spaces along route
+- Usage: Elevators, conveyors, guided movement
+
+**KeyBlock** (BlockType.Key)
+- File: `KeyBlock.cs`
+- Prefab: `Block_Key.prefab`
+- Behavior:
+  - `OnPlayerReachCenter()`: Gives key to Lem (max 1 key at a time)
+  - Self-destructs after key transfer
+- Usage: Victory prerequisites, gating progression
+
+**LockBlock** (BlockType.Lock)
+- File: `LockBlock.cs`
+- Prefab: `Block_Lock.prefab`
+- Behavior:
+  - `OnPlayerReachCenter()`: Accepts key from Lem if Lem has one
+  - Visual state changes when filled (color, material)
+  - `IsFilled()`: Returns true if lock has received a key
+- Usage: Victory conditions, level goals (all locks must be filled to win)
+
+---
+
 ## Architecture Design
 
 ### Level Data Structure
@@ -149,7 +248,7 @@ public class LevelProgress {
 Assets/
 ├── Resources/
 │   ├── Blocks/                      # Block prefabs
-│   │   ├── Block_Default.prefab
+│   │   ├── Block_Walk.prefab
 │   │   ├── Block_Crumbler.prefab
 │   │   ├── Block_Transporter.prefab
 │   │   ├── Block_Teleporter.prefab
@@ -180,7 +279,7 @@ Assets/
 │   │   └── (existing core files)
 │   ├── Blocks/
 │   │   ├── BaseBlock.cs             # Abstract base
-│   │   ├── DefaultBlock.cs          # Concrete implementations
+│   │   ├── WalkBlock.cs             # Concrete implementations
 │   │   ├── CrumblerBlock.cs
 │   │   ├── TransporterBlock.cs
 │   │   ├── TeleporterBlock.cs
@@ -358,18 +457,64 @@ public class LevelDefinition : ScriptableObject {
 
 ## Prefab Architecture
 
-### Block Prefabs
+### Block Hierarchy
 
-**Structure**:
+All blocks inherit from `BaseBlock`, which provides:
+- Trigger/collision detection (OnTriggerEnter/Exit, OnCollisionEnter/Exit)
+- CenterTrigger management for precise Lem position detection
+- Template methods for subclasses: `OnPlayerEnter()`, `OnPlayerExit()`, `OnPlayerReachCenter()`
+- Grid positioning and placement validation
+- Highlighting for editor interactions
+
+**Block Types and Inheritance:**
+
+1. **WalkBlock** → Simple walkable platform
+   - Inherits all behavior from BaseBlock with no modifications
+   - Most basic block type
+
+2. **CrumblerBlock** → Breaks after Lem walks on it
+   - Overrides `OnPlayerReachCenter()` to darken/crack
+   - Overrides `OnPlayerExit()` to trigger crumble and destruction
+
+3. **TeleporterBlock** → Instant transport to paired teleporter
+   - Uses `flavorId` to pair with another teleporter
+   - Overrides `OnPlayerReachCenter()` to teleport Lem
+   - Validates that paired teleporter exists
+
+4. **TransporterBlock** → Moves Lem along a path
+   - Uses route steps (e.g., "U4", "R2") to define movement
+   - Overrides `OnPlayerReachCenter()` to start transport
+   - Blocks grid spaces along its route
+
+5. **KeyBlock** → Collectible key (Lem can hold one at a time)
+   - Overrides `OnPlayerReachCenter()` to transfer key to Lem
+   - Self-destructs after key is picked up
+
+6. **LockBlock** → Goal block that requires a key
+   - Overrides `OnPlayerReachCenter()` to accept key from Lem
+   - Changes visual state when filled
+   - Victory condition: all locks filled
+
+### Block Prefab Structure
+
+**Example: Block_Walk.prefab**
 ```
-Block_Default.prefab
-├── GameObject "Block"
-│   ├── SpriteRenderer (or MeshRenderer)
-│   ├── BoxCollider
-│   ├── DefaultBlock (script component)
+Block_Walk.prefab (variant of BaseBlock)
+├── GameObject "Block_Walk"
+│   ├── MeshRenderer (visual)
+│   ├── BoxCollider (physics)
+│   ├── Rigidbody (kinematic)
+│   ├── WalkBlock (script component - extends BaseBlock)
 │   └── CenterTrigger (child GameObject)
 │       └── SphereCollider (Is Trigger)
 ```
+
+**All other blocks follow the same structure**, but with their specific script component:
+- Block_Crumbler → CrumblerBlock component
+- Block_Teleporter → TeleporterBlock component + TeleportLabel child
+- Block_Transporter → TransporterBlock component
+- Block_Key → KeyBlock component
+- Block_Lock → LockBlock component
 
 **BaseBlock.cs Updates**:
 ```csharp
@@ -404,7 +549,7 @@ public abstract class BaseBlock : MonoBehaviour {
 ```csharp
 // Hardcoded instantiation
 GameObject blockObj = new GameObject($"Block_{blockType}");
-BaseBlock block = blockObj.AddComponent<DefaultBlock>();
+BaseBlock block = blockObj.AddComponent<WalkBlock>();
 ```
 
 **New (LevelManager)**:

@@ -8,7 +8,7 @@ public class CenterTrigger : MonoBehaviour
     private BaseBlock owner;
     private SphereCollider sphere;
     private bool isActive = false;
-    private static EditorController _cachedEditorController;
+    private static BuilderController _cachedBuilderController;
 
     public void Initialize(BaseBlock baseBlock)
     {
@@ -116,12 +116,12 @@ public class CenterTrigger : MonoBehaviour
 
     private static bool IsPlayModeActive()
     {
-        if (_cachedEditorController == null)
+        if (_cachedBuilderController == null)
         {
-            _cachedEditorController = UnityEngine.Object.FindAnyObjectByType<EditorController>();
+            _cachedBuilderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
         }
 
-        return _cachedEditorController != null && _cachedEditorController.currentMode == GameMode.Play;
+        return _cachedBuilderController != null && _cachedBuilderController.currentMode == GameMode.Play;
     }
 
     private void LogCrumblerSphere(string phase, Collider other)

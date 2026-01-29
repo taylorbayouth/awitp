@@ -158,6 +158,9 @@ public class LemController : MonoBehaviour
         Camera mainCamera = Camera.main;
         if (mainCamera == null) return false;
 
+        Vector3 pos = transform.position;
+        float buffer = 2f;
+
         // For orthographic camera on XY plane
         if (mainCamera.orthographic)
         {
@@ -170,17 +173,25 @@ public class LemController : MonoBehaviour
             float bottom = -orthoHeight;
             float top = orthoHeight;
 
-            // Add some buffer so Lem disappears slightly after leaving view
-            float buffer = 2f;
-
-            Vector3 pos = transform.position;
             return pos.x < left - buffer ||
                    pos.x > right + buffer ||
                    pos.y < bottom - buffer ||
                    pos.y > top + buffer;
         }
+        else
+        {
+            // For perspective camera, convert world position to viewport space
+            Vector3 viewportPos = mainCamera.WorldToViewportPoint(pos);
 
-        return false;
+            // Viewport coordinates: (0,0) = bottom-left, (1,1) = top-right
+            // Also check if behind camera (z < 0)
+            float viewportBuffer = 0.2f; // 20% buffer outside viewport
+            return viewportPos.z < 0 ||
+                   viewportPos.x < -viewportBuffer ||
+                   viewportPos.x > 1f + viewportBuffer ||
+                   viewportPos.y < -viewportBuffer ||
+                   viewportPos.y > 1f + viewportBuffer;
+        }
     }
 
     private void Walk()
@@ -280,14 +291,28 @@ public class LemController : MonoBehaviour
         isAlive = false;
         rb.linearVelocity = Vector3.zero;
 
-        // Exit play mode when Lem dies
-        EditorController editorController = FindAnyObjectByType<EditorController>();
-        if (editorController != null)
-        {
-            editorController.ExitPlayMode();
-        }
+        DebugLog.Info("Lem died! Waiting 2 seconds before resetting...");
 
-        Destroy(gameObject, 0.1f);
+        // Wait 2 seconds before exiting play mode
+        StartCoroutine(DieAfterDelay(2f));
+    }
+
+    private System.Collections.IEnumerator DieAfterDelay(float delay)
+    {
+        yield return new WaitForSeconds(delay);
+
+        // Exit play mode - this will restore the snapshot which resets Lem position
+        BuilderController builderController = FindAnyObjectByType<BuilderController>();
+        if (builderController != null)
+        {
+            builderController.ExitPlayMode();
+            // Don't destroy gameObject - RestorePlayModeSnapshot will handle cleanup and restoration
+        }
+        else
+        {
+            // Fallback if no editor controller (shouldn't happen in normal gameplay)
+            Destroy(gameObject, 0.1f);
+        }
     }
 
     public Vector3 GetFootPointPosition()

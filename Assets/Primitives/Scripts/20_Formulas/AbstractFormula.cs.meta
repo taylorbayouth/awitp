@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: dfba69d0d98a545e3b0cb59df5f9405a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/20_Formulas/AbstractFormula.cs
+  uploadId: 771750

@@ -7,9 +7,9 @@ using UnityEngine;
 public enum BlockType
 {
     /// <summary>
-    /// Standard platform block - solid, permanent (cyan)
+    /// Walk block - simple walkable platform that Lem can stand on (cyan)
     /// </summary>
-    Default,
+    Walk,
 
     /// <summary>
     /// Teleporter block - transports player to paired teleporter (magenta)

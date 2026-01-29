@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 9d3ad0cba09d94d939ccd9c3b0dc98ae
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/90_Utils/geometry3Sharp/core/g3Interfaces.cs
+  uploadId: 771750

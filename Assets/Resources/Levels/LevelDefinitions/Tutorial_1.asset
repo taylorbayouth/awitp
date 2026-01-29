@@ -20,47 +20,52 @@ MonoBehaviour:
   gridHeight: 7
   cellSize: 1
   levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 7,\n    \"cellSize\":
-    1.0,\n    \"blocks\": [],\n    \"permanentBlocks\": [\n        {\n           
-    \"blockType\": 0,\n            \"gridIndex\": 19,\n            \"inventoryKey\":
-    \"Default\",\n            \"flavorId\": \"\",\n            \"routeSteps\": []\n       
-    },\n        {\n            \"blockType\": 0,\n            \"gridIndex\": 18,\n           
+    1.0,\n    \"cameraSettings\": {\n        \"useOrthographic\": false,\n       
+    \"fieldOfView\": 30.799999237060548,\n        \"nearClipPlane\": 0.28999999165534975,\n       
+    \"farClipPlane\": 100.0,\n        \"distanceFromGrid\": 14.0,\n        \"topMarginOffset\":
+    0.0,\n        \"horizontalOffset\": 0.0,\n        \"tiltAngle\": 0.0,\n       
+    \"panAngle\": 0.0,\n        \"paddingPercent\": 0.15000000596046449,\n       
+    \"minOrthographicSize\": 3.0\n    },\n    \"blocks\": [],\n    \"permanentBlocks\":
+    [\n        {\n            \"blockType\": 0,\n            \"gridIndex\": 19,\n           
     \"inventoryKey\": \"Default\",\n            \"flavorId\": \"\",\n           
     \"routeSteps\": []\n        },\n        {\n            \"blockType\": 0,\n           
-    \"gridIndex\": 12,\n            \"inventoryKey\": \"Default\",\n            \"flavorId\":
+    \"gridIndex\": 18,\n            \"inventoryKey\": \"Default\",\n            \"flavorId\":
     \"\",\n            \"routeSteps\": []\n        },\n        {\n            \"blockType\":
-    0,\n            \"gridIndex\": 11,\n            \"inventoryKey\": \"Default\",\n           
-    \"flavorId\": \"\",\n            \"routeSteps\": []\n        }\n    ],\n    \"inventoryEntries\":
-    [\n        {\n            \"entryId\": \"Default\",\n            \"blockType\":
-    0,\n            \"displayName\": \"\",\n            \"inventoryGroupId\": \"\",\n           
-    \"flavorId\": \"\",\n            \"routeSteps\": [],\n            \"isPairInventory\":
-    false,\n            \"pairSize\": 2,\n            \"maxCount\": 4,\n           
-    \"currentCount\": 4\n        },\n        {\n            \"entryId\": \"Teleporter_A\",\n           
-    \"blockType\": 1,\n            \"displayName\": \"\",\n            \"inventoryGroupId\":
-    \"\",\n            \"flavorId\": \"A\",\n            \"routeSteps\": [],\n           
-    \"isPairInventory\": true,\n            \"pairSize\": 2,\n            \"maxCount\":
-    1,\n            \"currentCount\": 1\n        },\n        {\n            \"entryId\":
-    \"Teleporter_B\",\n            \"blockType\": 1,\n            \"displayName\":
-    \"\",\n            \"inventoryGroupId\": \"\",\n            \"flavorId\": \"B\",\n           
-    \"routeSteps\": [],\n            \"isPairInventory\": true,\n            \"pairSize\":
-    2,\n            \"maxCount\": 1,\n            \"currentCount\": 1\n        },\n       
-    {\n            \"entryId\": \"Transporter_R2\",\n            \"blockType\": 3,\n           
-    \"displayName\": \"Transporter\",\n            \"inventoryGroupId\": \"\",\n           
-    \"flavorId\": \"\",\n            \"routeSteps\": [\n                \"R2\"\n           
-    ],\n            \"isPairInventory\": false,\n            \"pairSize\": 2,\n           
-    \"maxCount\": 1,\n            \"currentCount\": 1\n        },\n        {\n           
-    \"entryId\": \"Transporter_U1,R2\",\n            \"blockType\": 3,\n           
-    \"displayName\": \"Transporter\",\n            \"inventoryGroupId\": \"\",\n           
-    \"flavorId\": \"\",\n            \"routeSteps\": [\n                \"U1\",\n               
-    \"R2\"\n            ],\n            \"isPairInventory\": false,\n           
-    \"pairSize\": 2,\n            \"maxCount\": 1,\n            \"currentCount\":
-    1\n        },\n        {\n            \"entryId\": \"Crumbler\",\n           
-    \"blockType\": 2,\n            \"displayName\": \"\",\n            \"inventoryGroupId\":
+    0,\n            \"gridIndex\": 12,\n            \"inventoryKey\": \"Default\",\n           
+    \"flavorId\": \"\",\n            \"routeSteps\": []\n        },\n        {\n           
+    \"blockType\": 0,\n            \"gridIndex\": 11,\n            \"inventoryKey\":
+    \"Default\",\n            \"flavorId\": \"\",\n            \"routeSteps\": []\n       
+    }\n    ],\n    \"inventoryEntries\": [\n        {\n            \"entryId\": \"Default\",\n           
+    \"blockType\": 0,\n            \"displayName\": \"\",\n            \"inventoryGroupId\":
     \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\": [],\n           
     \"isPairInventory\": false,\n            \"pairSize\": 2,\n            \"maxCount\":
-    2,\n            \"currentCount\": 2\n        }\n    ],\n    \"placeableSpaceIndices\":
+    4,\n            \"currentCount\": 4\n        },\n        {\n            \"entryId\":
+    \"Teleporter_A\",\n            \"blockType\": 1,\n            \"displayName\":
+    \"\",\n            \"inventoryGroupId\": \"\",\n            \"flavorId\": \"A\",\n           
+    \"routeSteps\": [],\n            \"isPairInventory\": true,\n            \"pairSize\":
+    2,\n            \"maxCount\": 1,\n            \"currentCount\": 1\n        },\n       
+    {\n            \"entryId\": \"Teleporter_B\",\n            \"blockType\": 1,\n           
+    \"displayName\": \"\",\n            \"inventoryGroupId\": \"\",\n           
+    \"flavorId\": \"B\",\n            \"routeSteps\": [],\n            \"isPairInventory\":
+    true,\n            \"pairSize\": 2,\n            \"maxCount\": 1,\n           
+    \"currentCount\": 1\n        },\n        {\n            \"entryId\": \"Transporter_R2\",\n           
+    \"blockType\": 3,\n            \"displayName\": \"Transporter\",\n           
+    \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\":
+    [\n                \"R2\"\n            ],\n            \"isPairInventory\": false,\n           
+    \"pairSize\": 2,\n            \"maxCount\": 1,\n            \"currentCount\":
+    1\n        },\n        {\n            \"entryId\": \"Transporter_U1,R2\",\n           
+    \"blockType\": 3,\n            \"displayName\": \"Transporter\",\n           
+    \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\":
+    [\n                \"U1\",\n                \"R2\"\n            ],\n           
+    \"isPairInventory\": false,\n            \"pairSize\": 2,\n            \"maxCount\":
+    1,\n            \"currentCount\": 1\n        },\n        {\n            \"entryId\":
+    \"Crumbler\",\n            \"blockType\": 2,\n            \"displayName\": \"\",\n           
+    \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\":
+    [],\n            \"isPairInventory\": false,\n            \"pairSize\": 2,\n           
+    \"maxCount\": 2,\n            \"currentCount\": 2\n        }\n    ],\n    \"placeableSpaceIndices\":
     [\n        10,\n        13,\n        14,\n        45,\n        47,\n        56\n   
     ],\n    \"lems\": [\n        {\n            \"gridIndex\": 22,\n            \"facingRight\":
     true,\n            \"worldPosition\": {\n                \"x\": -2.5,\n               
     \"y\": -1.5,\n                \"z\": 0.5\n            },\n            \"hasWorldPosition\":
-    true\n        }\n    ],\n    \"keyStates\": [],\n    \"levelName\": \"Tutorial
-    1\",\n    \"saveTimestamp\": \"2026-01-27 19:06:00\"\n}"
+    true\n        }\n    ],\n    \"keyStates\": [],\n    \"levelName\": \"\",\n   
+    \"saveTimestamp\": \"2026-01-29 14:34:11\"\n}"

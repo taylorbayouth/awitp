@@ -29,7 +29,7 @@ public static class BlockColors
     {
         return blockType switch
         {
-            BlockType.Default => Default,
+            BlockType.Walk => Default,
             BlockType.Teleporter => Teleporter,
             BlockType.Crumbler => Crumbler,
             BlockType.Transporter => Transporter,
@@ -46,7 +46,7 @@ public static class BlockColors
     {
         return blockType switch
         {
-            BlockType.Default => "DEFAULT",
+            BlockType.Walk => "WALK",
             BlockType.Teleporter => "TELEPORT",
             BlockType.Crumbler => "CRUMBLE",
             BlockType.Transporter => "TRANSPORT",

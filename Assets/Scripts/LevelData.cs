@@ -58,10 +58,29 @@ public class LevelData
         public bool hasWorldPosition;
     }
 
+    [Serializable]
+    public class CameraSettings
+    {
+        public bool useOrthographic = false;
+        public float fieldOfView = 60f;
+        public float nearClipPlane = 0.3f;
+        public float farClipPlane = 100f;
+        public float distanceFromGrid = 15f;
+        public float topMarginOffset = 0f;
+        public float horizontalOffset = 0f;
+        public float tiltAngle = 0f;
+        public float panAngle = 0f;
+        public float paddingPercent = 0.15f;
+        public float minOrthographicSize = 3f;
+    }
+
     // Grid settings
     public int gridWidth;
     public int gridHeight;
     public float cellSize;
+
+    // Camera settings
+    public CameraSettings cameraSettings;
 
     // Placed blocks (player-placeable spaces)
     public List<BlockData> blocks = new List<BlockData>();

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 4e70643cd7ca7423b9bd8bc8eb6d7249
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225557
+  packageName: Ultimate Procedural Primitives
+  packageVersion: 5.3
+  assetPath: Assets/KANIYONIKA/UltimateProceduralPrimitives/Scripts/20_Formulas/FormulaPyramidPerfectTriangularFlex.cs
+  uploadId: 771750
