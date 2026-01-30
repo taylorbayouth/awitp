@@ -390,7 +390,6 @@ public class BuilderController : MonoBehaviour
         if (currentMode != GameMode.Play) return;
 
         currentMode = GameMode.Builder;
-        DebugLog.Info("=== EXITED PLAY MODE === Back to Editor");
         if (GridManager.Instance != null)
         {
             GridManager.Instance.RestorePlayModeSnapshot();
@@ -407,7 +406,6 @@ public class BuilderController : MonoBehaviour
             if (currentMode == GameMode.Designer)
             {
                 currentMode = GameMode.Builder;
-                DebugLog.Info("=== BUILDER MODE === Place blocks");
                 if (gameModeManager != null) gameModeManager.SetNormalMode();
                 FreezeAllLems();
                 UpdateCursorVisibility();
@@ -415,7 +413,6 @@ public class BuilderController : MonoBehaviour
             else if (currentMode == GameMode.Builder)
             {
                 currentMode = GameMode.Designer;
-                DebugLog.Info("=== LEVEL BUILDER MODE === Place Lem and mark placeable spaces");
                 if (gameModeManager != null) gameModeManager.SetEditorMode();
                 FreezeAllLems();
                 UpdateCursorVisibility();
@@ -423,7 +420,6 @@ public class BuilderController : MonoBehaviour
             else if (currentMode == GameMode.Play)
             {
                 // Can't toggle modes during play
-                DebugLog.Info("Exit Play mode first (press P)");
             }
         }
 
@@ -447,7 +443,6 @@ public class BuilderController : MonoBehaviour
                     GridManager.Instance.CapturePlayModeSnapshot();
                 }
                 currentMode = GameMode.Play;
-                DebugLog.Info("=== PLAY MODE === Lem is walking!");
                 UnfreezeAllLems();
                 UpdateCursorVisibility();
             }
@@ -505,7 +500,6 @@ public class BuilderController : MonoBehaviour
 
         if (currentMode == GameMode.Play)
         {
-            Debug.LogWarning("Cannot save/load during Play Mode. Exit Play Mode first.");
             return;
         }
 
@@ -524,11 +518,7 @@ public class BuilderController : MonoBehaviour
             }
 
             LevelData levelData = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
-            if (levelManager.CurrentLevelDef.SaveFromLevelData(levelData))
-            {
-                DebugLog.Info("=== LEVEL SAVED === LevelDefinition updated successfully");
-            }
-            else
+            if (!levelManager.CurrentLevelDef.SaveFromLevelData(levelData))
             {
                 Debug.LogError("Failed to save level to LevelDefinition");
             }

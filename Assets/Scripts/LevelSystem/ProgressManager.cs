@@ -385,8 +385,6 @@ public class ProgressManager : MonoBehaviour
             _progressData.UpdateSaveTimestamp();
             string json = JsonUtility.ToJson(_progressData, true);
             File.WriteAllText(_savePath, json);
-
-            Debug.Log($"[ProgressManager] Progress saved to: {_savePath}");
             OnProgressSaved?.Invoke();
         }
         catch (Exception ex)

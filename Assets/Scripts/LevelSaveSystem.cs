@@ -22,7 +22,6 @@ public static class LevelSaveSystem
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
-            DebugLog.Info($"Created save directory: {path}");
         }
 
         return path;
@@ -54,8 +53,6 @@ public static class LevelSaveSystem
             string filePath = GetLevelFilePath(levelName);
 
             File.WriteAllText(filePath, json);
-
-            DebugLog.Info($"Level saved successfully to: {filePath}");
             return true;
         }
         catch (System.Exception e)
@@ -87,8 +84,6 @@ public static class LevelSaveSystem
 
             string json = File.ReadAllText(filePath);
             LevelData levelData = JsonUtility.FromJson<LevelData>(json);
-
-            DebugLog.Info($"Level loaded successfully from: {filePath}");
             return levelData;
         }
         catch (System.Exception e)
@@ -124,7 +119,6 @@ public static class LevelSaveSystem
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
-                DebugLog.Info($"Level deleted: {filePath}");
                 return true;
             }
             else
