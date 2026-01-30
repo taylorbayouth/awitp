@@ -36,7 +36,11 @@ public class TransporterBlock : BaseBlock
     {
         if (isTransporting || !isArmed) return;
         LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
-        if (lem == null) return;
+        if (lem == null)
+        {
+            DebugLog.LogError("Cannot transport - Lem not found");
+            return;
+        }
 
         List<Vector2Int> steps = BuildSteps();
         if (steps.Count == 0) return;
@@ -343,6 +347,7 @@ public class TransporterBlock : BaseBlock
 
     private Material GetPreviewMaterial()
     {
+
         if (previewMaterialInstance == null)
         {
             Shader shader = Shader.Find("Legacy Shaders/Transparent/Diffuse") ??

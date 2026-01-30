@@ -699,6 +699,13 @@ public class GridManager : MonoBehaviour
 
     public void MoveCursor(Vector2Int direction)
     {
+        // Validate grid dimensions before cursor movement
+        if (gridWidth <= 0 || gridHeight <= 0)
+        {
+            DebugLog.LogWarning("Cannot move cursor - invalid grid dimensions");
+            return;
+        }
+
         Vector2Int currentCoords = IndexToCoordinates(currentCursorIndex);
         Vector2Int newCoords = currentCoords + direction;
 
@@ -1020,6 +1027,13 @@ public class GridManager : MonoBehaviour
         }
 
         // Restore grid settings (if they changed, we need to reinitialize)
+        // Validate loaded grid dimensions before applying
+        if (levelData.gridWidth <= 0 || levelData.gridHeight <= 0 || levelData.cellSize <= 0)
+        {
+            DebugLog.LogError($"Invalid grid dimensions in level data: {levelData.gridWidth}x{levelData.gridHeight}, cell: {levelData.cellSize}");
+            return;
+        }
+
         bool gridSizeChanged = (gridWidth != levelData.gridWidth || gridHeight != levelData.gridHeight || cellSize != levelData.cellSize);
 
         if (gridSizeChanged)
@@ -1430,6 +1444,13 @@ public class GridManager : MonoBehaviour
     {
         List<LevelData.KeyStateData> states = new List<LevelData.KeyStateData>();
         KeyItem[] keys = UnityEngine.Object.FindObjectsByType<KeyItem>(FindObjectsSortMode.None);
+
+        // Guard against null or empty array
+        if (keys == null || keys.Length == 0)
+        {
+            return states;
+        }
+
         foreach (KeyItem key in keys)
         {
             if (key == null) continue;

@@ -132,8 +132,17 @@ public class ProgressManager : MonoBehaviour
         _instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Initialize save path
-        _savePath = Path.Combine(Application.persistentDataPath, _saveFileName);
+        // Initialize save path with validation
+        string dataPath = Application.persistentDataPath;
+        if (string.IsNullOrEmpty(dataPath))
+        {
+            Debug.LogError("[ProgressManager] Cannot access persistent data path");
+            _savePath = _saveFileName; // Fallback to local directory
+        }
+        else
+        {
+            _savePath = Path.Combine(dataPath, _saveFileName);
+        }
 
         // Load existing progress
         LoadProgress();
@@ -405,7 +414,17 @@ public class ProgressManager : MonoBehaviour
                 string json = File.ReadAllText(_savePath);
                 _progressData = JsonUtility.FromJson<GameProgressData>(json);
 
-                Debug.Log($"[ProgressManager] Progress loaded: {_progressData.CompletedLevelCount} levels complete");
+                // Validate deserialization succeeded
+                if (_progressData == null || string.IsNullOrEmpty(_progressData.currentWorldId))
+                {
+                    Debug.LogWarning("[ProgressManager] Corrupted progress file, creating fresh data");
+                    _progressData = new GameProgressData();
+                    _progressData.UnlockWorld(GetDefaultWorldId());
+                }
+                else
+                {
+                    Debug.Log($"[ProgressManager] Progress loaded: {_progressData.CompletedLevelCount} levels complete");
+                }
             }
             else
             {
