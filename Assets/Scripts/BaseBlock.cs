@@ -206,14 +206,29 @@ public class BaseBlock : MonoBehaviour
             // Set descriptive name for hierarchy
             blockObj.name = $"Block_{type}_{gridIndex}";
 
-            // Get or add appropriate block component
-            BaseBlock block = blockObj.GetComponent<BaseBlock>();
-            if (block == null || !IsBlockComponentCompatible(block, type))
+            // Get all BaseBlock components - prefab variants may have duplicates
+            // (e.g., Block_Transporter inherits BaseBlock from base prefab AND adds TransporterBlock)
+            BaseBlock[] allBlocks = blockObj.GetComponents<BaseBlock>();
+            BaseBlock block = null;
+
+            // Find the compatible component (if any) and destroy incompatible ones immediately
+            foreach (BaseBlock existingBlock in allBlocks)
             {
-                if (block != null)
+                if (IsBlockComponentCompatible(existingBlock, type))
                 {
-                    Destroy(block);
+                    block = existingBlock;
                 }
+                else
+                {
+                    // Use DestroyImmediate to remove incompatible component before it can respond to events
+                    DestroyImmediate(existingBlock);
+                    DebugLog.Info($"[BaseBlock] Removed incompatible {existingBlock.GetType().Name} component from {type} block");
+                }
+            }
+
+            // If no compatible component found, add one
+            if (block == null)
+            {
                 block = AddBlockComponent(blockObj, type);
             }
 
