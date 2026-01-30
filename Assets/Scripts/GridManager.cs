@@ -669,7 +669,7 @@ public class GridManager : MonoBehaviour
         // Validate loaded grid dimensions before applying
         if (levelData.gridWidth <= 0 || levelData.gridHeight <= 0 || levelData.cellSize <= 0)
         {
-            DebugLog.LogError($"Invalid grid dimensions in level data: {levelData.gridWidth}x{levelData.gridHeight}, cell: {levelData.cellSize}");
+            Debug.LogError($"Invalid grid dimensions in level data: {levelData.gridWidth}x{levelData.gridHeight}, cell: {levelData.cellSize}");
             return;
         }
 

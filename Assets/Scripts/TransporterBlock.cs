@@ -38,7 +38,7 @@ public class TransporterBlock : BaseBlock
         LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
         if (lem == null)
         {
-            DebugLog.LogError("Cannot transport - Lem not found");
+            Debug.LogError("Cannot transport - Lem not found");
             return;
         }
 
