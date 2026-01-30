@@ -218,6 +218,14 @@ public class BaseBlock : MonoBehaviour
             block.gridIndex = gridIndex;
             block.uniqueID = Guid.NewGuid().ToString();
 
+            // Ensure BoxCollider exists for collision detection
+            BoxCollider boxCollider = blockObj.GetComponent<BoxCollider>();
+            if (boxCollider == null)
+            {
+                boxCollider = blockObj.AddComponent<BoxCollider>();
+                DebugLog.Info($"[BaseBlock] Added BoxCollider to {type} block");
+            }
+
             // Add Rigidbody for collision detection (kinematic = doesn't fall)
             Rigidbody rb = blockObj.GetComponent<Rigidbody>();
             if (rb == null)
