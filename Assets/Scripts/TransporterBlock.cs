@@ -19,7 +19,8 @@ public class TransporterBlock : BaseBlock
 
     [Header("Route Preview")]
     public bool showRoutePreview = true;
-    public Color previewColor = new Color(0f, 1f, 1f, 0.25f);
+    [Range(0f, 1f)]
+    public float previewAlpha = 0.5f;
 
     private bool isTransporting = false;
     private bool isForward = true;
@@ -60,23 +61,18 @@ public class TransporterBlock : BaseBlock
 
     private void OnDestroy()
     {
-        // Stop any running transport coroutine to prevent state corruption
         StopAllCoroutines();
 
-        // Clean up preview material to prevent memory leak
         if (previewMaterialInstance != null)
         {
             Destroy(previewMaterialInstance);
             previewMaterialInstance = null;
         }
 
-        // Clear preview objects
         ClearPreview();
 
-        // Reset state in case coroutine was interrupted mid-transport
         if (isTransporting && currentPlayer != null)
         {
-            // Attempt to restore Lem state if we were interrupted mid-transport
             currentPlayer.transform.SetParent(null, true);
             Rigidbody lemRb = currentPlayer.GetComponent<Rigidbody>();
             if (lemRb != null)
@@ -88,9 +84,6 @@ public class TransporterBlock : BaseBlock
         }
     }
 
-    /// <summary>
-    /// Resets the transporter to its initial state. Useful for level resets.
-    /// </summary>
     public void ResetState()
     {
         StopAllCoroutines();
@@ -114,10 +107,7 @@ public class TransporterBlock : BaseBlock
         {
             prevKinematic = lemRb.isKinematic;
             prevUseGravity = lemRb.useGravity;
-            if (!lemRb.isKinematic)
-            {
-                lemRb.linearVelocity = Vector3.zero;
-            }
+            if (!lemRb.isKinematic) lemRb.linearVelocity = Vector3.zero;
             lemRb.isKinematic = true;
             lemRb.useGravity = false;
         }
@@ -189,14 +179,9 @@ public class TransporterBlock : BaseBlock
 
     #region Placement Validation Overrides
 
-    /// <summary>
-    /// Returns all grid indices along this transporter's route.
-    /// These positions are blocked for other block placement.
-    /// </summary>
     public override int[] GetBlockedIndices()
     {
         List<int> pathIndices = GetRoutePathIndices();
-        // Exclude the origin (where this block sits) - it's already occupied by this block
         if (pathIndices.Count > 0 && pathIndices[0] == gridIndex)
         {
             pathIndices.RemoveAt(0);
@@ -204,47 +189,27 @@ public class TransporterBlock : BaseBlock
         return pathIndices.ToArray();
     }
 
-    /// <summary>
-    /// Checks if this transporter can be placed at the target index.
-    /// Validates that the entire route path is clear of other blocks.
-    /// </summary>
     public override bool CanBePlacedAt(int targetIndex, GridManager grid)
     {
         if (grid == null) return true;
 
-        // Calculate what the route would be from this position
         Vector2Int current = grid.IndexToCoordinates(targetIndex);
         List<Vector2Int> steps = BuildSteps();
 
         foreach (Vector2Int step in steps)
         {
             current += step;
-            if (!grid.IsValidCoordinates(current.x, current.y))
-            {
-                continue; // Out of bounds positions are handled elsewhere
-            }
+            if (!grid.IsValidCoordinates(current.x, current.y)) continue;
 
             int idx = grid.CoordinatesToIndex(current);
 
-            // Check if there's already a block at this position
-            if (grid.HasBlockAtIndex(idx))
-            {
-                return false;
-            }
-
-            // Check if another transporter's route passes through here
-            if (grid.IsIndexBlockedByAnyBlock(idx, this))
-            {
-                return false;
-            }
+            if (grid.HasBlockAtIndex(idx)) return false;
+            if (grid.IsIndexBlockedByAnyBlock(idx, this)) return false;
         }
 
         return true;
     }
 
-    /// <summary>
-    /// Returns error message explaining why placement failed.
-    /// </summary>
     public override string GetPlacementErrorMessage(int targetIndex, GridManager grid)
     {
         if (grid == null) return null;
@@ -260,14 +225,10 @@ public class TransporterBlock : BaseBlock
             int idx = grid.CoordinatesToIndex(current);
 
             if (grid.HasBlockAtIndex(idx))
-            {
                 return $"Route path blocked by existing block at index {idx}";
-            }
 
             if (grid.IsIndexBlockedByAnyBlock(idx, this))
-            {
                 return $"Route path conflicts with another transporter's route at index {idx}";
-            }
         }
 
         return null;
@@ -286,26 +247,19 @@ public class TransporterBlock : BaseBlock
         List<Vector2Int> steps = BuildSteps();
 
         HashSet<int> unique = new HashSet<int>();
-        if (grid.IsValidIndex(originIndex))
-        {
-            unique.Add(originIndex);
-        }
+        if (grid.IsValidIndex(originIndex)) unique.Add(originIndex);
+
         foreach (Vector2Int step in steps)
         {
             current += step;
             if (grid.IsValidCoordinates(current.x, current.y))
             {
                 int idx = grid.CoordinatesToIndex(current);
-                if (unique.Add(idx))
-                {
-                    indices.Add(idx);
-                }
+                if (unique.Add(idx)) indices.Add(idx);
             }
         }
-        if (unique.Contains(originIndex))
-        {
-            indices.Insert(0, originIndex);
-        }
+
+        if (unique.Contains(originIndex)) indices.Insert(0, originIndex);
         return indices;
     }
 
@@ -318,7 +272,7 @@ public class TransporterBlock : BaseBlock
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count == 0) return;
 
-        Gizmos.color = previewColor;
+        Gizmos.color = new Color(1f, 1f, 1f, previewAlpha);
         float cellSize = grid.cellSize;
         Vector3 size = Vector3.one * cellSize;
         foreach (int index in pathIndices)
@@ -338,102 +292,78 @@ public class TransporterBlock : BaseBlock
         GridManager grid = GetGridManager();
         if (grid == null) return;
 
-        if (previewOriginIndex < 0)
-        {
-            previewOriginIndex = gridIndex;
-        }
+        if (previewOriginIndex < 0) previewOriginIndex = gridIndex;
+
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count == 0) return;
 
-        Material mat = GetPreviewMaterial(previewColor);
+        Material mat = GetPreviewMaterial();
         float cellSize = grid.cellSize;
-        Vector3 scale = Vector3.one * cellSize;
 
         previewWorldPositions.Clear();
         foreach (int index in pathIndices)
         {
             if (!grid.IsValidIndex(index)) continue;
 
-            GameObject preview = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            preview.name = "TransportPreview";
-            preview.transform.SetParent(transform, false);
-
             Vector3 pos = grid.IndexToWorldPosition(index);
             pos.z += cellSize * 0.5f;
-            preview.transform.position = pos;
-            preview.transform.localScale = scale;
+
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "TransportPreview";
+            cube.transform.SetParent(transform, false);
+            cube.transform.position = pos;
+            cube.transform.localScale = Vector3.one * cellSize;
+
+            // Remove collider from preview
+            Collider col = cube.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+
+            MeshRenderer mr = cube.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.material = mat;
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+
             previewWorldPositions.Add(pos);
-
-            Collider col = preview.GetComponent<Collider>();
-            if (col != null)
-            {
-                Destroy(col);
-            }
-
-            Renderer renderer = preview.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.material = mat;
-                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                renderer.receiveShadows = false;
-            }
-
-            previewBlocks.Add(preview);
+            previewBlocks.Add(cube);
         }
     }
 
     private void ClearPreview()
     {
-        for (int i = 0; i < previewBlocks.Count; i++)
+        foreach (var block in previewBlocks)
         {
-            if (previewBlocks[i] != null)
-            {
-                Destroy(previewBlocks[i]);
-            }
+            if (block != null) Destroy(block);
         }
         previewBlocks.Clear();
         previewWorldPositions.Clear();
     }
 
-    private Material GetPreviewMaterial(Color color)
+    private Material GetPreviewMaterial()
     {
         if (previewMaterialInstance == null)
         {
-            Shader shader = Shader.Find("Legacy Shaders/Transparent/Diffuse");
-            if (shader == null)
-            {
-                shader = Shader.Find("Standard");
-            }
-            if (shader == null)
-            {
-                shader = Shader.Find("Unlit/Color");
-            }
+            Shader shader = Shader.Find("Legacy Shaders/Transparent/Diffuse") ??
+                           Shader.Find("Standard") ??
+                           Shader.Find("Unlit/Color");
             previewMaterialInstance = new Material(shader);
         }
 
-        previewMaterialInstance.color = color;
-        ConfigureMaterialTransparency(previewMaterialInstance);
-        return previewMaterialInstance;
-    }
+        previewMaterialInstance.color = new Color(1f, 1f, 1f, previewAlpha);
 
-    private static void ConfigureMaterialTransparency(Material mat)
-    {
-        if (mat == null) return;
-        if (mat.shader != null && mat.shader.name == "Standard")
+        if (previewMaterialInstance.shader.name == "Standard")
         {
-            // Set non-metallic properties
-            mat.SetFloat("_Metallic", 0f);
-            mat.SetFloat("_Glossiness", 0f);
-
-            mat.SetFloat("_Mode", 3f);
-            mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-            mat.SetInt("_ZWrite", 1);
-            mat.DisableKeyword("_ALPHATEST_ON");
-            mat.EnableKeyword("_ALPHABLEND_ON");
-            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
-            mat.renderQueue = 3000;
+            previewMaterialInstance.SetFloat("_Mode", 3f);
+            previewMaterialInstance.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            previewMaterialInstance.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            previewMaterialInstance.SetInt("_ZWrite", 1);
+            previewMaterialInstance.EnableKeyword("_ALPHABLEND_ON");
+            previewMaterialInstance.renderQueue = 3000;
         }
+
+        return previewMaterialInstance;
     }
 
     private static GridManager GetGridManager()
@@ -448,9 +378,8 @@ public class TransporterBlock : BaseBlock
         int count = Mathf.Min(previewBlocks.Count, previewWorldPositions.Count);
         for (int i = 0; i < count; i++)
         {
-            GameObject preview = previewBlocks[i];
-            if (preview == null) continue;
-            preview.transform.position = previewWorldPositions[i];
+            if (previewBlocks[i] != null)
+                previewBlocks[i].transform.position = previewWorldPositions[i];
         }
     }
 
@@ -468,34 +397,29 @@ public class TransporterBlock : BaseBlock
 
     private void TrySnapLemToBlockCenter(LemController lem, float cellSize)
     {
-        if (lem == null) return;
-        if (hasSnappedThisRide) return;
+        if (lem == null || hasSnappedThisRide) return;
+
         float topPlaneY = transform.position.y + (cellSize * 0.5f);
         Vector3 pos = lem.transform.position;
         Collider lemCollider = lem.GetComponent<Collider>();
+
         if (lemCollider != null)
         {
             float footY = lemCollider.bounds.min.y;
             float deltaY = topPlaneY - footY;
-            if (Mathf.Abs(deltaY) > 0.02f)
-            {
-                pos = lem.transform.position + new Vector3(0f, deltaY, 0f);
-            }
-            else
-            {
-                return;
-            }
+            if (Mathf.Abs(deltaY) <= 0.02f) return;
+            pos = lem.transform.position + new Vector3(0f, deltaY, 0f);
         }
         else
         {
             pos = new Vector3(transform.position.x, topPlaneY, transform.position.z);
         }
+
         pos.x = transform.position.x;
         pos.z = transform.position.z;
         lem.transform.position = pos;
         hasSnappedThisRide = true;
     }
-
 
     private bool IsPlayerOverBlock()
     {
@@ -505,12 +429,10 @@ public class TransporterBlock : BaseBlock
         Vector3 center = blockCollider.bounds.center;
         Vector3 halfExtents = blockCollider.bounds.extents;
         Collider[] hits = Physics.OverlapBox(center, halfExtents, Quaternion.identity, ~0, QueryTriggerInteraction.Collide);
+
         foreach (Collider hit in hits)
         {
-            if (hit.CompareTag("Player"))
-            {
-                return true;
-            }
+            if (hit.CompareTag("Player")) return true;
         }
         return false;
     }
@@ -518,10 +440,8 @@ public class TransporterBlock : BaseBlock
 #if UNITY_EDITOR
     private void OnValidate()
     {
-        if (!Application.isPlaying)
-        {
-            BuildPreview();
-        }
+        if (UnityEditor.PrefabUtility.IsPartOfPrefabAsset(this)) return;
+        BuildPreview();
     }
 #endif
 }

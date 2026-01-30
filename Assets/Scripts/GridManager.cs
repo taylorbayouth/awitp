@@ -1030,6 +1030,14 @@ public class GridManager : MonoBehaviour
             CalculateGridOrigin();
             InitializePlaceableSpaces();
             RefreshGrid();
+
+            // Update cursor for new grid dimensions
+            if (gridCursor != null)
+            {
+                gridCursor.Initialize(cellSize);
+            }
+            currentCursorIndex = Mathf.Clamp(currentCursorIndex, 0, (gridWidth * gridHeight) - 1);
+            UpdateCursorPosition();
         }
         else
         {

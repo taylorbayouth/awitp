@@ -9,7 +9,7 @@ public static class BlockColors
     public static readonly Color Default = Color.white;
     public static readonly Color Teleporter = new Color(0.5f, 0f, 1f);      // Purple
     public static readonly Color Crumbler = new Color(1f, 0.5f, 0f);        // Orange
-    public static readonly Color Transporter = Color.cyan;
+    public static readonly Color Transporter = Color.white;
     public static readonly Color Key = new Color(0.75f, 0.95f, 0.75f);      // Pale green
     public static readonly Color Lock = Color.black;
 

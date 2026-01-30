@@ -58,10 +58,6 @@ public class GameModeManager : MonoBehaviour
         if (skyObject == null)
         {
             skyObject = GameObject.Find("Sky");
-            if (skyObject != null)
-            {
-                DebugLog.Info("GameModeManager: Found Sky object automatically");
-            }
         }
 
         // Set initial background color on startup
@@ -84,7 +80,6 @@ public class GameModeManager : MonoBehaviour
         // Check if game mode changed
         if (builderController.currentMode != previousMode)
         {
-            DebugLog.Info($"GameModeManager detected mode change: {previousMode} -> {builderController.currentMode}");
             previousMode = builderController.currentMode;
             UpdateBackgroundColor();
         }
@@ -94,15 +89,13 @@ public class GameModeManager : MonoBehaviour
     {
         if (mainCamera == null) return;
 
-        bool isDesignerMode = (builderController.currentMode == GameMode.Builder ||
-                               builderController.currentMode == GameMode.Designer);
+        bool isDesignerMode = (builderController.currentMode == GameMode.Designer);
 
-        // Both Editor and LevelBuilder modes use light grey background (designer mode)
+        // Designer mode uses light grey background (no sky)
         if (isDesignerMode)
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = designerModeColor;
-            DebugLog.Info($"Background changed to DESIGNER MODE (light grey, no clouds): {designerModeColor}");
         }
         else if (builderController.currentMode == GameMode.Play)
         {
@@ -111,19 +104,17 @@ public class GameModeManager : MonoBehaviour
                 RenderSettings.skybox = playModeSkybox;
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            DebugLog.Info($"Background changed to PLAY MODE color: {playModeColor}");
         }
-        else
+        else // Builder mode and other modes use skybox
         {
             if (normalModeSkybox != null)
             {
                 RenderSettings.skybox = normalModeSkybox;
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            DebugLog.Info($"Background changed to NORMAL MODE color: {normalModeColor}");
         }
 
-        // Hide Sky object in designer mode, show in play mode
+        // Show Sky object for Builder and Play modes, hide in Designer mode
         SetSkyVisible(!isDesignerMode);
 
         SetGridVisible(builderController.currentMode != GameMode.Play);
@@ -138,7 +129,6 @@ public class GameModeManager : MonoBehaviour
                 RenderSettings.skybox = normalModeSkybox;
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
-            DebugLog.Info($"*** SetNormalMode called - Background set to: {normalModeColor} ***");
         }
         else
         {
@@ -152,7 +142,6 @@ public class GameModeManager : MonoBehaviour
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = designerModeColor;
-            DebugLog.Info($"*** SetEditorMode called - Background set to: {designerModeColor} ***");
         }
         else
         {
@@ -182,7 +171,6 @@ public class GameModeManager : MonoBehaviour
         if (skyObject != null)
         {
             skyObject.SetActive(visible);
-            DebugLog.Info($"Sky visibility set to: {visible}");
         }
     }
 }
