@@ -247,6 +247,13 @@ public class TransporterBlock : BaseBlock
         if (grid == null) return indices;
 
         int originIndex = previewOriginIndex >= 0 ? previewOriginIndex : gridIndex;
+
+        // Safety check: originIndex must be valid before converting to coordinates
+        if (originIndex < 0 || !grid.IsValidIndex(originIndex))
+        {
+            return indices;  // Return empty list if no valid origin
+        }
+
         Vector2Int current = grid.IndexToCoordinates(originIndex);
         List<Vector2Int> steps = BuildSteps();
 

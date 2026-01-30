@@ -192,6 +192,11 @@ public class GridManager : MonoBehaviour
 
     public Vector2Int IndexToCoordinates(int index)
     {
+        if (coordinateSystem == null)
+        {
+            Debug.LogWarning($"[GridManager] coordinateSystem is null when converting index {index} to coordinates");
+            return Vector2Int.zero;
+        }
         return coordinateSystem.IndexToCoordinates(index);
     }
 
@@ -802,7 +807,7 @@ public class GridManager : MonoBehaviour
                         if (controller != null)
                         {
                             controller.SetFacingRight(lemData.facingRight);
-                            controller.SetFrozen(true); // Start frozen in editor mode
+                            controller.SetFrozen(true); // Start frozen in Designer mode
                         }
                         if (lemData.hasWorldPosition)
                         {
