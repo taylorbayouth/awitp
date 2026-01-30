@@ -208,7 +208,7 @@ public class BuilderController : MonoBehaviour
         // Space or Enter to place block
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlaceBlock(currentInventoryEntry, cursorIndex);
@@ -227,7 +227,7 @@ public class BuilderController : MonoBehaviour
         // B key places a permanent block in Level Builder mode
         if (Input.GetKeyDown(KeyCode.B))
         {
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             if (currentInventoryEntry != null)
             {
                 GridManager.Instance.PlacePermanentBlock(currentInventoryEntry, cursorIndex);
@@ -246,7 +246,7 @@ public class BuilderController : MonoBehaviour
         // Delete or Backspace to remove block AND Lem
         if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
         {
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
 
             // Remove block if present
             BaseBlock block = GridManager.Instance.GetBlockAtIndex(cursorIndex);
@@ -345,7 +345,7 @@ public class BuilderController : MonoBehaviour
         currentBlockType = entry.blockType;
 
         // Check if cursor is on an existing block
-        int cursorIndex = GridManager.Instance.currentCursorIndex;
+        int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
         BaseBlock existingBlock = GridManager.Instance.GetBlockAtIndex(cursorIndex);
 
         if (existingBlock != null)
@@ -499,7 +499,7 @@ public class BuilderController : MonoBehaviour
         // Space/Enter to mark space as placeable in Level Builder mode
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             if (!GridManager.Instance.IsSpacePlaceable(cursorIndex))
             {
                 GridManager.Instance.SetSpacePlaceable(cursorIndex, true);
