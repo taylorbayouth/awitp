@@ -183,8 +183,6 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 0
   highlightColor: {r: 0, g: 0, b: 0, a: 1}
-  visualRoot: {fileID: 0}
-  autoNormalizeVisualScale: 1
   showTriggerLabelsInEditor: 1
   showTriggerGizmos: 1
   onTriggerBoxSize: {x: 1, y: 1, z: 1}
