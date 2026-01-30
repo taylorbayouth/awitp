@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &634973474784941246
+--- !u!1 &8934368700285712684
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,23 +8,23 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 7014931142470287441}
-  - component: {fileID: 6247551411429688999}
-  - component: {fileID: 8129772799672568221}
+  - component: {fileID: 527620998473942854}
+  - component: {fileID: 4609663757518074505}
+  - component: {fileID: 2664352442419917824}
   m_Layer: 0
-  m_Name: BaseBlock
+  m_Name: CloudCube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &7014931142470287441
+--- !u!4 &527620998473942854
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 634973474784941246}
+  m_GameObject: {fileID: 8934368700285712684}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -33,13 +33,13 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6247551411429688999
+--- !u!65 &4609663757518074505
 BoxCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 634973474784941246}
+  m_GameObject: {fileID: 8934368700285712684}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -54,34 +54,45 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &8129772799672568221
+--- !u!114 &2664352442419917824
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 634973474784941246}
+  m_GameObject: {fileID: 8934368700285712684}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 15caeb14e94fa4dfeb7cbdb6acf4d2f6, type: 3}
+  m_Script: {fileID: 11500000, guid: d7db6d474398f4dbeaa4ef91982ea2e7, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::BaseBlock
-  uniqueID: 
-  blockType: 0
-  gridIndex: -1
-  inventoryKey: 
-  flavorId: 
-  isPermanent: 0
-  detectionSize: 1
-  detectionLayerMask:
-    serializedVersion: 2
-    m_Bits: 0
-  highlightColor: {r: 0, g: 0, b: 0, a: 1}
-  showTriggerLabelsInEditor: 1
-  showTriggerGizmos: 1
-  onTriggerBoxSize: {x: 1, y: 1, z: 1}
-  onTriggerYOffset: 1
-  centerTriggerRadius: 0.08
-  centerTriggerYOffset: 0.5
-  centerTriggerWorldYOffset: 0
-  centerLabelDuration: 0.15
+  m_EditorClassIdentifier: Assembly-CSharp::FluffyCloudGenerator
+  blobCount: 83
+  edgeBlobCount: 30
+  cornerBlobCount: 16
+  minSize: 0.2
+  maxSize: 0.545
+  edgeBlobSize: 0.1
+  cornerBlobSize: 0.1
+  squashProbability: 0.357
+  minSquash: 0.5
+  maxSquash: 0.577
+  minStretch: 1
+  maxStretch: 1.103
+  rotationRandomness: 1
+  positionSpread: 0.5
+  minBlobSpacing: 0.05
+  relaxationPasses: 3
+  edgeInset: 0.5
+  cornerInset: 0.182
+  blobMaterial: {fileID: 0}
+  blobColor: {r: 1, g: 1, b: 1, a: 1}
+  seed: 12345
+  randomizeSeedOnStart: 1
+  coreOpacity: 0.855
+  edgeFalloff: 1.91
+  edgeBrightness: 0.3
+  waveSpeed: 0.49
+  waveScale: 4.21
+  waveAmount: 0.0769
+  pulseSpeed: 0.3
+  pulseAmount: 0.0252

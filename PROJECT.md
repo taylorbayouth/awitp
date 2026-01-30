@@ -46,8 +46,8 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 
 The game has three distinct modes:
 
-1. **Editor Mode** - Place and edit blocks on the grid
-2. **Level Editor Mode** - Define placeable spaces and place Lems
+1. **Designer mode** - Place and edit blocks on the grid
+2. **Level Designer mode** - Define placeable spaces and place Lems
 3. **Play Mode** - Test the level with active Lem AI
 
 ### Coordinate System
@@ -173,11 +173,11 @@ Assets/
 
 ### Editor Testing
 1. Enter Play mode in Unity
-2. Use Editor Mode (default) to place blocks
-3. Press E to enter Level Editor Mode
+2. Use Designer mode (default) to place blocks
+3. Press E to enter Level Designer mode
 4. Mark placeable spaces and place Lems
 5. Press P to test in Play Mode
-6. Press P again to return to Editor Mode
+6. Press P again to return to Designer mode
 
 ### Save/Load Testing
 1. Create a level in the editor

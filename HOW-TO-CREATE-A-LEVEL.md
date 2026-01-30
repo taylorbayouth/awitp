@@ -6,15 +6,15 @@
 
 **Game Structure**:
 - **Players** see: Build Mode (place blocks to solve puzzle) + Play Mode (test solution)
-- **Designers** see: Build Mode + Level Editor Mode (E key - create puzzles) + Play Mode
+- **Designers** see: Build Mode + Level Designer mode (E key - create puzzles) + Play Mode
 
 **NEW: Multi-Level System**
-This guide describes the Level Editor Mode workflow (still fully functional). The new multi-level system adds:
+This guide describes the Level Designer mode workflow (still fully functional). The new multi-level system adds:
 - **Editor Tools**: Convert saved JSON levels into ScriptableObject assets (see [LEVEL-SYSTEM-SETUP-GUIDE.md](LEVEL-SYSTEM-SETUP-GUIDE.md))
 - **World System**: Group levels into worlds with progression
 - **UI Navigation**: Menu → World Map → Level Select → Game
 
-**Use this guide for**: Creating and testing individual levels in Level Editor Mode
+**Use this guide for**: Creating and testing individual levels in Level Designer mode
 **Then use**: Editor tools to integrate levels into the world system
 
 ---
@@ -74,13 +74,13 @@ The editor has three distinct modes you'll switch between while creating levels.
 - `Space / Enter` - Place block (from inventory)
 - `Delete / Backspace` - Remove placed block
 - `1-9` or `[ ]` - Select inventory entry
-- `E` - Switch to Level Editor Mode
+- `E` - Switch to Level Designer mode
 
 **Use this mode to**: Test the puzzle under real player constraints.
 
 ---
 
-### Level Editor Mode
+### Level Designer mode
 **Purpose**: Define the player's puzzle constraints
 
 **What you can do**:
@@ -97,7 +97,7 @@ The editor has three distinct modes you'll switch between while creating levels.
 - `1-9` or `[ ]` - Select block type for permanent blocks
 - `E` - Return to Build Mode
 
-**Note**: Level Editor Mode shows all block types with infinite counts for placement.
+**Note**: Level Designer mode shows all block types with infinite counts for placement.
 
 **Use this mode to**: Transform your prototype into a real puzzle by limiting what players can do.
 
@@ -124,10 +124,10 @@ The editor has three distinct modes you'll switch between while creating levels.
 
 Let's create a simple level from scratch to learn the workflow.
 
-### Step 1: Lay Out the Permanent Structure (Level Editor Mode)
+### Step 1: Lay Out the Permanent Structure (Level Designer mode)
 
 1. **Start Unity and press Play** - You'll begin in Build Mode
-2. **Press `E`** to enter Level Editor Mode
+2. **Press `E`** to enter Level Designer mode
 3. **Move the cursor** with arrow keys to position (0, 0) - the bottom-left
 4. **Press `1`** to select Default blocks
 5. **Create a starting platform**:
@@ -140,7 +140,7 @@ At this point you have the fixed structure, but it's not a puzzle yet!
 
 ---
 
-### Step 2: Define Placeable Spaces (Level Editor Mode)
+### Step 2: Define Placeable Spaces (Level Designer mode)
 
 1. **Mark placeable spaces**:
    - Move cursor to the gap between your two platforms
@@ -153,7 +153,7 @@ At this point you have the fixed structure, but it's not a puzzle yet!
 
 ---
 
-### Step 3: Place the Lem (Level Editor Mode)
+### Step 3: Place the Lem (Level Designer mode)
 1. **Move cursor** to the leftmost block of your starting platform
 2. **Press `L`** to place a Lem
 3. **Verify direction**:
@@ -174,7 +174,7 @@ At this point you have the fixed structure, but it's not a puzzle yet!
    - Does the Lem reach the other side?
 3. **Press `P`** to exit Play Mode when done
 
-**Iteration**: If something doesn't work, exit Play Mode and adjust in Level Editor Mode.
+**Iteration**: If something doesn't work, exit Play Mode and adjust in Level Designer mode.
 
 ---
 
@@ -291,7 +291,7 @@ Now that you have a basic level, try adding:
 **Configuration**:
 - Set `flavorId` in inventory config (e.g., "A", "B", "C")
 - Each pair must have matching flavor
-- Labels show flavor on block in Level Editor Mode
+- Labels show flavor on block in Level Designer mode
 
 **Player Strategy**: Must identify teleporter pairs and plan destination.
 
@@ -440,9 +440,9 @@ Both entries draw from the same pool of 15 blocks - placing one reduces the coun
 
 **Note**: If entries in a group have different `maxCount`, the first value wins and the rest are normalized.
 
-### Level Editor Mode (Designer)
+### Level Designer mode (Designer)
 
-When in Level Editor Mode:
+When in Level Designer mode:
 - All block types show **infinite supply** (INF)
 - You're designing the level, not playing it
 - Place permanent blocks freely
@@ -551,11 +551,11 @@ When in Build Mode or Play Mode:
 
 ### The Iteration Loop
 
-1. **Design**: Create level structure in Level Editor Mode
-2. **Define**: Set constraints (placeable spaces) in Level Editor Mode
+1. **Design**: Create level structure in Level Designer mode
+2. **Define**: Set constraints (placeable spaces) in Level Designer mode
 3. **Test**: Play in Play Mode - Can you solve it?
 4. **Observe**: Watch for issues (too hard? too easy? confusing?)
-5. **Adjust**: Return to Level Editor Mode and tweak
+5. **Adjust**: Return to Level Designer mode and tweak
 6. **Repeat**: Iterate until it feels right
 
 ### What to Test For
@@ -678,7 +678,7 @@ One action triggers multiple consequences:
 **Cause**: You're in Build Mode or Play Mode, trying to place a block in a non-placeable space.
 
 **Solution**:
-1. Press `E` to enter Level Editor Mode
+1. Press `E` to enter Level Designer mode
 2. Move cursor to the desired space
 3. Press `Space` to mark it as placeable (a border appears)
 4. Return to Build Mode or Play Mode
@@ -722,7 +722,7 @@ One action triggers multiple consequences:
 **Cause**: Lem was placed in mid-air or block was removed.
 
 **Solution**:
-1. Enter Level Editor Mode
+1. Enter Level Designer mode
 2. Press `L` to place Lem on a solid, permanent block
 3. Ensure the block beneath is permanent (placed with `B`, not `Space`)
 
@@ -733,7 +733,7 @@ One action triggers multiple consequences:
 **Cause**: Lem's facing direction wasn't set correctly.
 
 **Solution**:
-1. In Level Editor Mode, move cursor to Lem
+1. In Level Designer mode, move cursor to Lem
 2. Press `L` to flip direction
 3. Test in Play Mode
 
@@ -776,7 +776,7 @@ One action triggers multiple consequences:
 
 **Cause**: Blocks placed in Play Mode are temporary (player blocks, not permanent).
 
-**Solution**: This is intentional! Play Mode is for testing. Only blocks placed with `B` in Level Editor Mode are permanent.
+**Solution**: This is intentional! Play Mode is for testing. Only blocks placed with `B` in Level Designer mode are permanent.
 
 ---
 
@@ -804,10 +804,10 @@ One action triggers multiple consequences:
 - `Delete` / `Backspace` - Remove block
 - `1-9` - Select block entry (first 9)
 - `[` / `]` - Cycle block entries
-- `E` - Switch to Level Editor Mode
+- `E` - Switch to Level Designer mode
 - `P` - Enter Play Mode
 
-#### Level Editor Mode
+#### Level Designer mode
 - `Space` / `Enter` - Mark placeable space
 - `Delete` / `Backspace` - Clear placeable space + remove block or Lem
 - `B` - Place permanent block
@@ -880,7 +880,7 @@ One action triggers multiple consequences:
 | Border | Black | Placeable space marking |
 | Border | Grey | Non-placeable space (in Level Editor) |
 | Background | Build Mode |
-| Background | Level Editor Mode |
+| Background | Level Designer mode |
 | Background | Black + skybox | Play Mode |
 
 ---
@@ -932,8 +932,8 @@ This guide is comprehensive for the **current** system, but here are features th
 You now have everything you need to create compelling levels in A Walk in the Park!
 
 **Remember**:
-1. Start simple - prototype in Level Editor Mode
-2. Add constraints - define puzzle in Level Editor Mode
+1. Start simple - prototype in Level Designer mode
+2. Add constraints - define puzzle in Level Designer mode
 3. Test relentlessly - iterate in Play Mode
 4. Think like a player - is it fun and fair?
 5. Save often - preserve your work

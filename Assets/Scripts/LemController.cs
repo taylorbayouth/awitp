@@ -54,7 +54,7 @@ public class LemController : MonoBehaviour
     [Tooltip("False if Lem has died (fell off screen)")]
     [SerializeField] private bool isAlive = true;
 
-    [Tooltip("True = no movement (editor mode), False = active walking (play mode)")]
+    [Tooltip("True = no movement (Designer mode), False = active walking (play mode)")]
     [SerializeField] private bool isFrozen = true;
 
     // Cached component references
@@ -360,6 +360,12 @@ public class LemController : MonoBehaviour
         if (lemPrefab != null)
         {
             GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
+
+            // Scale Lem to 80% of cell size
+            float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+            float targetHeight = cellSize * 0.80f;
+            ScaleLemToHeight(lem, targetHeight);
+
             LemController controller = lem.GetComponent<LemController>();
             if (controller != null)
             {
@@ -376,6 +382,27 @@ public class LemController : MonoBehaviour
     }
 
     /// <summary>
+    /// Scales a Lem GameObject so its height matches the target height.
+    /// </summary>
+    private static void ScaleLemToHeight(GameObject lem, float targetHeight)
+    {
+        Renderer[] renderers = lem.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return;
+
+        Bounds bounds = renderers[0].bounds;
+        for (int i = 1; i < renderers.Length; i++)
+        {
+            bounds.Encapsulate(renderers[i].bounds);
+        }
+
+        float currentHeight = bounds.size.y;
+        if (currentHeight < 0.0001f) return;
+
+        float scale = targetHeight / currentHeight;
+        lem.transform.localScale = Vector3.one * scale;
+    }
+
+    /// <summary>
     /// Programmatic Lem creation (fallback when prefab doesn't exist).
     /// </summary>
     private static GameObject CreateLemProgrammatically(Vector3 position)
@@ -386,7 +413,7 @@ public class LemController : MonoBehaviour
         lem.tag = "Player";
 
         float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
-        float lemHeight = cellSize * 0.95f;
+        float lemHeight = cellSize * 0.80f;
         float lemRadius = lemHeight * 0.25f;
 
         GameObject foot = new GameObject("FootPoint");

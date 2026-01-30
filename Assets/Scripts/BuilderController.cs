@@ -445,7 +445,7 @@ public class BuilderController : MonoBehaviour
             }
             else
             {
-                // Enter play mode from any editor mode
+                // Enter play mode from any Designer mode
                 if (GridManager.Instance != null && GridManager.Instance.HasTransporterConflicts())
                 {
                     Debug.LogWarning("Cannot enter Play mode: transporter route blocked by another block.");
