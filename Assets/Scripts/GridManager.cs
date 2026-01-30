@@ -390,6 +390,12 @@ public class GridManager : MonoBehaviour
     /// </summary>
     private void UpdateCursorState()
     {
+        // Early return if managers not initialized
+        if (gridCursorManager == null)
+        {
+            return;
+        }
+
         gridCursorManager.UpdateCursorState();
     }
 
@@ -407,6 +413,12 @@ public class GridManager : MonoBehaviour
 
     public bool IsSpacePlaceable(int index)
     {
+        // Early return if managers not initialized (can happen in editor OnValidate)
+        if (coordinateSystem == null || blockPlacementManager == null || placeableSpaces == null)
+        {
+            return false;
+        }
+
         EnsurePlaceableSpacesSized();
         if (!IsValidIndex(index)) return false;
         if (IsPermanentBlockAtIndex(index)) return false;
@@ -415,6 +427,12 @@ public class GridManager : MonoBehaviour
 
     public void SetSpacePlaceable(int index, bool placeable)
     {
+        // Early return if managers not initialized
+        if (coordinateSystem == null || blockPlacementManager == null || placeableSpaces == null)
+        {
+            return;
+        }
+
         if (IsValidIndex(index))
         {
             if (placeable && IsPermanentBlockAtIndex(index))
@@ -440,6 +458,12 @@ public class GridManager : MonoBehaviour
 
     public void ToggleSpacePlaceable(int index)
     {
+        // Early return if managers not initialized
+        if (coordinateSystem == null || blockPlacementManager == null || placeableSpaces == null)
+        {
+            return;
+        }
+
         if (IsValidIndex(index))
         {
             if (IsPermanentBlockAtIndex(index))
