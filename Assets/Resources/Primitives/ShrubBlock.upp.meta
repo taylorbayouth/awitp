@@ -114,10 +114,10 @@ ScriptedImporter:
     surfaceType: 0
     direction: 0
     pivotPosition: 1
-    width: 3
-    height: 3
-    depth: 3
-    radius: 0.2
+    width: 1
+    height: 1
+    depth: 1
+    radius: 0.1
     segments: 5
     flipNormals: 0
   _boxSuperEllipsoid:

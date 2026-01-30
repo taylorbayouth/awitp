@@ -3,7 +3,7 @@
 **Audience**: This guide is for you, Taylor (the game designer/developer), to create puzzle levels.
 
 **What Players See**: Build Mode + Play Mode (they toggle with P)
-**What You See**: Build Mode + Level Editor Mode (press E) + Play Mode
+**What You See**: Build Mode + Level Designer Mode (press E) + Play Mode
 
 ---
 
@@ -11,7 +11,7 @@
 
 1. Open Unity and load the Master.unity scene
 2. Press Play to enter Build Mode
-3. Press **E** to enter **Level Editor Mode** - create level structure here
+3. Press **E** to enter **Level Designer Mode** - create level structure here
 4. Press **P** to test your level in **Play Mode**
 
 ## Game Modes
@@ -27,11 +27,11 @@
 - **[ / ]** - Cycle block entries
 - **P** - Toggle Play Mode to test solution
 
-**Note**: Players ONLY have access to Build Mode and Play Mode. They do NOT have the E key (Level Editor Mode).
+**Note**: Players ONLY have access to Build Mode and Play Mode. They do NOT have the E key (Level Designer Mode).
 
 ---
 
-### Level Editor Mode (Dev-Only - Press E)
+### Level Designer Mode (Dev-Only - Press E)
 **Purpose**: Create level structure - permanent blocks, placeable spaces, Lems, inventory config
 
 **This mode is for you to design levels. Players never see this.**
@@ -61,7 +61,7 @@
 - **P** - Exit Play Mode (returns to Build Mode)
 - Lems walk automatically and interact with blocks
 
-**Physics Note**: Lems and physics are frozen in Build Mode and Level Editor Mode. They only move when Play Mode is active.
+**Physics Note**: Lems and physics are frozen in Build Mode and Level Designer Mode. They only move when Play Mode is active.
 
 **What You're Testing**:
 - Is the level solvable?
@@ -80,7 +80,7 @@ The cursor changes state to show what you can do:
 - **Occupied** - Space has a block (you can edit/remove it)
 - **Placeable** - Space is empty and placeable (players can place blocks here)
 
-### In Level Editor Mode:
+### In Level Designer Mode:
 - **Empty** - Empty space
 - **Occupied** - Has block (permanent or placeable)
 - **Placeable** - Placeable space marked (shows a border)
@@ -100,7 +100,7 @@ The level will be saved into the active **LevelDefinition** asset (stored as JSO
 **Not saved**: player-placed blocks, key states, or other runtime play data.
 **Requirement**: A `LevelDefinition` must be assigned in `LevelManager` or the save hotkey will warn and do nothing.
 
-**Designer-only**: This save/load flow is for Taylor (Level Editor Mode). Players do not have a save hotkey.
+**Designer-only**: This save/load flow is for Taylor (Level Designer Mode). Players do not have a save hotkey.
 Player progress is saved automatically when a level is completed (all locks filled with keys), and any in-progress block placements are discarded on restart.
 Cmd/Ctrl+S is disabled while the in-game Play Mode is active.
 
@@ -118,20 +118,20 @@ The console will show you the full path to the active LevelDefinition asset.
 
 **Understanding the Process**:
 1. **Prototype** in Build Mode (optional - test player experience)
-2. **Design** in Level Editor Mode (create the puzzle structure)
+2. **Design** in Level Designer Mode (create the puzzle structure)
 3. **Test** in Play Mode (verify it works)
 4. **Iterate** (repeat until perfect)
 
 ---
 
-### Step 1: Enter Level Editor Mode
+### Step 1: Enter Level Designer Mode
 1. Start Unity and press Play (you'll be in Build Mode)
-2. Press **E** to enter Level Editor Mode
+2. Press **E** to enter Level Designer Mode
 3. You're now creating the level structure
 
 ---
 
-### Step 2: Create Permanent Architecture (Level Editor Mode)
+### Step 2: Create Permanent Architecture (Level Designer Mode)
 1. Press **1-9** or **[ ]** to select block type
 2. Press **B** to place permanent blocks (fixed architecture)
 3. Build the skeleton of your puzzle:
@@ -144,8 +144,8 @@ The console will show you the full path to the active LevelDefinition asset.
 
 ---
 
-### Step 3: Mark Placeable Spaces (Level Editor Mode)
-1. Still in Level Editor Mode
+### Step 3: Mark Placeable Spaces (Level Designer Mode)
+1. Still in Level Designer mode
 2. Move cursor to spaces where players should be able to place blocks
 3. Press **Space/Enter** to mark the space as placeable
    - A border appears - this is where players can place blocks
@@ -157,8 +157,8 @@ The console will show you the full path to the active LevelDefinition asset.
    - Are there multiple solutions?
    - Is the level solvable with the available spaces?
 
-### Step 4: Position Lems (Level Editor Mode)
-1. Still in Level Editor Mode
+### Step 4: Position Lems (Level Designer mode)
+1. Still in Level Designer mode
 2. Move cursor to where you want a Lem to start
 3. Press **L** to place a Lem
    - The Lem appears on top of any block at that position
@@ -222,9 +222,9 @@ The console will show you the full path to the active LevelDefinition asset.
 - **Delete / Backspace** - Remove placed block
 - **1-9** - Select inventory entry (first 9 slots shown in UI)
 - **[ / ]** - Cycle inventory entries
-- **E** - Switch to Level Editor Mode
+- **E** - Switch to Level Designer mode
 
-### Level Editor Mode
+### Level Designer mode
 - **Space / Enter** - Mark placeable space
 - **Delete / Backspace** - Clear placeable space + remove block or Lem
 - **1-9** - Select block entry for permanent blocks
@@ -241,23 +241,23 @@ The console will show you the full path to the active LevelDefinition asset.
 - **Ctrl+Shift+S / Cmd+Shift+S** - Show save location in console
 
 ### Mode Switching
-- **E** - Toggle between Build Mode and Level Editor Mode
+- **E** - Toggle between Build Mode and Level Designer mode
 - **P** - Toggle Play Mode on/off
 
 ## Troubleshooting
 
 ### "Cannot place block at index X: space is not placeable"
 **Solution**: You're in Build Mode but trying to place a block in a non-placeable space. Either:
-- Switch to Level Editor Mode (press E) and mark the space as placeable
+- Switch to Level Designer mode (press E) and mark the space as placeable
 - Move to a different space that's already marked as placeable
 
 ### "Cannot remove permanent block in Build mode"
 **Cause**: Permanent blocks are locked while in Build Mode
-**Solution**: Press E to switch to Level Editor Mode, then delete the block
+**Solution**: Press E to switch to Level Designer mode, then delete the block
 
 ### Cursor shows "not placeable" and I can't place anything
 **Cause**: The current space is marked as non-placeable
-**Solution**: Press E to enter Level Editor Mode, then press Space to mark it as placeable
+**Solution**: Press E to enter Level Designer mode, then press Space to mark it as placeable
 
 ### "No LevelDefinition loaded"
 **Cause**: The current scene has no LevelDefinition assigned in `LevelManager`
@@ -298,7 +298,7 @@ The `inventoryEntries` list defines:
 
 **Notes**:
 - Build Mode shows only configured entries (Key/Lock are hidden).
-- Level Editor Mode shows all block types with infinite counts for placement.
+- Level Designer mode shows all block types with infinite counts for placement.
 - Transporter routes reserve their path; blocks cannot be placed on reserved indices.
 
 Block inventory is saved with the level and restored on load automatically when the level is loaded.

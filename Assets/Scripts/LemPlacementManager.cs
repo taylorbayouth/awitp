@@ -185,7 +185,7 @@ public class LemPlacementManager : MonoBehaviour
             {
                 controller.SetFootPointPosition(footPosition);
                 controller.SetFacingRight(placementData.facingRight);
-                controller.SetFrozen(true); // Frozen in editor mode
+                controller.SetFrozen(true); // Frozen in Designer mode
             }
 
             placedLems[placementData.gridIndex] = lem;

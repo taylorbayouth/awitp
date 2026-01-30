@@ -14,7 +14,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - Comprehensive designer tools for creating puzzle levels
 - **Three Game Modes**:
   - **Build Mode**: Place blocks from inventory (player experience)
-  - **Level Editor Mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
+  - **Level Designer mode**: Create level structure, mark placeable spaces, configure inventory (dev-only, press E)
   - **Play Mode**: Test levels with active Lem AI
 - **Real-Time Testing**: Switch to Play mode instantly to test your level
 - **Persistent Storage**: Save levels to JSON files (Ctrl+S)
@@ -57,7 +57,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 ### Character System
 - **Lem Controller**: Walking AI with gravity, collision detection, and turning logic
-- **Frozen/Active States**: Lems freeze in editor modes, walk in Play mode
+- **Frozen/Active States**: Lems freeze in Designer modes, walk in Play mode
 - **Direction Control**: Flip Lem facing direction during placement
 - **Grid-Based Placement**: Lems snap to grid positions on blocks
 
@@ -115,7 +115,7 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 ### Designer Controls (Dev-Only)
 
-#### Level Editor Mode (Press E to access)
+#### Level Designer mode (Press E to access)
 - **Space / Enter**: Mark placeable space (border)
 - **B**: Place permanent block
 - **L**: Place/flip Lem character
@@ -129,14 +129,14 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Ctrl+Shift+S / Cmd+Shift+S**: Show save location in console
 
 #### Mode Switching
-- **E**: Toggle Level Editor Mode on/off (dev-only)
+- **E**: Toggle Level Designer mode on/off (dev-only)
 - **P**: Toggle Play Mode on/off
 
 ## Documentation
 
 ### For Designers
 - **[HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md)** - Complete guide to designing puzzle levels
-- **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Level Editor Mode controls and workflow
+- **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Level Designer mode controls and workflow
 - **[LEVEL-SYSTEM-DESIGN.md](LEVEL-SYSTEM-DESIGN.md)** - Architecture for multi-level progression system
 
 ### For Developers
@@ -242,7 +242,7 @@ Assets/
 6. Collect all keys and fill all locks to win
 
 ### Designing a Level
-1. Press E to enter Level Editor Mode (dev-only)
+1. Press E to enter Level Designer mode (dev-only)
 2. Press B to place permanent blocks
 3. Press Space to mark placeable spaces (borders)
 4. Press L to place starting Lems
