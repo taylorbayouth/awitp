@@ -137,11 +137,15 @@ public class BaseBlock : MonoBehaviour
             DebugLog.Info($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
-        // Cache renderer reference for highlighting (check root and children)
+        // Cache renderer reference for highlighting (check children only, base has no mesh)
         blockRenderer = GetComponentInChildren<Renderer>();
         if (blockRenderer != null && blockRenderer.material != null)
         {
             originalColor = blockRenderer.material.color;
+        }
+        else
+        {
+            Debug.LogWarning($"[BaseBlock] No renderer found on {blockType} block at index {gridIndex}. Block will be invisible.");
         }
     }
 
@@ -218,13 +222,14 @@ public class BaseBlock : MonoBehaviour
             block.gridIndex = gridIndex;
             block.uniqueID = Guid.NewGuid().ToString();
 
-            // Ensure BoxCollider exists for collision detection
+            // Ensure BoxCollider exists as trigger for Lem detection
             BoxCollider boxCollider = blockObj.GetComponent<BoxCollider>();
             if (boxCollider == null)
             {
                 boxCollider = blockObj.AddComponent<BoxCollider>();
                 DebugLog.Info($"[BaseBlock] Added BoxCollider to {type} block");
             }
+            boxCollider.isTrigger = true;  // Must be trigger for OnTriggerEnter/Exit events
 
             // Add Rigidbody for collision detection (kinematic = doesn't fall)
             Rigidbody rb = blockObj.GetComponent<Rigidbody>();
@@ -235,33 +240,12 @@ public class BaseBlock : MonoBehaviour
             rb.isKinematic = true;  // Block should not be affected by physics
             rb.useGravity = false;  // No gravity for wall blocks
 
-            // Apply color based on block type (check root and children)
+            // Warn if no mesh/renderer found (blocks should have Visual child with mesh)
             Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
-            if (renderer != null)
+            if (renderer == null)
             {
-                // Ensure renderer has at least one material
-                if (renderer.sharedMaterials == null || renderer.sharedMaterials.Length == 0 || renderer.sharedMaterial == null)
-                {
-                    DebugLog.Info($"[BaseBlock] Renderer on {type} block has no material, creating default material");
-                    // Try multiple shader fallbacks for compatibility
-                    Shader shader = Shader.Find("Universal Render Pipeline/Lit") ??
-                                   Shader.Find("Standard") ??
-                                   Shader.Find("Diffuse");
-                    Material defaultMat = new Material(shader);
-                    renderer.material = defaultMat;
-                }
-
-                Color blockColor = BlockColors.GetColorForBlockType(type);
-                renderer.material.color = blockColor;
-                block.originalColor = blockColor;
+                Debug.LogWarning($"[BaseBlock] No Renderer found on {type} block at index {gridIndex}. Block will be invisible.");
             }
-            else
-            {
-                Debug.LogWarning($"[BaseBlock] No Renderer found on {type} block. Block will be invisible.");
-            }
-
-            // Scale block to fit grid cell if needed
-            NormalizeBlockScale(blockObj, gridIndex);
 
             DebugLog.Info($"[BaseBlock] Successfully instantiated {type} block at grid index {gridIndex}");
             return block;
@@ -273,34 +257,6 @@ public class BaseBlock : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Scales the block to fit within one grid cell while maintaining aspect ratio.
-    /// </summary>
-    private static void NormalizeBlockScale(GameObject blockObj, int gridIndex)
-    {
-        if (GridManager.Instance == null) return;
-
-        MeshFilter meshFilter = blockObj.GetComponentInChildren<MeshFilter>();
-        if (meshFilter == null || meshFilter.sharedMesh == null) return;
-
-        // Get the mesh bounds in local space
-        Bounds meshBounds = meshFilter.sharedMesh.bounds;
-
-        // Calculate the maximum dimension of the mesh
-        float maxMeshSize = Mathf.Max(meshBounds.size.x, meshBounds.size.y, meshBounds.size.z);
-        if (maxMeshSize <= 0f) return;
-
-        // Get grid cell size
-        float cellSize = GridManager.Instance.cellSize;
-
-        // Calculate scale factor to fit mesh within one cell
-        float scaleFactor = cellSize / maxMeshSize;
-
-        // Apply uniform scale to the entire block
-        blockObj.transform.localScale = Vector3.one * scaleFactor;
-
-        DebugLog.Info($"[BaseBlock] Normalized block scale: maxMeshSize={maxMeshSize}, cellSize={cellSize}, scaleFactor={scaleFactor}");
-    }
 
     /// <summary>
     /// Adds the appropriate block component based on block type.
