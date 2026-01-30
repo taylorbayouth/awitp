@@ -33,7 +33,7 @@ public class BaseBlock : MonoBehaviour
     [Tooltip("Optional flavor id for this block (e.g., A, L3,U1)")]
     public string flavorId;
 
-    [Tooltip("If true, block cannot be removed in Editor mode and doesn't return to inventory")]
+    [Tooltip("If true, block cannot be removed in Designer mode and doesn't return to inventory")]
     public bool isPermanent = false;
 
     [Header("Detection Settings")]
@@ -222,14 +222,15 @@ public class BaseBlock : MonoBehaviour
             block.gridIndex = gridIndex;
             block.uniqueID = Guid.NewGuid().ToString();
 
-            // Ensure BoxCollider exists as trigger for Lem detection
+            // Ensure BoxCollider exists for collision (solid, Lem can walk on it)
             BoxCollider boxCollider = blockObj.GetComponent<BoxCollider>();
             if (boxCollider == null)
             {
                 boxCollider = blockObj.AddComponent<BoxCollider>();
-                DebugLog.Info($"[BaseBlock] Added BoxCollider to {type} block");
+                boxCollider.isTrigger = false;  // Solid collider for walking
+                DebugLog.Info($"[BaseBlock] Added solid BoxCollider to {type} block");
             }
-            boxCollider.isTrigger = true;  // Must be trigger for OnTriggerEnter/Exit events
+            // Don't override isTrigger - respect prefab setting (should be false = solid)
 
             // Add Rigidbody for collision detection (kinematic = doesn't fall)
             Rigidbody rb = blockObj.GetComponent<Rigidbody>();
@@ -422,8 +423,8 @@ public class BaseBlock : MonoBehaviour
 
     /// <summary>
     /// Handles player entering the block's trigger zone.
-    /// NOTE: Blocks use BOTH triggers and collisions to ensure reliable detection.
-    /// Triggers are used for soft detection, collisions for hard physical contact.
+    /// NOTE: Main detection now uses OnCollision* methods (solid collider).
+    /// OnTrigger* methods remain for backwards compatibility and CenterTrigger.
     /// </summary>
     /// <param name="other">The collider that entered</param>
     private void OnTriggerEnter(Collider other)
@@ -566,7 +567,7 @@ public class BaseBlock : MonoBehaviour
 
     /// <summary>
     /// Highlights this block by changing its color.
-    /// Used in editor mode for visual feedback when cursor is over block.
+    /// Used in Designer mode for visual feedback when cursor is over block.
     /// </summary>
     public void Highlight()
     {
