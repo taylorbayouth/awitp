@@ -35,6 +35,12 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public static GridManager Instance { get; private set; }
 
+    // New architecture: Managers handle specific responsibilities
+    private GridCoordinateSystem coordinateSystem;
+    private BlockPlacementManager blockPlacementManager;
+    private LemPlacementManager lemPlacementManager;
+    private GridCursorManager gridCursorManager;
+
     // Cached component references to avoid FindObjectOfType calls
     private static CameraSetup _cachedCameraSetup;
     private static PlaceableSpaceVisualizer _cachedPlaceableVisualizer;
@@ -55,35 +61,10 @@ public class GridManager : MonoBehaviour
     public Vector3 gridOrigin => _gridOrigin;
 
     [Header("Cursor Settings")]
-    public int currentCursorIndex = 0;
     public GameObject cursorHighlightPrefab;
-    private GameObject cursorHighlight;
-    private GridCursor gridCursor;
 
     [Header("Placeable Spaces")]
     private bool[] placeableSpaces;
-
-    private Dictionary<int, BaseBlock> placedBlocks = new Dictionary<int, BaseBlock>();
-    private Dictionary<int, BaseBlock> permanentBlocks = new Dictionary<int, BaseBlock>();
-    private Dictionary<int, GameObject> placedLems = new Dictionary<int, GameObject>();
-    private Dictionary<int, LemPlacementData> originalLemPlacements = new Dictionary<int, LemPlacementData>();
-    private List<LevelData.KeyStateData> originalKeyStates = new List<LevelData.KeyStateData>();
-    private LevelData playModeSnapshot;
-
-    /// <summary>
-    /// Stores original Lem placement data for resetting after Play mode
-    /// </summary>
-    private class LemPlacementData
-    {
-        public int gridIndex;
-        public bool facingRight;
-
-        public LemPlacementData(int index, bool facing)
-        {
-            gridIndex = index;
-            facingRight = facing;
-        }
-    }
 
     /// <summary>
     /// Initializes the singleton instance and sets up the grid system.
@@ -106,14 +87,37 @@ public class GridManager : MonoBehaviour
 
         try
         {
-            // Calculate grid origin to center grid around world origin (0,0,0)
-            CalculateGridOrigin();
+            // === NEW ARCHITECTURE: Initialize Managers ===
 
-            // Initialize the placeable spaces array
+            // 1. Create coordinate system (no dependencies)
+            coordinateSystem = new GridCoordinateSystem(gridWidth, gridHeight, cellSize);
+            DebugLog.Info($"[GridManager] GridCoordinateSystem created: {gridWidth}x{gridHeight}, cell size {cellSize}");
+
+            // 2. Initialize placeable spaces array
             InitializePlaceableSpaces();
 
-            // Create the visual cursor for editor mode
-            CreateCursor();
+            // 3. Initialize BlockPlacementManager
+            blockPlacementManager = gameObject.AddComponent<BlockPlacementManager>();
+            blockPlacementManager.Initialize(
+                coordinateSystem,
+                placeableSpaces,
+                onBlockChanged: UpdateCursorState
+            );
+
+            // 4. Initialize LemPlacementManager
+            lemPlacementManager = gameObject.AddComponent<LemPlacementManager>();
+            lemPlacementManager.Initialize(coordinateSystem);
+
+            // 5. Initialize GridCursorManager
+            gridCursorManager = gameObject.AddComponent<GridCursorManager>();
+            gridCursorManager.Initialize(coordinateSystem, cursorHighlightPrefab, cellSize, this);
+
+            // 6. Register with ServiceRegistry for easy access across codebase
+            ServiceRegistry.Register(this);
+
+            // Legacy grid origin calculation (kept for compatibility)
+            // TODO: Remove once all code uses coordinateSystem.GridOrigin
+            CalculateGridOrigin();
 
             DebugLog.Info($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid, cell size {cellSize}");
         }
@@ -176,32 +180,29 @@ public class GridManager : MonoBehaviour
         // Player must explicitly mark spaces as placeable in edit mode
     }
 
-    #region Grid Coordinate Conversion
+    #region Grid Coordinate Conversion (Delegates to GridCoordinateSystem)
 
     /// <summary>
     /// Converts grid index to world position on XY plane.
     /// </summary>
     public Vector3 IndexToWorldPosition(int index)
     {
-        Vector2Int coords = IndexToCoordinates(index);
-        return CoordinatesToWorldPosition(coords);
+        return coordinateSystem.IndexToWorldPosition(index);
     }
 
     public Vector2Int IndexToCoordinates(int index)
     {
-        int x = index % gridWidth;
-        int y = index / gridWidth;
-        return new Vector2Int(x, y);
+        return coordinateSystem.IndexToCoordinates(index);
     }
 
     public int CoordinatesToIndex(Vector2Int coords)
     {
-        return coords.y * gridWidth + coords.x;
+        return coordinateSystem.CoordinatesToIndex(coords);
     }
 
     public int CoordinatesToIndex(int x, int y)
     {
-        return y * gridWidth + x;
+        return coordinateSystem.CoordinatesToIndex(x, y);
     }
 
     /// <summary>
@@ -210,22 +211,17 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public Vector3 CoordinatesToWorldPosition(Vector2Int coords)
     {
-        float halfCell = cellSize * 0.5f;
-        return gridOrigin + new Vector3(
-            (coords.x * cellSize) + halfCell,  // X = horizontal
-            (coords.y * cellSize) + halfCell,  // Y = vertical
-            0                                   // Z = 0 (on the wall)
-        );
+        return coordinateSystem.CoordinatesToWorldPosition(coords);
     }
 
     public bool IsValidIndex(int index)
     {
-        return index >= 0 && index < (gridWidth * gridHeight);
+        return coordinateSystem.IsValidIndex(index);
     }
 
     public bool IsValidCoordinates(int x, int y)
     {
-        return x >= 0 && x < gridWidth && y >= 0 && y < gridHeight;
+        return coordinateSystem.IsValidCoordinates(x, y);
     }
 
     /// <summary>
@@ -233,340 +229,77 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public int WorldToGridIndex(Vector3 worldPos)
     {
-        Vector3 localPos = worldPos - gridOrigin;
-        int x = Mathf.FloorToInt(localPos.x / cellSize);
-        int y = Mathf.FloorToInt(localPos.y / cellSize);
-
-        if (!IsValidCoordinates(x, y))
-            return -1;
-
-        return CoordinatesToIndex(x, y);
+        return coordinateSystem.WorldPositionToGridIndex(worldPos);
     }
 
     #endregion
 
-    #region Block Placement and Management
+    #region Block Placement and Management (Delegates to BlockPlacementManager)
 
     /// <summary>
     /// Places a block on the grid at the specified index.
-    /// Performs extensive validation before placement:
-    /// - Checks if index is valid
-    /// - Checks if space is placeable
-    /// - Checks for transporter path conflicts
-    /// - Checks for permanent blocks
-    /// - Checks inventory availability
+    /// Delegates to BlockPlacementManager for all placement logic.
     /// </summary>
     /// <param name="blockType">Type of block to place</param>
     /// <param name="gridIndex">Grid index where block should be placed</param>
+    /// <param name="entry">Optional inventory entry</param>
     /// <returns>The placed block, or null if placement failed</returns>
     public BaseBlock PlaceBlock(BlockType blockType, int gridIndex, BlockInventoryEntry entry = null)
     {
-        try
-        {
-            // === VALIDATION CHECKS ===
-
-            // Check 1: Valid grid index
-            if (!IsValidIndex(gridIndex))
-            {
-                Debug.LogWarning($"[GridManager] Cannot place block: Invalid grid index {gridIndex}");
-                return null;
-            }
-
-            // Check 2: Transporter path conflict
-            if (IsIndexBlockedByTransporterPath(gridIndex))
-            {
-                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Transporter path reserved");
-                return null;
-            }
-
-            // Check 2b: Transporter-specific placement constraints
-            if (blockType == BlockType.Transporter)
-            {
-                if (IsGridSpaceOccupied(gridIndex))
-                {
-                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Space already occupied");
-                    return null;
-                }
-
-                BlockInventoryEntry resolvedForRoute = entry;
-                if (resolvedForRoute == null)
-                {
-                    BlockInventory routeInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
-                    if (routeInventory != null)
-                    {
-                        resolvedForRoute = routeInventory.GetDefaultEntryForBlockType(blockType);
-                    }
-                }
-
-                string[] routeSteps = resolvedForRoute != null ? resolvedForRoute.routeSteps : null;
-
-                // Check if route goes outside grid bounds
-                if (!IsTransporterRouteWithinBounds(gridIndex, routeSteps))
-                {
-                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Route path goes outside grid bounds");
-                    return null;
-                }
-
-                List<int> routeIndices = BuildTransporterPathIndices(gridIndex, routeSteps);
-                if (routeIndices.Count > 0 && HasBlocksOnIndices(routeIndices))
-                {
-                    Debug.LogWarning($"[GridManager] Cannot place Transporter at index {gridIndex}: Route path blocked by existing block");
-                    return null;
-                }
-            }
-
-            // Check 3: Space must be marked as placeable
-            if (!IsSpacePlaceable(gridIndex))
-            {
-                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Space not marked as placeable");
-                return null;
-            }
-
-            // Check 4: No permanent blocks
-            if (IsPermanentBlockAtIndex(gridIndex))
-            {
-                Debug.LogWarning($"[GridManager] Cannot place {blockType} at index {gridIndex}: Permanent block present");
-                return null;
-            }
-
-            // Check 5: Inventory availability
-            BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
-            BlockInventoryEntry resolvedEntry = entry;
-            if (inventory != null && resolvedEntry == null)
-            {
-                resolvedEntry = inventory.GetDefaultEntryForBlockType(blockType);
-            }
-
-            if (inventory != null && resolvedEntry == null)
-            {
-                Debug.LogWarning($"[GridManager] Cannot place {blockType}: No inventory entry configured");
-                return null;
-            }
-
-            if (inventory != null && resolvedEntry != null && !inventory.CanPlaceEntry(resolvedEntry))
-            {
-                Debug.LogWarning($"[GridManager] Cannot place {resolvedEntry.GetDisplayName()}: No blocks remaining in inventory");
-                return null;
-            }
-
-            // === PLACEMENT LOGIC ===
-
-            // If there's already a non-permanent block here, destroy it
-            if (placedBlocks.ContainsKey(gridIndex))
-            {
-                placedBlocks[gridIndex].DestroyBlock();
-            }
-
-            // Consume block from inventory
-            if (inventory != null)
-            {
-                if (resolvedEntry != null)
-                {
-                    inventory.UseBlock(resolvedEntry);
-                }
-                else
-                {
-                    inventory.UseBlock(blockType);
-                }
-            }
-
-            // Create and position the new block
-            BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
-            if (newBlock == null)
-            {
-                Debug.LogError($"[GridManager] Failed to instantiate {blockType} block at index {gridIndex}");
-                // Return the block to inventory since placement failed
-                if (inventory != null)
-                {
-                    inventory.ReturnBlock(blockType);
-                }
-                return null;
-            }
-
-            newBlock.isPermanent = false;
-            ApplyEntryMetadata(newBlock, resolvedEntry, inventory);
-            PositionBlock(newBlock, gridIndex);
-
-            // Register the new block
-            placedBlocks[gridIndex] = newBlock;
-            UpdateCursorState();
-
-            return newBlock;
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError($"[GridManager] Error placing {blockType} block at index {gridIndex}: {ex.Message}\n{ex.StackTrace}");
-            return null;
-        }
+        return blockPlacementManager.PlaceBlock(blockType, gridIndex, entry);
     }
 
     public BaseBlock PlaceBlock(BlockInventoryEntry entry, int gridIndex)
     {
-        if (entry == null)
-        {
-            Debug.LogWarning("[GridManager] Cannot place block: inventory entry is null");
-            return null;
-        }
-
-        return PlaceBlock(entry.blockType, gridIndex, entry);
+        return blockPlacementManager.PlaceBlock(entry, gridIndex);
     }
 
     public BaseBlock PlacePermanentBlock(BlockType blockType, int gridIndex, BlockInventoryEntry entry = null)
     {
-        if (!IsValidIndex(gridIndex))
-        {
-            Debug.LogWarning($"Invalid grid index: {gridIndex}");
-            return null;
-        }
-
-        if (IsIndexBlockedByTransporterPath(gridIndex))
-        {
-            Debug.LogWarning($"Cannot place permanent block at index {gridIndex}: transporter path reserved");
-            return null;
-        }
-
-        BaseBlock existingBlock = GetBlockAtIndex(gridIndex);
-        if (existingBlock != null)
-        {
-            existingBlock.DestroyBlock();
-        }
-
-        BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
-        newBlock.isPermanent = true;
-        ApplyEntryMetadata(newBlock, entry, UnityEngine.Object.FindAnyObjectByType<BlockInventory>());
-        PositionBlock(newBlock, gridIndex);
-
-        permanentBlocks[gridIndex] = newBlock;
-        SetSpacePlaceable(gridIndex, false);
-
-        return newBlock;
+        return blockPlacementManager.PlacePermanentBlock(blockType, gridIndex, entry);
     }
 
     public BaseBlock PlacePermanentBlock(BlockInventoryEntry entry, int gridIndex)
     {
-        if (entry == null)
-        {
-            Debug.LogWarning("[GridManager] Cannot place permanent block: inventory entry is null");
-            return null;
-        }
-
-        return PlacePermanentBlock(entry.blockType, gridIndex, entry);
-    }
-
-    private void PositionBlock(BaseBlock block, int gridIndex)
-    {
-        Vector3 position = IndexToWorldPosition(gridIndex);
-        position.z += cellSize * 0.5f; // Center block so front face is flush with grid (z=0)
-        block.transform.position = position;
-        block.transform.localScale = Vector3.one * cellSize;
-    }
-
-    private static void ApplyEntryMetadata(BaseBlock block, BlockInventoryEntry entry, BlockInventory inventory)
-    {
-        if (block == null || entry == null) return;
-
-        string inventoryKey = inventory != null ? inventory.GetInventoryKey(entry) : entry.GetEntryId();
-        block.inventoryKey = inventoryKey;
-        block.flavorId = entry.GetResolvedFlavorId();
-
-        TransporterBlock transporter = block as TransporterBlock;
-        if (transporter != null && entry.routeSteps != null && entry.routeSteps.Length > 0)
-        {
-            transporter.routeSteps = (string[])entry.routeSteps.Clone();
-        }
+        return blockPlacementManager.PlacePermanentBlock(entry, gridIndex);
     }
 
     public void RegisterBlock(BaseBlock block)
     {
-        if (IsValidIndex(block.gridIndex))
-        {
-            if (block.isPermanent)
-            {
-                permanentBlocks[block.gridIndex] = block;
-            }
-            else
-            {
-                placedBlocks[block.gridIndex] = block;
-            }
-        }
+        blockPlacementManager.RegisterBlock(block);
     }
 
     public void UnregisterBlock(BaseBlock block)
     {
-        placedBlocks.Remove(block.gridIndex);
-        permanentBlocks.Remove(block.gridIndex);
-        UpdateCursorState();
+        blockPlacementManager.UnregisterBlock(block);
     }
 
     public BaseBlock GetBlockAtIndex(int index)
     {
-        if (permanentBlocks.TryGetValue(index, out BaseBlock permanentBlock))
-        {
-            return permanentBlock;
-        }
-        return placedBlocks.TryGetValue(index, out BaseBlock block) ? block : null;
+        return blockPlacementManager.GetBlockAtIndex(index);
     }
 
     public bool IsPermanentBlockAtIndex(int index)
     {
-        return permanentBlocks.ContainsKey(index);
+        return blockPlacementManager.IsPermanentBlockAtIndex(index);
     }
 
     public bool IsGridSpaceOccupied(int index)
     {
-        return placedBlocks.ContainsKey(index) || permanentBlocks.ContainsKey(index);
+        return blockPlacementManager.IsGridSpaceOccupied(index);
     }
 
     #endregion
 
-    #region Lem Placement
+    #region Lem Placement (Delegates to LemPlacementManager)
 
     /// <summary>
     /// Places a Lem at the specified grid index.
-    /// If a Lem already exists there, turns it around instead.
+    /// Delegates to LemPlacementManager for all Lem operations.
     /// </summary>
     public GameObject PlaceLem(int gridIndex)
     {
-        if (!IsValidIndex(gridIndex))
-        {
-            Debug.LogWarning($"Invalid grid index: {gridIndex}");
-            return null;
-        }
-
-        // If Lem already exists at this position, turn it around
-        if (placedLems.TryGetValue(gridIndex, out GameObject existingLem))
-        {
-            LemController lemController = existingLem.GetComponent<LemController>();
-            if (lemController != null)
-            {
-                lemController.TurnAround();
-                // Update original placement data with new facing direction
-                originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, lemController.GetFacingRight());
-            }
-            return existingLem;
-        }
-
-        // Only one Lem allowed - remove any existing Lem first
-        if (placedLems.Count > 0)
-        {
-            ClearAllLems();
-        }
-
-        Vector3 footPosition = GetLemFootPositionForIndex(gridIndex);
-
-        GameObject lem = LemController.CreateLem(footPosition);
-        placedLems[gridIndex] = lem;
-
-        // Store original placement data for resetting after Play mode
-        LemController controller = lem.GetComponent<LemController>();
-        if (controller != null)
-        {
-            controller.SetFootPointPosition(footPosition);
-            controller.SetFrozen(true);
-            originalLemPlacements[gridIndex] = new LemPlacementData(gridIndex, controller.GetFacingRight());
-        }
-
-        return lem;
+        return lemPlacementManager.PlaceLem(gridIndex);
     }
 
     /// <summary>
@@ -574,12 +307,7 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public void RemoveLem(int gridIndex)
     {
-        if (placedLems.TryGetValue(gridIndex, out GameObject lem))
-        {
-            Destroy(lem);
-            placedLems.Remove(gridIndex);
-            originalLemPlacements.Remove(gridIndex);
-        }
+        lemPlacementManager.RemoveLem(gridIndex);
     }
 
     /// <summary>
@@ -588,60 +316,37 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public void ResetAllLems()
     {
-        // Destroy all current Lems
-        foreach (var lem in placedLems.Values)
-        {
-            if (lem != null)
-            {
-                Destroy(lem);
-            }
-        }
-        placedLems.Clear();
-
-        // Recreate Lems at original positions
-        foreach (var placementData in originalLemPlacements.Values)
-        {
-            Vector3 footPosition = GetLemFootPositionForIndex(placementData.gridIndex);
-
-            GameObject lem = LemController.CreateLem(footPosition);
-            LemController controller = lem.GetComponent<LemController>();
-            if (controller != null)
-            {
-                controller.SetFootPointPosition(footPosition);
-                controller.SetFacingRight(placementData.facingRight);
-                controller.SetFrozen(true); // Frozen in editor mode
-            }
-
-            placedLems[placementData.gridIndex] = lem;
-        }
-
-        DebugLog.Info($"Reset {originalLemPlacements.Count} Lem(s) to original positions");
+        lemPlacementManager.ResetAllLems();
     }
 
     public void CaptureOriginalKeyStates()
     {
-        originalKeyStates = CaptureKeyStates();
+        List<LevelData.KeyStateData> keyStates = CaptureKeyStates();
+        lemPlacementManager.CaptureOriginalKeyStates(keyStates);
     }
 
     public void RestoreOriginalKeyStates()
     {
-        ApplyKeyStates(originalKeyStates);
+        List<LevelData.KeyStateData> keyStates = lemPlacementManager.GetOriginalKeyStates();
+        ApplyKeyStates(keyStates);
     }
 
     public void CapturePlayModeSnapshot()
     {
-        playModeSnapshot = CaptureLevelData();
+        LevelData snapshot = CaptureLevelData();
+        lemPlacementManager.CapturePlayModeSnapshot(snapshot);
     }
 
     public void RestorePlayModeSnapshot()
     {
-        if (playModeSnapshot == null)
+        LevelData snapshot = lemPlacementManager.GetPlayModeSnapshot();
+        if (snapshot == null)
         {
-            Debug.LogWarning("[GridManager] No play mode snapshot found to restore.");
+            DebugLog.LogWarning("[GridManager] No play mode snapshot found to restore");
             return;
         }
 
-        RestoreLevelData(playModeSnapshot);
+        RestoreLevelData(snapshot);
     }
 
     /// <summary>
@@ -649,7 +354,7 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public bool HasLemAtIndex(int index)
     {
-        return placedLems.ContainsKey(index);
+        return lemPlacementManager.HasLemAtIndex(index);
     }
 
     /// <summary>
@@ -657,111 +362,43 @@ public class GridManager : MonoBehaviour
     /// </summary>
     public GameObject GetLemAtIndex(int index)
     {
-        return placedLems.TryGetValue(index, out GameObject lem) ? lem : null;
-    }
-
-    private Vector3 GetLemFootPositionForIndex(int gridIndex)
-    {
-        Vector2Int coords = IndexToCoordinates(gridIndex);
-        float halfCell = cellSize * 0.5f;
-        return gridOrigin + new Vector3(
-            (coords.x * cellSize) + halfCell,
-            coords.y * cellSize,
-            0.5f
-        );
+        return lemPlacementManager.GetLemAtIndex(index);
     }
 
     #endregion
 
-    #region Cursor Movement
-
-    private void CreateCursor()
-    {
-        if (cursorHighlightPrefab != null)
-        {
-            cursorHighlight = Instantiate(cursorHighlightPrefab);
-            gridCursor = cursorHighlight.GetComponent<GridCursor>();
-        }
-        else
-        {
-            cursorHighlight = new GameObject("GridCursor");
-            gridCursor = cursorHighlight.AddComponent<GridCursor>();
-        }
-
-        if (gridCursor != null)
-        {
-            gridCursor.Initialize(cellSize);
-        }
-
-        UpdateCursorPosition();
-        UpdateCursorState();
-    }
+    #region Cursor Movement (Delegates to GridCursorManager)
 
     public void MoveCursor(Vector2Int direction)
     {
-        // Validate grid dimensions before cursor movement
-        if (gridWidth <= 0 || gridHeight <= 0)
-        {
-            DebugLog.LogWarning("Cannot move cursor - invalid grid dimensions");
-            return;
-        }
-
-        Vector2Int currentCoords = IndexToCoordinates(currentCursorIndex);
-        Vector2Int newCoords = currentCoords + direction;
-
-        newCoords.x = Mathf.Clamp(newCoords.x, 0, gridWidth - 1);
-        newCoords.y = Mathf.Clamp(newCoords.y, 0, gridHeight - 1);
-
-        currentCursorIndex = CoordinatesToIndex(newCoords);
-        UpdateCursorPosition();
-        UpdateCursorState();
+        gridCursorManager.MoveCursor(direction);
     }
 
     public void SetCursorIndex(int index)
     {
-        if (IsValidIndex(index))
-        {
-            currentCursorIndex = index;
-            UpdateCursorPosition();
-            UpdateCursorState();
-        }
-    }
-
-    private void UpdateCursorPosition()
-    {
-        if (cursorHighlight != null)
-        {
-            cursorHighlight.transform.position = IndexToWorldPosition(currentCursorIndex);
-        }
+        gridCursorManager.SetCursorIndex(index);
     }
 
     public void SetCursorVisible(bool visible)
     {
-        if (gridCursor != null)
-        {
-            gridCursor.SetVisible(visible);
-        }
+        gridCursorManager.SetCursorVisible(visible);
     }
 
+    /// <summary>
+    /// Updates cursor visual state based on current position.
+    /// Called by BlockPlacementManager when blocks change.
+    /// </summary>
     private void UpdateCursorState()
     {
-        if (gridCursor == null) return;
+        gridCursorManager.UpdateCursorState();
+    }
 
-        bool isPlaceable = IsSpacePlaceable(currentCursorIndex);
-        bool hasBlock = IsGridSpaceOccupied(currentCursorIndex);
-
-        if (hasBlock)
-        {
-            gridCursor.SetState(GridCursor.CursorState.Editable);
-        }
-        else if (!isPlaceable)
-        {
-            gridCursor.SetState(GridCursor.CursorState.NonPlaceable);
-        }
-        else
-        {
-            gridCursor.SetState(GridCursor.CursorState.Placeable);
-        }
+    /// <summary>
+    /// Gets the current cursor grid index.
+    /// </summary>
+    public int GetCurrentCursorIndex()
+    {
+        return gridCursorManager.CurrentCursorIndex;
     }
 
     #endregion
@@ -932,22 +569,24 @@ public class GridManager : MonoBehaviour
         }
 
         // Capture permanent blocks
+        Dictionary<int, BaseBlock> permanentBlocks = blockPlacementManager.GetAllPermanentBlocks();
         foreach (var kvp in permanentBlocks)
         {
             if (kvp.Value != null)
             {
-                levelData.permanentBlocks.Add(CreateBlockData(kvp.Value, kvp.Key));
+                levelData.permanentBlocks.Add(BlockPlacementManager.CreateBlockData(kvp.Value, kvp.Key));
             }
         }
 
         if (includePlacedBlocks)
         {
             // Capture all placed blocks
+            Dictionary<int, BaseBlock> placedBlocks = blockPlacementManager.GetAllPlacedBlocks();
             foreach (var kvp in placedBlocks)
             {
                 if (kvp.Value != null)
                 {
-                    levelData.blocks.Add(CreateBlockData(kvp.Value, kvp.Key));
+                    levelData.blocks.Add(BlockPlacementManager.CreateBlockData(kvp.Value, kvp.Key));
                 }
             }
         }
@@ -962,19 +601,19 @@ public class GridManager : MonoBehaviour
         }
 
         // Capture Lem placements
-        foreach (var kvp in originalLemPlacements)
+        Dictionary<int, GameObject> placedLems = lemPlacementManager.GetAllPlacedLems();
+        foreach (var kvp in placedLems)
         {
-            LevelData.LemData lemData = new LevelData.LemData(kvp.Value.gridIndex, kvp.Value.facingRight);
-            if (placedLems.TryGetValue(kvp.Key, out GameObject lem) && lem != null)
-            {
-                lemData.worldPosition = lem.transform.position;
-                lemData.hasWorldPosition = true;
-            }
-            else
-            {
-                lemData.worldPosition = IndexToWorldPosition(kvp.Value.gridIndex);
-                lemData.hasWorldPosition = true;
-            }
+            GameObject lem = kvp.Value;
+            if (lem == null) continue;
+
+            LemController controller = lem.GetComponent<LemController>();
+            bool facingRight = controller != null ? controller.GetFacingRight() : true;
+
+            LevelData.LemData lemData = new LevelData.LemData(kvp.Key, facingRight);
+            lemData.worldPosition = lem.transform.position;
+            lemData.hasWorldPosition = true;
+
             levelData.lems.Add(lemData);
         }
 
@@ -1008,8 +647,8 @@ public class GridManager : MonoBehaviour
         }
 
         // Clear existing state
-        ClearAllBlocks();
-        ClearAllLems();
+        blockPlacementManager.ClearAll();
+        lemPlacementManager.ClearAll();
         ClearPlaceableSpaces();
 
         BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
@@ -1041,17 +680,15 @@ public class GridManager : MonoBehaviour
             gridWidth = levelData.gridWidth;
             gridHeight = levelData.gridHeight;
             cellSize = levelData.cellSize;
+
+            // Update coordinate system with new dimensions
+            coordinateSystem.UpdateDimensions(gridWidth, gridHeight, cellSize);
+
             CalculateGridOrigin();
             InitializePlaceableSpaces();
             RefreshGrid();
 
-            // Update cursor for new grid dimensions
-            if (gridCursor != null)
-            {
-                gridCursor.Initialize(cellSize);
-            }
-            currentCursorIndex = Mathf.Clamp(currentCursorIndex, 0, (gridWidth * gridHeight) - 1);
-            UpdateCursorPosition();
+            // Cursor automatically handles dimension changes through coordinate system
         }
         else
         {
@@ -1083,7 +720,7 @@ public class GridManager : MonoBehaviour
                     BaseBlock block = entry != null
                         ? PlacePermanentBlock(entry, blockData.gridIndex)
                         : PlacePermanentBlock(blockData.blockType, blockData.gridIndex);
-                    ApplyBlockData(block, blockData, inventory);
+                    BlockPlacementManager.ApplyBlockData(block, blockData, inventory);
                 }
             }
         }
@@ -1105,7 +742,7 @@ public class GridManager : MonoBehaviour
                     BaseBlock block = entry != null
                         ? PlaceBlock(entry, blockData.gridIndex)
                         : PlaceBlock(blockData.blockType, blockData.gridIndex);
-                    ApplyBlockData(block, blockData, inventory);
+                    BlockPlacementManager.ApplyBlockData(block, blockData, inventory);
 
                     // Restore original placeable state
                     placeableSpaces[blockData.gridIndex] = wasPlaceable;
@@ -1190,41 +827,6 @@ public class GridManager : MonoBehaviour
         return false;
     }
 
-    /// <summary>
-    /// Clears all placed blocks.
-    /// </summary>
-    private void ClearAllBlocks()
-    {
-        // Create a copy of the keys to avoid modification during iteration
-        var indices = new System.Collections.Generic.List<int>(placedBlocks.Keys);
-        indices.AddRange(permanentBlocks.Keys);
-        foreach (int index in indices)
-        {
-            BaseBlock block = GetBlockAtIndex(index);
-            if (block != null)
-            {
-                Destroy(block.gameObject);
-            }
-        }
-        placedBlocks.Clear();
-        permanentBlocks.Clear();
-    }
-
-    /// <summary>
-    /// Clears all placed Lems.
-    /// </summary>
-    private void ClearAllLems()
-    {
-        foreach (var lem in placedLems.Values)
-        {
-            if (lem != null)
-            {
-                Destroy(lem);
-            }
-        }
-        placedLems.Clear();
-        originalLemPlacements.Clear();
-    }
 
     /// <summary>
     /// Clears all placeable space markers.
@@ -1241,204 +843,34 @@ public class GridManager : MonoBehaviour
 
     public bool HasTransporterConflicts()
     {
-        TransporterBlock[] transporters = UnityEngine.Object.FindObjectsByType<TransporterBlock>(FindObjectsSortMode.None);
-        foreach (TransporterBlock transporter in transporters)
-        {
-            if (transporter == null) continue;
-            List<int> pathIndices = transporter.GetRoutePathIndices();
-            foreach (int index in pathIndices)
-            {
-                if (!IsValidIndex(index)) continue;
-                BaseBlock block = GetBlockAtIndex(index);
-                if (block != null && block != transporter)
-                {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private bool IsIndexBlockedByTransporterPath(int index)
-    {
-        // Delegate to the generic method for backward compatibility
-        return IsIndexBlockedByAnyBlock(index, null);
+        return blockPlacementManager.HasTransporterConflicts();
     }
 
     /// <summary>
     /// Checks if any placed block claims this index via GetBlockedIndices().
     /// Used for placement validation - blocks can reserve grid spaces they don't occupy.
     /// </summary>
-    /// <param name="index">Grid index to check</param>
-    /// <param name="excludeBlock">Optional block to exclude from the check (e.g., the block being placed)</param>
-    /// <returns>True if any block claims this index</returns>
     public bool IsIndexBlockedByAnyBlock(int index, BaseBlock excludeBlock)
     {
-        // Check all placed blocks
-        foreach (var kvp in placedBlocks)
-        {
-            BaseBlock block = kvp.Value;
-            if (block == null || block == excludeBlock) continue;
-
-            int[] blockedIndices = block.GetBlockedIndices();
-            if (blockedIndices != null && System.Array.IndexOf(blockedIndices, index) >= 0)
-            {
-                return true;
-            }
-        }
-
-        // Check permanent blocks too
-        foreach (var kvp in permanentBlocks)
-        {
-            BaseBlock block = kvp.Value;
-            if (block == null || block == excludeBlock) continue;
-
-            int[] blockedIndices = block.GetBlockedIndices();
-            if (blockedIndices != null && System.Array.IndexOf(blockedIndices, index) >= 0)
-            {
-                return true;
-            }
-        }
-
-        return false;
+        return blockPlacementManager.IsIndexBlockedByAnyBlock(index, excludeBlock);
     }
 
     /// <summary>
-    /// Checks if there is any block (placed or permanent) at the given index.
+    /// Checks if there is any block at the given index.
     /// </summary>
-    /// <param name="index">Grid index to check</param>
-    /// <returns>True if a block exists at this index</returns>
     public bool HasBlockAtIndex(int index)
     {
-        return GetBlockAtIndex(index) != null;
+        return blockPlacementManager.HasBlockAtIndex(index);
     }
 
     /// <summary>
     /// Validates if a block can be placed at the given index using the block's own rules.
     /// </summary>
-    /// <param name="block">The block to validate (or a template block for the type)</param>
-    /// <param name="targetIndex">Where to place the block</param>
-    /// <returns>True if placement is valid</returns>
     public bool ValidateBlockPlacement(BaseBlock block, int targetIndex)
     {
-        if (block == null) return false;
-        return block.CanBePlacedAt(targetIndex, this);
+        return blockPlacementManager.ValidateBlockPlacement(block, targetIndex);
     }
 
-    private bool HasBlocksOnIndices(List<int> indices)
-    {
-        foreach (int index in indices)
-        {
-            if (!IsValidIndex(index)) continue;
-            if (GetBlockAtIndex(index) != null)
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private List<int> BuildTransporterPathIndices(int originIndex, string[] routeSteps)
-    {
-        List<int> indices = new List<int>();
-        if (!IsValidIndex(originIndex))
-        {
-            return indices;
-        }
-
-        Vector2Int current = IndexToCoordinates(originIndex);
-        List<Vector2Int> steps = BuildTransporterSteps(routeSteps);
-        HashSet<int> unique = new HashSet<int>();
-
-        unique.Add(originIndex);
-        foreach (Vector2Int step in steps)
-        {
-            current += step;
-            if (IsValidCoordinates(current.x, current.y))
-            {
-                int idx = CoordinatesToIndex(current);
-                if (unique.Add(idx))
-                {
-                    indices.Add(idx);
-                }
-            }
-        }
-
-        indices.Insert(0, originIndex);
-        return indices;
-    }
-
-    private static List<Vector2Int> BuildTransporterSteps(string[] routeSteps)
-    {
-        return RouteParser.ParseRouteSteps(routeSteps);
-    }
-
-    /// <summary>
-    /// Checks if a transporter route stays within grid bounds for all steps.
-    /// Returns false if any step would go outside the grid.
-    /// </summary>
-    private bool IsTransporterRouteWithinBounds(int originIndex, string[] routeSteps)
-    {
-        if (!IsValidIndex(originIndex))
-        {
-            return false;
-        }
-
-        if (routeSteps == null || routeSteps.Length == 0)
-        {
-            return true; // Empty route is valid
-        }
-
-        Vector2Int current = IndexToCoordinates(originIndex);
-        List<Vector2Int> steps = BuildTransporterSteps(routeSteps);
-
-        foreach (Vector2Int step in steps)
-        {
-            current += step;
-            if (!IsValidCoordinates(current.x, current.y))
-            {
-                return false; // Step goes outside grid bounds
-            }
-        }
-
-        return true; // All steps stay within bounds
-    }
-
-    private static LevelData.BlockData CreateBlockData(BaseBlock block, int index)
-    {
-        LevelData.BlockData data = new LevelData.BlockData(block.blockType, index);
-        data.inventoryKey = block.inventoryKey;
-        data.flavorId = block.flavorId;
-        TransporterBlock transporter = block as TransporterBlock;
-        if (transporter != null && transporter.routeSteps != null)
-        {
-            data.routeSteps = (string[])transporter.routeSteps.Clone();
-        }
-        return data;
-    }
-
-    private static void ApplyBlockData(BaseBlock block, LevelData.BlockData data, BlockInventory inventory)
-    {
-        if (block == null || data == null) return;
-        block.flavorId = data.flavorId;
-        TransporterBlock transporter = block as TransporterBlock;
-        if (transporter != null && data.routeSteps != null)
-        {
-            transporter.routeSteps = (string[])data.routeSteps.Clone();
-        }
-
-        if (block.blockType == BlockType.Transporter && inventory != null)
-        {
-            BlockInventoryEntry entry = inventory.FindEntry(block.blockType, block.flavorId, transporter != null ? transporter.routeSteps : data.routeSteps, data.inventoryKey);
-            if (entry != null)
-            {
-                block.inventoryKey = inventory.GetInventoryKey(entry);
-                return;
-            }
-        }
-
-        block.inventoryKey = data.inventoryKey;
-    }
 
     private List<LevelData.KeyStateData> CaptureKeyStates()
     {
@@ -1596,10 +1028,10 @@ public class GridManager : MonoBehaviour
         }
 
         // Draw cursor position
-        if (Application.isPlaying)
+        if (Application.isPlaying && gridCursorManager != null)
         {
             Gizmos.color = Color.cyan;
-            Vector3 cursorPos = IndexToWorldPosition(currentCursorIndex);
+            Vector3 cursorPos = IndexToWorldPosition(gridCursorManager.CurrentCursorIndex);
             cursorPos.z += cellSize * 0.5f; // Visualize block volume at placement depth
             Gizmos.DrawWireCube(cursorPos, Vector3.one * cellSize);
         }
