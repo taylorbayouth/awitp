@@ -69,7 +69,7 @@ public class LemPlacementManager : MonoBehaviour
     {
         if (coordinateSystem == null || !coordinateSystem.IsValidIndex(gridIndex))
         {
-            DebugLog.LogWarning($"[LemPlacementManager] Invalid grid index: {gridIndex}");
+            Debug.LogWarning($"[LemPlacementManager] Invalid grid index: {gridIndex}");
             return null;
         }
 

@@ -30,7 +30,7 @@ public class ServiceRegistry : MonoBehaviour
         }
         else if (_instance != this)
         {
-            DebugLog.LogWarning("[ServiceRegistry] Duplicate instance destroyed");
+            Debug.LogWarning("[ServiceRegistry] Duplicate instance destroyed");
             Destroy(gameObject);
         }
     }
@@ -45,7 +45,7 @@ public class ServiceRegistry : MonoBehaviour
     {
         if (_instance == null)
         {
-            DebugLog.LogWarning($"[ServiceRegistry] No instance exists, creating one");
+            Debug.LogWarning($"[ServiceRegistry] No instance exists, creating one");
             GameObject registryGO = new GameObject("ServiceRegistry");
             _instance = registryGO.AddComponent<ServiceRegistry>();
         }
@@ -75,7 +75,7 @@ public class ServiceRegistry : MonoBehaviour
         }
         else
         {
-            DebugLog.LogWarning($"[ServiceRegistry] Service {serviceType.Name} not found in scene");
+            Debug.LogWarning($"[ServiceRegistry] Service {serviceType.Name} not found in scene");
         }
 
         return found;
@@ -91,13 +91,13 @@ public class ServiceRegistry : MonoBehaviour
     {
         if (service == null)
         {
-            DebugLog.LogWarning($"[ServiceRegistry] Cannot register null service of type {typeof(T).Name}");
+            Debug.LogWarning($"[ServiceRegistry] Cannot register null service of type {typeof(T).Name}");
             return;
         }
 
         if (_instance == null)
         {
-            DebugLog.LogWarning($"[ServiceRegistry] No instance exists when registering {typeof(T).Name}");
+            Debug.LogWarning($"[ServiceRegistry] No instance exists when registering {typeof(T).Name}");
             GameObject registryGO = new GameObject("ServiceRegistry");
             _instance = registryGO.AddComponent<ServiceRegistry>();
         }

@@ -76,14 +76,14 @@ public class BlockPlacementManager : MonoBehaviour
             // Check 1: Valid grid index (instant)
             if (!coordinateSystem.IsValidIndex(gridIndex))
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place block: Invalid grid index {gridIndex}");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place block: Invalid grid index {gridIndex}");
                 return null;
             }
 
             // Check 2: Transporter path conflict (fast dictionary lookup)
             if (IsIndexBlockedByTransporterPath(gridIndex))
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Transporter path reserved");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Transporter path reserved");
                 return null;
             }
 
@@ -92,7 +92,7 @@ public class BlockPlacementManager : MonoBehaviour
             {
                 if (IsGridSpaceOccupied(gridIndex))
                 {
-                    DebugLog.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Space already occupied");
+                    Debug.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Space already occupied");
                     return null;
                 }
 
@@ -103,7 +103,7 @@ public class BlockPlacementManager : MonoBehaviour
                 // Check if route goes outside grid bounds
                 if (!IsTransporterRouteWithinBounds(gridIndex, routeSteps))
                 {
-                    DebugLog.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Route path goes outside grid bounds");
+                    Debug.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Route path goes outside grid bounds");
                     return null;
                 }
 
@@ -111,7 +111,7 @@ public class BlockPlacementManager : MonoBehaviour
                 List<int> routeIndices = BuildTransporterPathIndices(gridIndex, routeSteps);
                 if (routeIndices.Count > 0 && HasBlocksOnIndices(routeIndices))
                 {
-                    DebugLog.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Route path blocked by existing block");
+                    Debug.LogWarning($"[BlockPlacementManager] Cannot place Transporter at index {gridIndex}: Route path blocked by existing block");
                     return null;
                 }
             }
@@ -119,14 +119,14 @@ public class BlockPlacementManager : MonoBehaviour
             // Check 3: Space must be marked as placeable
             if (!IsSpacePlaceable(gridIndex))
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Space not marked as placeable");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Space not marked as placeable");
                 return null;
             }
 
             // Check 4: No permanent blocks
             if (IsPermanentBlockAtIndex(gridIndex))
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Permanent block present");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place {blockType} at index {gridIndex}: Permanent block present");
                 return null;
             }
 
@@ -136,13 +136,13 @@ public class BlockPlacementManager : MonoBehaviour
 
             if (inventory != null && resolvedEntry == null)
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place {blockType}: No inventory entry configured");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place {blockType}: No inventory entry configured");
                 return null;
             }
 
             if (inventory != null && resolvedEntry != null && !inventory.CanPlaceEntry(resolvedEntry))
             {
-                DebugLog.LogWarning($"[BlockPlacementManager] Cannot place {resolvedEntry.GetDisplayName()}: No blocks remaining in inventory");
+                Debug.LogWarning($"[BlockPlacementManager] Cannot place {resolvedEntry.GetDisplayName()}: No blocks remaining in inventory");
                 return null;
             }
 
@@ -206,7 +206,7 @@ public class BlockPlacementManager : MonoBehaviour
     {
         if (entry == null)
         {
-            DebugLog.LogWarning("[BlockPlacementManager] Cannot place block: inventory entry is null");
+            Debug.LogWarning("[BlockPlacementManager] Cannot place block: inventory entry is null");
             return null;
         }
 
@@ -221,13 +221,13 @@ public class BlockPlacementManager : MonoBehaviour
     {
         if (!coordinateSystem.IsValidIndex(gridIndex))
         {
-            DebugLog.LogWarning($"[BlockPlacementManager] Invalid grid index: {gridIndex}");
+            Debug.LogWarning($"[BlockPlacementManager] Invalid grid index: {gridIndex}");
             return null;
         }
 
         if (IsIndexBlockedByTransporterPath(gridIndex))
         {
-            DebugLog.LogWarning($"[BlockPlacementManager] Cannot place permanent block at index {gridIndex}: transporter path reserved");
+            Debug.LogWarning($"[BlockPlacementManager] Cannot place permanent block at index {gridIndex}: transporter path reserved");
             return null;
         }
 
@@ -263,7 +263,7 @@ public class BlockPlacementManager : MonoBehaviour
     {
         if (entry == null)
         {
-            DebugLog.LogWarning("[BlockPlacementManager] Cannot place permanent block: inventory entry is null");
+            Debug.LogWarning("[BlockPlacementManager] Cannot place permanent block: inventory entry is null");
             return null;
         }
 

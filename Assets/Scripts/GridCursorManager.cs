@@ -83,14 +83,14 @@ public class GridCursorManager : MonoBehaviour
     {
         if (coordinateSystem == null)
         {
-            DebugLog.LogWarning("[GridCursorManager] Cannot move cursor - coordinate system not initialized");
+            Debug.LogWarning("[GridCursorManager] Cannot move cursor - coordinate system not initialized");
             return;
         }
 
         // Validate grid dimensions before cursor movement
         if (coordinateSystem.GridWidth <= 0 || coordinateSystem.GridHeight <= 0)
         {
-            DebugLog.LogWarning("[GridCursorManager] Cannot move cursor - invalid grid dimensions");
+            Debug.LogWarning("[GridCursorManager] Cannot move cursor - invalid grid dimensions");
             return;
         }
 
@@ -114,7 +114,7 @@ public class GridCursorManager : MonoBehaviour
     {
         if (coordinateSystem == null || !coordinateSystem.IsValidIndex(index))
         {
-            DebugLog.LogWarning($"[GridCursorManager] Invalid cursor index: {index}");
+            Debug.LogWarning($"[GridCursorManager] Invalid cursor index: {index}");
             return;
         }
 

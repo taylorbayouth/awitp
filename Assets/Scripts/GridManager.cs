@@ -342,7 +342,7 @@ public class GridManager : MonoBehaviour
         LevelData snapshot = lemPlacementManager.GetPlayModeSnapshot();
         if (snapshot == null)
         {
-            DebugLog.LogWarning("[GridManager] No play mode snapshot found to restore");
+            Debug.LogWarning("[GridManager] No play mode snapshot found to restore");
             return;
         }
 

@@ -183,7 +183,7 @@ public class CameraSetup : MonoBehaviour
         // Validate aspect ratio to prevent division by zero or invalid values
         if (aspect <= 0 || float.IsNaN(aspect) || float.IsInfinity(aspect))
         {
-            DebugLog.LogWarning("Invalid camera aspect ratio, using fallback 16:9");
+            Debug.LogWarning("Invalid camera aspect ratio, using fallback 16:9");
             aspect = 16f / 9f;
         }
 

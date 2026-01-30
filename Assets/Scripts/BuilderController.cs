@@ -389,7 +389,7 @@ public class BuilderController : MonoBehaviour
         // L key to place Lem or turn it around if already exists
         if (Input.GetKeyDown(KeyCode.L))
         {
-            int cursorIndex = GridManager.Instance.currentCursorIndex;
+            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             GridManager.Instance.PlaceLem(cursorIndex);
         }
     }
