@@ -50,13 +50,6 @@ public class BaseBlock : MonoBehaviour
     // Cached original color for restoring after highlight
     private Color originalColor;
 
-    [Header("Visuals")]
-    [Tooltip("Optional visual root for mesh rendering (created automatically if missing)")]
-    [SerializeField] private Transform visualRoot;
-
-    [Tooltip("Auto-normalize visual mesh to fit within one grid cell")]
-    [SerializeField] private bool autoNormalizeVisualScale = true;
-
     // Cached renderer component for performance
     private Renderer blockRenderer;
 
@@ -144,7 +137,12 @@ public class BaseBlock : MonoBehaviour
             DebugLog.Info($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
-        EnsureVisualRoot();
+        // Cache renderer reference for highlighting
+        blockRenderer = GetComponent<Renderer>();
+        if (blockRenderer != null && blockRenderer.material != null)
+        {
+            originalColor = blockRenderer.material.color;
+        }
     }
 
     /// <summary>
@@ -230,7 +228,7 @@ public class BaseBlock : MonoBehaviour
             rb.useGravity = false;  // No gravity for wall blocks
 
             // Apply color based on block type
-            Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
+            Renderer renderer = blockObj.GetComponent<Renderer>();
             if (renderer != null)
             {
                 // Ensure renderer has at least one material
@@ -362,121 +360,6 @@ public class BaseBlock : MonoBehaviour
         return Instantiate(prefab);
     }
 
-    private void EnsureVisualRoot()
-    {
-        if (visualRoot == null)
-        {
-            visualRoot = transform.Find("Visual");
-        }
-
-        if (visualRoot == null)
-        {
-            GameObject visualObj = new GameObject("Visual");
-            visualObj.transform.SetParent(transform, false);
-            visualRoot = visualObj.transform;
-        }
-
-        MeshFilter rootMesh = GetComponent<MeshFilter>();
-        MeshRenderer rootRenderer = GetComponent<MeshRenderer>();
-
-        // If root has no valid mesh, add a cube as fallback
-        if (rootMesh == null || rootMesh.sharedMesh == null)
-        {
-            if (rootMesh == null)
-            {
-                rootMesh = gameObject.AddComponent<MeshFilter>();
-            }
-            // Use Unity's built-in cube mesh
-            rootMesh.sharedMesh = Resources.GetBuiltinResource<Mesh>("Cube.fbx");
-            Debug.LogWarning($"[BaseBlock] {gameObject.name} missing mesh, added cube fallback");
-        }
-
-        MeshFilter visualMesh = visualRoot.GetComponent<MeshFilter>();
-        MeshRenderer visualRenderer = visualRoot.GetComponent<MeshRenderer>();
-
-        if (visualMesh == null && rootMesh != null)
-        {
-            visualMesh = visualRoot.gameObject.AddComponent<MeshFilter>();
-            visualMesh.sharedMesh = rootMesh.sharedMesh;
-        }
-
-        if (visualRenderer == null && rootRenderer != null)
-        {
-            visualRenderer = visualRoot.gameObject.AddComponent<MeshRenderer>();
-            visualRenderer.sharedMaterials = rootRenderer.sharedMaterials;
-            visualRenderer.enabled = true;
-        }
-
-        // Only disable root renderer if Visual has both mesh and renderer
-        bool visualHasValidSetup = (visualMesh != null && visualMesh.sharedMesh != null && visualRenderer != null);
-        if (rootRenderer != null && visualRenderer != null && visualHasValidSetup)
-        {
-            rootRenderer.enabled = false;
-        }
-        else if (rootRenderer != null && !visualHasValidSetup)
-        {
-            // Keep root renderer enabled if Visual setup is incomplete
-            rootRenderer.enabled = true;
-            Debug.LogWarning($"[BaseBlock] {gameObject.name} using root renderer (Visual setup incomplete)");
-        }
-
-        if (autoNormalizeVisualScale && visualMesh != null && visualMesh.sharedMesh != null)
-        {
-            Bounds bounds = visualMesh.sharedMesh.bounds;
-            float maxSize = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
-            if (maxSize > 0f)
-            {
-                visualRoot.localScale = Vector3.one * (1f / maxSize);
-            }
-        }
-
-        blockRenderer = visualRoot.GetComponent<Renderer>();
-        if (blockRenderer == null)
-        {
-            blockRenderer = GetComponent<Renderer>();
-        }
-
-        if (blockRenderer != null)
-        {
-            // Ensure renderer is enabled
-            blockRenderer.enabled = true;
-
-            // Check if material needs to be created/fixed
-            bool needsNewMaterial = blockRenderer.sharedMaterials == null ||
-                                   blockRenderer.sharedMaterials.Length == 0 ||
-                                   blockRenderer.sharedMaterial == null ||
-                                   blockRenderer.sharedMaterial.shader == null;
-
-            if (needsNewMaterial)
-            {
-                // Try multiple shader fallbacks for compatibility
-                Shader shader = Shader.Find("Universal Render Pipeline/Lit") ??
-                               Shader.Find("Standard") ??
-                               Shader.Find("Diffuse");
-
-                if (shader == null)
-                {
-                    Debug.LogError($"[BaseBlock] No shader found for {gameObject.name}!");
-                }
-                else
-                {
-                    Material defaultMat = new Material(shader);
-                    Color blockColor = BlockColors.GetColorForBlockType(blockType);
-                    defaultMat.color = blockColor;
-                    blockRenderer.material = defaultMat;
-                    originalColor = blockColor;
-                }
-            }
-            else
-            {
-                originalColor = blockRenderer.material.color;
-            }
-        }
-        else
-        {
-            Debug.LogWarning($"[BaseBlock] No Renderer component found on block {gameObject.name}. Highlighting will not work.");
-        }
-    }
 
     /// <summary>
     /// Destroys this block and returns it to inventory if applicable.
