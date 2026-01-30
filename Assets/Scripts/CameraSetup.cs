@@ -180,6 +180,13 @@ public class CameraSetup : MonoBehaviour
 
         float aspect = targetCamera.aspect;
 
+        // Validate aspect ratio to prevent division by zero or invalid values
+        if (aspect <= 0 || float.IsNaN(aspect) || float.IsInfinity(aspect))
+        {
+            DebugLog.LogWarning("Invalid camera aspect ratio, using fallback 16:9");
+            aspect = 16f / 9f;
+        }
+
         // Orthographic size is half the vertical view height
         // We need to fit the grid width OR height, whichever requires more zoom
         float heightNeeded = gridWorldHeight / 2f;

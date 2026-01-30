@@ -32,6 +32,13 @@ public static class LevelSaveSystem
     /// </summary>
     private static string GetLevelFilePath(string levelName)
     {
+        // Defensive validation - ensure levelName is not null/empty
+        if (string.IsNullOrEmpty(levelName))
+        {
+            Debug.LogWarning("GetLevelFilePath called with null/empty levelName, using default");
+            levelName = DEFAULT_LEVEL_NAME;
+        }
+
         string fileName = levelName + FILE_EXTENSION;
         return Path.Combine(GetSaveFolderPath(), fileName);
     }
@@ -84,6 +91,14 @@ public static class LevelSaveSystem
 
             string json = File.ReadAllText(filePath);
             LevelData levelData = JsonUtility.FromJson<LevelData>(json);
+
+            // Validate deserialization succeeded
+            if (levelData == null || levelData.gridWidth <= 0)
+            {
+                Debug.LogError($"Failed to deserialize level data from {filePath}");
+                return null;
+            }
+
             return levelData;
         }
         catch (System.Exception e)

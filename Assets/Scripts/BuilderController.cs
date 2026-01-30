@@ -44,7 +44,12 @@ public class BuilderController : MonoBehaviour
         if (blockInventory == null) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
-        if (entries == null || entries.Count == 0) return;
+        if (entries == null || entries.Count == 0)
+        {
+            currentInventoryIndex = -1;
+            currentInventoryEntry = null;
+            return;
+        }
 
         currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
         currentInventoryEntry = entries[currentInventoryIndex];
@@ -118,6 +123,14 @@ public class BuilderController : MonoBehaviour
         }
         else
         {
+            // Defensive check: ensure entries is not empty before accessing
+            if (entries.Count == 0)
+            {
+                currentInventoryIndex = -1;
+                currentInventoryEntry = null;
+                return;
+            }
+
             currentInventoryIndex = Mathf.Clamp(currentInventoryIndex, 0, entries.Count - 1);
             currentInventoryEntry = entries[currentInventoryIndex];
             if (currentInventoryEntry != null)
