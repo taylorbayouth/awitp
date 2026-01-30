@@ -137,8 +137,8 @@ public class BaseBlock : MonoBehaviour
             DebugLog.Info($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
-        // Cache renderer reference for highlighting
-        blockRenderer = GetComponent<Renderer>();
+        // Cache renderer reference for highlighting (check root and children)
+        blockRenderer = GetComponentInChildren<Renderer>();
         if (blockRenderer != null && blockRenderer.material != null)
         {
             originalColor = blockRenderer.material.color;
@@ -227,8 +227,8 @@ public class BaseBlock : MonoBehaviour
             rb.isKinematic = true;  // Block should not be affected by physics
             rb.useGravity = false;  // No gravity for wall blocks
 
-            // Apply color based on block type
-            Renderer renderer = blockObj.GetComponent<Renderer>();
+            // Apply color based on block type (check root and children)
+            Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
             if (renderer != null)
             {
                 // Ensure renderer has at least one material
@@ -252,6 +252,9 @@ public class BaseBlock : MonoBehaviour
                 Debug.LogWarning($"[BaseBlock] No Renderer found on {type} block. Block will be invisible.");
             }
 
+            // Scale block to fit grid cell if needed
+            NormalizeBlockScale(blockObj, gridIndex);
+
             DebugLog.Info($"[BaseBlock] Successfully instantiated {type} block at grid index {gridIndex}");
             return block;
         }
@@ -260,6 +263,35 @@ public class BaseBlock : MonoBehaviour
             Debug.LogError($"[BaseBlock] Failed to instantiate {type} block at grid index {gridIndex}: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Scales the block to fit within one grid cell while maintaining aspect ratio.
+    /// </summary>
+    private static void NormalizeBlockScale(GameObject blockObj, int gridIndex)
+    {
+        if (GridManager.Instance == null) return;
+
+        MeshFilter meshFilter = blockObj.GetComponentInChildren<MeshFilter>();
+        if (meshFilter == null || meshFilter.sharedMesh == null) return;
+
+        // Get the mesh bounds in local space
+        Bounds meshBounds = meshFilter.sharedMesh.bounds;
+
+        // Calculate the maximum dimension of the mesh
+        float maxMeshSize = Mathf.Max(meshBounds.size.x, meshBounds.size.y, meshBounds.size.z);
+        if (maxMeshSize <= 0f) return;
+
+        // Get grid cell size
+        float cellSize = GridManager.Instance.cellSize;
+
+        // Calculate scale factor to fit mesh within one cell
+        float scaleFactor = cellSize / maxMeshSize;
+
+        // Apply uniform scale to the entire block
+        blockObj.transform.localScale = Vector3.one * scaleFactor;
+
+        DebugLog.Info($"[BaseBlock] Normalized block scale: maxMeshSize={maxMeshSize}, cellSize={cellSize}, scaleFactor={scaleFactor}");
     }
 
     /// <summary>
