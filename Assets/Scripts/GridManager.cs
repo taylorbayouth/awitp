@@ -1065,7 +1065,7 @@ public class GridManager : MonoBehaviour
         }
 
         // Draw cursor position
-        if (Application.isPlaying && gridCursorManager != null)
+        if (Application.isPlaying && gridCursorManager != null && coordinateSystem != null)
         {
             Gizmos.color = Color.cyan;
             Vector3 cursorPos = IndexToWorldPosition(gridCursorManager.CurrentCursorIndex);
