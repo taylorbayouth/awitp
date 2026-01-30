@@ -558,6 +558,12 @@ public class GridManager : MonoBehaviour
         {
             Debug.LogWarning("[GridManager] placeableSpaces size mismatch. Reinitializing to match grid dimensions.");
             InitializePlaceableSpaces();
+
+            // Update BlockPlacementManager's reference to the new array
+            if (blockPlacementManager != null)
+            {
+                blockPlacementManager.UpdatePlaceableSpacesReference(placeableSpaces);
+            }
         }
     }
 
@@ -710,6 +716,13 @@ public class GridManager : MonoBehaviour
 
             CalculateGridOrigin();
             InitializePlaceableSpaces();
+
+            // Update BlockPlacementManager's reference to the new array
+            if (blockPlacementManager != null)
+            {
+                blockPlacementManager.UpdatePlaceableSpacesReference(placeableSpaces);
+            }
+
             RefreshGrid();
 
             // Cursor automatically handles dimension changes through coordinate system

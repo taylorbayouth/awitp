@@ -51,6 +51,16 @@ public class BlockPlacementManager : MonoBehaviour
         DebugLog.Info("[BlockPlacementManager] Initialized");
     }
 
+    /// <summary>
+    /// Updates the placeable spaces array reference.
+    /// Must be called when GridManager recreates the array (level load, grid resize).
+    /// </summary>
+    public void UpdatePlaceableSpacesReference(bool[] newPlaceableSpaces)
+    {
+        this.placeableSpaces = newPlaceableSpaces;
+        DebugLog.Info("[BlockPlacementManager] Placeable spaces reference updated");
+    }
+
     #region Block Placement
 
     /// <summary>
