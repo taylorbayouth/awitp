@@ -69,8 +69,8 @@ MonoBehaviour:
   blobCount: 83
   edgeBlobCount: 30
   cornerBlobCount: 16
-  minSize: 0.2
-  maxSize: 0.545
+  minSize: 0.15
+  maxSize: 0.5
   edgeBlobSize: 0.1
   cornerBlobSize: 0.1
   squashProbability: 0.357
@@ -93,6 +93,6 @@ MonoBehaviour:
   edgeBrightness: 0.3
   waveSpeed: 0.49
   waveScale: 4.21
-  waveAmount: 0.0769
+  waveAmount: 0.0868
   pulseSpeed: 0.3
-  pulseAmount: 0.0252
+  pulseAmount: 0.0348
