@@ -66,6 +66,10 @@ MonoBehaviour:
   size: 13.18
   depth: -0.001
   sortingOrder: 1
+  emissionStrength: 1
+  wiggleAmount: 0
+  wiggleSpeed: 0
+  wiggleFrequency: 0
 --- !u!120 &1964571051790379675
 LineRenderer:
   serializedVersion: 3

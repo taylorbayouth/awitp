@@ -12,6 +12,16 @@ public class BorderRenderer : MonoBehaviour
     public float depth = 0f;
     public int sortingOrder = 0;
 
+    [Header("Glow & Animation Settings")]
+    [Range(1f, 3f)]
+    public float emissionStrength = 1.5f;
+    [Range(0f, 0.2f)]
+    public float wiggleAmount = 0.03f;
+    [Range(0f, 10f)]
+    public float wiggleSpeed = 2.0f;
+    [Range(0f, 30f)]
+    public float wiggleFrequency = 10.0f;
+
     private LineRenderer lineRenderer;
     private Material material;
 
@@ -33,8 +43,9 @@ public class BorderRenderer : MonoBehaviour
             lineRenderer = gameObject.AddComponent<LineRenderer>();
         }
 
-        // Create unique material instance
-        Shader shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
+        // Create unique material instance with custom cursor glow shader
+        Shader shader = Shader.Find("Custom/CursorGlow");
+        if (shader == null) shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
         if (shader == null) shader = Shader.Find("Sprites/Default");
 
         material = new Material(shader);
@@ -62,6 +73,24 @@ public class BorderRenderer : MonoBehaviour
 
         lineRenderer.positionCount = 4;
         lineRenderer.SetPositions(corners);
+
+        // Apply shader properties
+        UpdateShaderProperties();
+    }
+
+    private void UpdateShaderProperties()
+    {
+        if (material == null) return;
+
+        // Set shader properties if they exist
+        if (material.HasProperty("_EmissionStrength"))
+            material.SetFloat("_EmissionStrength", emissionStrength);
+        if (material.HasProperty("_WiggleAmount"))
+            material.SetFloat("_WiggleAmount", wiggleAmount);
+        if (material.HasProperty("_WiggleSpeed"))
+            material.SetFloat("_WiggleSpeed", wiggleSpeed);
+        if (material.HasProperty("_WiggleFrequency"))
+            material.SetFloat("_WiggleFrequency", wiggleFrequency);
     }
 
     public void SetColor(Color newColor)
@@ -87,4 +116,12 @@ public class BorderRenderer : MonoBehaviour
     {
         if (material != null) Destroy(material);
     }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        // Update shader properties when values change in inspector
+        UpdateShaderProperties();
+    }
+#endif
 }
