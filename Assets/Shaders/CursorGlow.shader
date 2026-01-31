@@ -1,3 +1,6 @@
+// CursorGlow Shader
+// Adds animated glow and wiggle effects to the grid cursor border
+// Preserves vertex colors (red/green/blue) while adding visual enhancements
 Shader "Custom/CursorGlow"
 {
     Properties
@@ -11,9 +14,9 @@ Shader "Custom/CursorGlow"
     {
         Tags { "RenderType"="Transparent" "Queue"="Transparent" }
         LOD 100
-        Blend SrcAlpha OneMinusSrcAlpha
-        ZWrite Off
-        Cull Off
+        Blend SrcAlpha OneMinusSrcAlpha  // Standard alpha blending
+        ZWrite Off   // Don't write to depth buffer (for transparency)
+        Cull Off     // Render both sides
 
         Pass
         {
@@ -22,12 +25,14 @@ Shader "Custom/CursorGlow"
             #pragma fragment frag
             #include "UnityCG.cginc"
 
+            // Input from mesh
             struct appdata
             {
                 float4 vertex : POSITION;
-                float4 color : COLOR;
+                float4 color : COLOR;      // Vertex color from LineRenderer
             };
 
+            // Output from vertex shader to fragment shader
             struct v2f
             {
                 float4 vertex : SV_POSITION;
@@ -35,11 +40,13 @@ Shader "Custom/CursorGlow"
                 float3 worldPos : TEXCOORD0;
             };
 
+            // Shader properties (set from C# script)
             float _EmissionStrength;
             float _WiggleAmount;
             float _WiggleSpeed;
             float _WiggleFrequency;
 
+            // Vertex Shader: animates vertices to create wiggle effect
             v2f vert (appdata v)
             {
                 v2f o;
@@ -47,29 +54,33 @@ Shader "Custom/CursorGlow"
                 float time = _Time.y * _WiggleSpeed;
                 float3 localPos = v.vertex.xyz;
 
-                // Create wiggle along the line perimeter
+                // Create smooth wiggle using two layered sine waves
+                // Primary wiggle: travels along the border perimeter
                 float wiggle = sin(length(localPos.xy) * _WiggleFrequency + time) * _WiggleAmount;
+                // Secondary wiggle: adds organic variation (different frequency and phase)
                 wiggle += sin(length(localPos.xy) * _WiggleFrequency * 2.3 + time * 1.7) * _WiggleAmount * 0.5;
 
-                // Apply wiggle perpendicular to the border (radial direction from center)
+                // Apply wiggle perpendicular to the border (radial outward/inward)
                 float2 dir = normalize(localPos.xy);
                 v.vertex.xy += dir * wiggle;
 
+                // Transform to clip space
                 o.vertex = UnityObjectToClipPos(v.vertex);
-                o.color = v.color;
+                o.color = v.color;  // Pass through vertex color
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
                 return o;
             }
 
+            // Fragment Shader: applies glow and pulse effects
             fixed4 frag (v2f i) : SV_Target
             {
-                // Use vertex color from LineRenderer (preserves red/green/blue colors)
+                // Start with vertex color (red/green/blue from BorderRenderer)
                 fixed4 col = i.color;
 
-                // Add glow/emission
+                // Brighten for glow effect
                 col.rgb *= _EmissionStrength;
 
-                // Gentle pulse
+                // Gentle pulse animation (15% variation around 85% brightness)
                 float pulse = sin(_Time.y * 2.0) * 0.15 + 0.85;
                 col.rgb *= pulse;
 
