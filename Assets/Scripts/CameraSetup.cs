@@ -14,14 +14,10 @@ public class CameraSetup : MonoBehaviour
     [Tooltip("The camera to configure (defaults to Main Camera if not set)")]
     public Camera targetCamera;
 
-    [Header("Camera Mode")]
-    [Tooltip("Use orthographic (true) or perspective (false) projection")]
-    public bool useOrthographic = false;
-
     [Header("Perspective Settings")]
     [Tooltip("Field of view for perspective camera (in degrees)")]
     [Range(20f, 120f)]
-    public float fieldOfView = 60f;
+    public float fieldOfView = 45f;
 
     [Tooltip("Near clipping plane distance")]
     [Range(0.01f, 10f)]
@@ -31,16 +27,12 @@ public class CameraSetup : MonoBehaviour
     [Range(10f, 1000f)]
     public float farClipPlane = 100f;
 
-    [Header("Camera Position")]
-    [Tooltip("Distance from grid along -Z axis")]
-    [Range(5f, 50f)]
-    public float distanceFromGrid = 15f;
-
-    [Tooltip("Vertical offset (moves camera up/down)")]
+    [Header("Camera Offsets")]
+    [Tooltip("Vertical offset from grid center (moves camera up/down)")]
     [Range(-20f, 20f)]
-    public float topMarginOffset = 0f;
+    public float verticalOffset = 0f;
 
-    [Tooltip("Horizontal offset (moves camera left/right)")]
+    [Tooltip("Horizontal offset from grid center (moves camera left/right)")]
     [Range(-20f, 20f)]
     public float horizontalOffset = 0f;
 
@@ -54,13 +46,13 @@ public class CameraSetup : MonoBehaviour
     public float panAngle = 0f;
 
     [Header("Framing Settings")]
-    [Tooltip("Extra space around grid as percentage (0.0 = tight fit, 1.0 = 2x grid size)")]
-    [Range(0f, 2f)]
-    public float paddingPercent = 0.15f;
+    [Tooltip("Fixed margin around grid in world units (e.g., 1.0 = 1 unit of space on all sides)")]
+    [Range(0f, 5f)]
+    public float gridMargin = 1.0f;
 
-    [Tooltip("Minimum orthographic size (prevents over-zooming on small grids)")]
-    [Range(1f, 10f)]
-    public float minOrthographicSize = 3f;
+    [Tooltip("Minimum distance from grid (prevents camera getting too close)")]
+    [Range(5f, 50f)]
+    public float minDistance = 8f;
 
     [Header("Auto-Update")]
     [Tooltip("Automatically update camera when these values change in the Inspector")]
@@ -99,6 +91,35 @@ public class CameraSetup : MonoBehaviour
     }
 
     #if UNITY_EDITOR
+    private float lastFieldOfView;
+    private float lastGridMargin;
+    private float lastVerticalOffset;
+    private float lastHorizontalOffset;
+
+    private void LateUpdate()
+    {
+        // In editor play mode, detect changes and auto-refresh
+        if (Application.isPlaying && autoUpdateInEditor)
+        {
+            bool settingsChanged =
+                lastFieldOfView != fieldOfView ||
+                lastGridMargin != gridMargin ||
+                lastVerticalOffset != verticalOffset ||
+                lastHorizontalOffset != horizontalOffset;
+
+            if (settingsChanged)
+            {
+                SetupCamera();
+                lastFieldOfView = fieldOfView;
+                lastGridMargin = gridMargin;
+                lastVerticalOffset = verticalOffset;
+                lastHorizontalOffset = horizontalOffset;
+            }
+        }
+    }
+    #endif
+
+    #if UNITY_EDITOR
     /// <summary>
     /// Called when values change in the Inspector (Editor only).
     /// Automatically updates camera if autoUpdateInEditor is enabled.
@@ -135,31 +156,25 @@ public class CameraSetup : MonoBehaviour
             return;
         }
 
-        // Set camera position with offsets
-        targetCamera.transform.position = new Vector3(horizontalOffset, topMarginOffset, -distanceFromGrid);
-
-        // Apply rotation (tilt and pan)
-        targetCamera.transform.rotation = Quaternion.Euler(tiltAngle, panAngle, 0f);
-
-        // Apply camera mode
-        targetCamera.orthographic = useOrthographic;
+        // Always use perspective
+        targetCamera.orthographic = false;
+        targetCamera.fieldOfView = fieldOfView;
 
         // Apply clipping planes
         targetCamera.nearClipPlane = nearClipPlane;
         targetCamera.farClipPlane = farClipPlane;
 
-        if (useOrthographic)
-        {
-            targetCamera.orthographicSize = CalculateOrthographicSize();
-            DebugLog.Info($"CameraSetup: Orthographic camera at {targetCamera.transform.position}, " +
-                      $"size={targetCamera.orthographicSize:F2}, padding={paddingPercent:F2}");
-        }
-        else
-        {
-            targetCamera.fieldOfView = fieldOfView;
-            DebugLog.Info($"CameraSetup: Perspective camera at {targetCamera.transform.position}, " +
-                      $"rotation=({tiltAngle:F1}°, {panAngle:F1}°, 0°), distance={distanceFromGrid:F2}, FOV={fieldOfView:F1}°");
-        }
+        // Calculate optimal distance to fit grid in view
+        float distance = CalculateCameraDistance();
+
+        // Set camera position with calculated distance and offsets
+        targetCamera.transform.position = new Vector3(horizontalOffset, verticalOffset, -distance);
+
+        // Apply rotation (tilt and pan)
+        targetCamera.transform.rotation = Quaternion.Euler(tiltAngle, panAngle, 0f);
+
+        DebugLog.Info($"CameraSetup: Perspective camera at {targetCamera.transform.position}, " +
+                  $"FOV={fieldOfView:F1}°, distance={distance:F2}, grid={gridManager.gridWidth}x{gridManager.gridHeight}");
     }
 
     private Vector3 CalculateGridCenter()
@@ -169,43 +184,54 @@ public class CameraSetup : MonoBehaviour
     }
 
     /// <summary>
-    /// Calculates the orthographic size needed to fit the entire grid with padding.
-    /// Accounts for aspect ratio to ensure grid fits both horizontally and vertically.
+    /// Calculates the camera distance needed to fit the entire grid with padding in perspective view.
+    /// Accounts for aspect ratio and FOV to ensure grid fits both horizontally and vertically.
     /// </summary>
-    /// <returns>Orthographic size value (half the vertical view height)</returns>
-    private float CalculateOrthographicSize()
+    /// <returns>Distance from grid center along -Z axis</returns>
+    private float CalculateCameraDistance()
     {
         float gridWorldWidth = gridManager.gridWidth * gridManager.cellSize;
         float gridWorldHeight = gridManager.gridHeight * gridManager.cellSize;
 
+        // Add fixed margins to grid dimensions (e.g., 1.0 unit margin on each side = +2.0 total)
+        gridWorldWidth += (gridMargin * 2f);
+        gridWorldHeight += (gridMargin * 2f);
+
         float aspect = targetCamera.aspect;
 
-        // Validate aspect ratio to prevent division by zero or invalid values
+        // Validate aspect ratio
         if (aspect <= 0 || float.IsNaN(aspect) || float.IsInfinity(aspect))
         {
             Debug.LogWarning("Invalid camera aspect ratio, using fallback 16:9");
             aspect = 16f / 9f;
         }
 
-        // Orthographic size is half the vertical view height
-        // We need to fit the grid width OR height, whichever requires more zoom
-        float heightNeeded = gridWorldHeight / 2f;
-        float widthNeeded = gridWorldWidth / (2f * aspect);
+        // Convert FOV to radians
+        float fovRadians = fieldOfView * Mathf.Deg2Rad;
 
-        // Use whichever dimension requires more space
-        float size = Mathf.Max(heightNeeded, widthNeeded);
+        // Calculate distance needed to fit grid height
+        // tan(fov/2) = (gridHeight/2) / distance
+        // distance = (gridHeight/2) / tan(fov/2)
+        float distanceForHeight = (gridWorldHeight / 2f) / Mathf.Tan(fovRadians / 2f);
 
-        // Apply padding as a multiplier (e.g., 0.15 = 15% extra space)
-        size *= (1f + paddingPercent);
+        // Calculate distance needed to fit grid width
+        // Account for aspect ratio: horizontal FOV = 2 * atan(tan(verticalFOV/2) * aspect)
+        float horizontalFovRadians = 2f * Mathf.Atan(Mathf.Tan(fovRadians / 2f) * aspect);
+        float distanceForWidth = (gridWorldWidth / 2f) / Mathf.Tan(horizontalFovRadians / 2f);
 
-        // Enforce minimum size to prevent extreme zoom on tiny grids
-        size = Mathf.Max(size, minOrthographicSize);
+        // Use whichever distance is larger (ensures both dimensions fit)
+        float distance = Mathf.Max(distanceForHeight, distanceForWidth);
 
-        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight}, " +
-                  $"aspect={aspect:F2}, heightNeeded={heightNeeded:F2}, widthNeeded={widthNeeded:F2}, " +
-                  $"padding={paddingPercent:F2}, final size={size:F2}");
+        // Enforce minimum distance
+        distance = Mathf.Max(distance, minDistance);
 
-        return size;
+        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight} " +
+                  $"({gridWorldWidth:F1}x{gridWorldHeight:F1} world units), " +
+                  $"aspect={aspect:F2}, FOV={fieldOfView:F1}°, " +
+                  $"distHeight={distanceForHeight:F2}, distWidth={distanceForWidth:F2}, " +
+                  $"final distance={distance:F2}");
+
+        return distance;
     }
 
     public void RefreshCamera()
@@ -221,17 +247,15 @@ public class CameraSetup : MonoBehaviour
     {
         return new LevelData.CameraSettings
         {
-            useOrthographic = useOrthographic,
             fieldOfView = fieldOfView,
             nearClipPlane = nearClipPlane,
             farClipPlane = farClipPlane,
-            distanceFromGrid = distanceFromGrid,
-            topMarginOffset = topMarginOffset,
+            verticalOffset = verticalOffset,
             horizontalOffset = horizontalOffset,
             tiltAngle = tiltAngle,
             panAngle = panAngle,
-            paddingPercent = paddingPercent,
-            minOrthographicSize = minOrthographicSize
+            gridMargin = gridMargin,
+            minDistance = minDistance
         };
     }
 
@@ -243,17 +267,15 @@ public class CameraSetup : MonoBehaviour
     {
         if (settings == null) return;
 
-        useOrthographic = settings.useOrthographic;
         fieldOfView = settings.fieldOfView;
         nearClipPlane = settings.nearClipPlane;
         farClipPlane = settings.farClipPlane;
-        distanceFromGrid = settings.distanceFromGrid;
-        topMarginOffset = settings.topMarginOffset;
+        verticalOffset = settings.verticalOffset;
         horizontalOffset = settings.horizontalOffset;
         tiltAngle = settings.tiltAngle;
         panAngle = settings.panAngle;
-        paddingPercent = settings.paddingPercent;
-        minOrthographicSize = settings.minOrthographicSize;
+        gridMargin = settings.gridMargin;
+        minDistance = settings.minDistance;
 
         SetupCamera();
     }

@@ -6,14 +6,11 @@ using UnityEngine;
 public class LockBlock : BaseBlock
 {
     [Header("Lock Visuals")]
-    [Tooltip("Color of the lock cube")]
-    [SerializeField] private Color lockColor = new Color(0.9f, 0.75f, 0.2f);
+    [Tooltip("Statue scale relative to grid cell size (0.8 = 80% of cell, same as Lem)")]
+    [SerializeField] private float statueScale = 0.8f;
 
-    [Tooltip("Lock cube scale relative to grid cell size")]
-    [SerializeField] private float lockScale = 0.2f;
-
-    [Tooltip("Local Y offset for the lock cube")]
-    [SerializeField] private float lockLocalYOffset = 0.55f;
+    [Tooltip("Additional Y offset adjustment to align statue base with block surface")]
+    [SerializeField] private float statueYOffset = 0f;
 
     [Tooltip("Local Y offset for the key when locked")]
     [SerializeField] private float keyLockYOffset = 0.75f;
@@ -67,33 +64,21 @@ public class LockBlock : BaseBlock
 
     private void EnsureLockVisual()
     {
-        if (lockTransform != null) return;
-
-        GameObject lockObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        lockObj.name = "Lock";
-        Destroy(lockObj.GetComponent<Collider>());
-        lockObj.transform.SetParent(transform, false);
-
-        Renderer renderer = lockObj.GetComponent<Renderer>();
-        if (renderer != null)
+        if (lockTransform == null)
         {
-            renderer.material.color = lockColor;
+            lockTransform = transform.Find("Statue");
         }
+        if (lockTransform == null) return;
 
-        lockTransform = lockObj.transform;
         float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
-        float worldScale = cellSize * lockScale;
-        ApplyLockTransform(lockTransform, Vector3.up * lockLocalYOffset * cellSize, worldScale);
-    }
+        float worldScale = cellSize * statueScale;
 
-    private static void ApplyLockTransform(Transform lockTr, Vector3 localPosition, float worldScale)
-    {
-        if (lockTr == null) return;
-        lockTr.localPosition = localPosition;
-        lockTr.localRotation = Quaternion.identity;
+        // Position statue so base aligns with block surface (mesh pivot is at center, so offset up by half)
+        lockTransform.localPosition = Vector3.up * (worldScale * 0.5f + statueYOffset);
+        lockTransform.localRotation = Quaternion.Euler(0f, -90f, 0f);
 
-        float parentScale = lockTr.parent != null ? lockTr.parent.lossyScale.x : 1f;
+        float parentScale = transform.lossyScale.x;
         float localScale = parentScale > 0f ? worldScale / parentScale : worldScale;
-        lockTr.localScale = Vector3.one * localScale;
+        lockTransform.localScale = Vector3.one * localScale;
     }
 }

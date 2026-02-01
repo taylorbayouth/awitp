@@ -23,7 +23,7 @@ public class TeleporterBlock : BaseBlock
 
     [Header("Label Settings")]
     public bool showTeleportLabel = true;
-    public Color labelColor = new Color(1f, 1f, 1f, 0.9f);
+    public Color labelColor = new Color(0f, 0f, 0f, 123f/255f);
     public float labelScale = 0.28f;
     public float labelZOffset = 0.01f;
 
@@ -316,10 +316,9 @@ public class TeleporterBlock : BaseBlock
         labelMesh.text = text;
         labelMesh.anchor = TextAnchor.MiddleCenter;
         labelMesh.alignment = TextAlignment.Center;
-        labelMesh.color = labelColor;
         labelMesh.fontStyle = FontStyle.Bold;
         labelMesh.fontSize = 200;
-        labelMesh.characterSize = 0.05f;
+        labelMesh.characterSize = 0.17f;
     }
 
     private void UpdateLabelTransform()
