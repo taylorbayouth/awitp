@@ -19,4 +19,12 @@ MonoBehaviour:
   gridWidth: 10
   gridHeight: 10
   cellSize: 1
-  levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 10,\n    \"cellSize\": 1.0,\n    \"blocks\": [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\": [],\n    \"placeableSpaceIndices\": [],\n    \"lems\": [],\n    \"keyStates\": [],\n    \"levelName\": \"The Daily Grind 1\",\n    \"saveTimestamp\": \"2026-01-28 12:13:57\"\n}"
+  levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 10,\n    \"cellSize\":
+    1.0,\n    \"cameraSettings\": {\n        \"fieldOfView\": 38.0,\n        \"nearClipPlane\":
+    0.30000001192092898,\n        \"farClipPlane\": 100.0,\n        \"verticalOffset\":
+    4.0,\n        \"horizontalOffset\": 0.0,\n        \"tiltAngle\": -30.0,\n       
+    \"panAngle\": 0.0,\n        \"gridMargin\": 1.0,\n        \"minDistance\": 8.0\n   
+    },\n    \"blocks\": [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\":
+    [],\n    \"placeableSpaceIndices\": [],\n    \"lems\": [],\n    \"keyStates\":
+    [],\n    \"levelName\": \"The Daily Grind 1\",\n    \"saveTimestamp\": \"2026-01-28
+    12:13:57\"\n}"
