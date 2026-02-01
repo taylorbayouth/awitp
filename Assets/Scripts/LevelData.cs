@@ -61,17 +61,22 @@ public class LevelData
     [Serializable]
     public class CameraSettings
     {
-        public bool useOrthographic = false;
-        public float fieldOfView = 60f;
+        // Perspective settings
+        public float fieldOfView = 45f;
         public float nearClipPlane = 0.3f;
         public float farClipPlane = 100f;
-        public float distanceFromGrid = 15f;
-        public float topMarginOffset = 0f;
+
+        // Camera offsets
+        public float verticalOffset = 0f;
         public float horizontalOffset = 0f;
+
+        // Camera rotation
         public float tiltAngle = 0f;
         public float panAngle = 0f;
-        public float paddingPercent = 0.15f;
-        public float minOrthographicSize = 3f;
+
+        // Framing settings
+        public float gridMargin = 1.0f;  // Fixed margin around grid in world units
+        public float minDistance = 8f;
     }
 
     // Grid settings

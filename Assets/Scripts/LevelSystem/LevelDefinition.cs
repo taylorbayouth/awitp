@@ -122,6 +122,28 @@ public class LevelDefinition : ScriptableObject
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
         UnityEditor.AssetDatabase.SaveAssets();
+
+        // Log detailed save information
+        Debug.Log($"<color=green>✓ SAVED '{levelName}' ({levelId})</color>");
+        Debug.Log($"  Grid: {data.gridWidth}x{data.gridHeight}, Cell Size: {data.cellSize}");
+        Debug.Log($"  Blocks: {data.blocks?.Count ?? 0} placed, {data.permanentBlocks?.Count ?? 0} permanent");
+        Debug.Log($"  Inventory: {data.inventoryEntries?.Count ?? 0} entries");
+        Debug.Log($"  Lems: {data.lems?.Count ?? 0}");
+        Debug.Log($"  Placeable Spaces: {data.placeableSpaceIndices?.Count ?? 0}");
+        Debug.Log($"  Key States: {data.keyStates?.Count ?? 0}");
+
+        // Log camera settings
+        if (data.cameraSettings != null)
+        {
+            var cam = data.cameraSettings;
+            Debug.Log($"  Camera: FOV={cam.fieldOfView:F1}°, MinDist={cam.minDistance:F1}, GridMargin={cam.gridMargin:F2}");
+            Debug.Log($"  Camera Offsets: Vertical={cam.verticalOffset:F2}, Horizontal={cam.horizontalOffset:F2}");
+            Debug.Log($"  Camera Rotation: Tilt={cam.tiltAngle:F1}°, Pan={cam.panAngle:F1}°");
+        }
+        else
+        {
+            Debug.LogWarning("  Camera: No camera settings saved");
+        }
 #endif
 
         return true;

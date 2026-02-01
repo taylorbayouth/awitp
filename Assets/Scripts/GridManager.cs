@@ -46,10 +46,19 @@ public class GridManager : MonoBehaviour
     private static PlaceableSpaceVisualizer _cachedPlaceableVisualizer;
     private static GridVisualizer _cachedGridVisualizer;
 
-    [Header("Grid Settings")]
-    public int gridWidth = 10;
-    public int gridHeight = 10;
-    public float cellSize = 1f;
+    [Header("Grid Settings (Read-Only - Set by Level Data)")]
+    [SerializeField, HideInInspector] private int _gridWidth = 10;
+    [SerializeField, HideInInspector] private int _gridHeight = 10;
+    [SerializeField, HideInInspector] private float _cellSize = 1f;
+
+    /// <summary>Grid width in cells. Set by level data when loading.</summary>
+    public int gridWidth => _gridWidth;
+
+    /// <summary>Grid height in cells. Set by level data when loading.</summary>
+    public int gridHeight => _gridHeight;
+
+    /// <summary>Size of each grid cell in world units. Set by level data when loading.</summary>
+    public float cellSize => _cellSize;
 
     [Header("Grid Origin (Auto-Calculated)")]
     [SerializeField] private Vector3 _gridOrigin = Vector3.zero;
@@ -145,6 +154,8 @@ public class GridManager : MonoBehaviour
     /// <summary>
     /// Performs additional setup after all Awake() methods have executed.
     /// Ensures camera is properly centered on the grid.
+    /// Note: If GameSceneInitializer is present, it will load the level and set up
+    /// the camera, so we skip initial camera setup here.
     /// </summary>
     private void Start()
     {
@@ -156,14 +167,22 @@ public class GridManager : MonoBehaviour
                 _cachedCameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
             }
 
-            if (_cachedCameraSetup != null)
+            // Check if a scene initializer is present - if so, let it handle camera setup
+            GameSceneInitializer sceneInitializer = UnityEngine.Object.FindAnyObjectByType<GameSceneInitializer>();
+
+            if (sceneInitializer == null && _cachedCameraSetup != null)
             {
+                // No level loader present, set up camera with current grid dimensions
                 _cachedCameraSetup.SetupCamera();
-                DebugLog.Info("[GridManager] Camera setup complete");
+                DebugLog.Info("[GridManager] Camera setup complete (no level loader detected)");
+            }
+            else if (_cachedCameraSetup == null)
+            {
+                Debug.LogWarning("[GridManager] No CameraSetup found in scene. Camera may not be positioned correctly.");
             }
             else
             {
-                Debug.LogWarning("[GridManager] No CameraSetup found in scene. Camera may not be positioned correctly.");
+                DebugLog.Info("[GridManager] Level loader detected, skipping initial camera setup (will be done after level loads)");
             }
         }
         catch (Exception ex)
@@ -712,9 +731,9 @@ public class GridManager : MonoBehaviour
 
         if (gridSizeChanged)
         {
-            gridWidth = levelData.gridWidth;
-            gridHeight = levelData.gridHeight;
-            cellSize = levelData.cellSize;
+            _gridWidth = levelData.gridWidth;
+            _gridHeight = levelData.gridHeight;
+            _cellSize = levelData.cellSize;
 
             // Update coordinate system with new dimensions
             coordinateSystem.UpdateDimensions(gridWidth, gridHeight, cellSize);

@@ -530,10 +530,15 @@ public class BuilderController : MonoBehaviour
                 return;
             }
 
+            Debug.Log("=== SAVING LEVEL DATA ===");
             LevelData levelData = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
             if (!levelManager.CurrentLevelDef.SaveFromLevelData(levelData))
             {
                 Debug.LogError("Failed to save level to LevelDefinition");
+            }
+            else
+            {
+                Debug.Log("=== SAVE COMPLETE ===");
             }
         }
 
