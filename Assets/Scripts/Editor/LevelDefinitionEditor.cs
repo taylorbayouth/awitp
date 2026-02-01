@@ -1,5 +1,7 @@
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEditor.SceneManagement;
 using System.Collections.Generic;
 
 [CustomEditor(typeof(LevelDefinition))]
@@ -48,6 +50,24 @@ public class LevelDefinitionEditor : Editor
         EditorGUILayout.PropertyField(levelNameProp, new GUIContent("Level Name", "Display name shown to players"));
         EditorGUILayout.PropertyField(worldIdProp, new GUIContent("World ID", "World this level belongs to"));
         EditorGUILayout.PropertyField(orderInWorldProp, new GUIContent("Order in World", "0-based order within the world"));
+
+        EditorGUILayout.Space();
+
+        // Visual Editor Section
+        EditorGUILayout.LabelField("Visual Level Editor", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox("Edit this level visually in the scene. Click 'Edit Level Visually' to load the level and enter play mode.", MessageType.Info);
+
+        EditorGUILayout.BeginHorizontal();
+
+        // Main edit button
+        GUI.backgroundColor = new Color(0.5f, 0.8f, 1f);
+        if (GUILayout.Button("Edit Level Visually", GUILayout.Height(35)))
+        {
+            EditLevelVisually();
+        }
+        GUI.backgroundColor = Color.white;
+
+        EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.Space();
 
@@ -390,5 +410,76 @@ public class LevelDefinitionEditor : Editor
         AssetDatabase.SaveAssets();
 
         Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight}, cell size {levelData.cellSize}");
+    }
+
+    private void EditLevelVisually()
+    {
+        LevelDefinition levelDef = (LevelDefinition)target;
+
+        // Save any pending changes first
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.SetDirty(target);
+        AssetDatabase.SaveAssets();
+
+        // Find the Master scene
+        string[] guids = AssetDatabase.FindAssets("t:Scene Master");
+        if (guids.Length == 0)
+        {
+            EditorUtility.DisplayDialog("Scene Not Found", "Could not find Master.unity scene. Make sure it exists in your project.", "OK");
+            return;
+        }
+
+        string scenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+
+        // Check if we need to save current scene
+        if (EditorSceneManager.GetActiveScene().isDirty)
+        {
+            if (!EditorUtility.DisplayDialog("Unsaved Changes",
+                "The current scene has unsaved changes. Do you want to save before switching scenes?",
+                "Save", "Don't Save"))
+            {
+                // User chose not to save, but we still need to continue
+            }
+            else
+            {
+                EditorSceneManager.SaveOpenScenes();
+            }
+        }
+
+        // Load Master scene
+        Scene masterScene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+
+        if (!masterScene.IsValid())
+        {
+            EditorUtility.DisplayDialog("Error", "Failed to load Master scene.", "OK");
+            return;
+        }
+
+        // Find or create GameSceneInitializer
+        GameSceneInitializer initializer = FindAnyObjectByType<GameSceneInitializer>();
+
+        if (initializer == null)
+        {
+            // Create a new GameObject with GameSceneInitializer
+            GameObject initObj = new GameObject("GameSceneInitializer");
+            initializer = initObj.AddComponent<GameSceneInitializer>();
+            Debug.Log("[LevelDefinitionEditor] Created new GameSceneInitializer in scene");
+        }
+
+        // Set the selected level
+        SerializedObject initializerSO = new SerializedObject(initializer);
+        SerializedProperty selectedLevelProp = initializerSO.FindProperty("selectedLevel");
+        selectedLevelProp.objectReferenceValue = levelDef;
+        initializerSO.ApplyModifiedProperties();
+
+        // Mark scene as dirty and save
+        EditorSceneManager.MarkSceneDirty(masterScene);
+        EditorSceneManager.SaveScene(masterScene);
+
+        // Enter play mode
+        Debug.Log($"<color=cyan>[Visual Editor]</color> Loading level '{levelDef.levelName}' ({levelDef.levelId}) for visual editing");
+        Debug.Log($"<color=cyan>[Visual Editor]</color> Use arrow keys to move cursor, Space/Enter to place blocks, Cmd+S to save changes");
+
+        EditorApplication.EnterPlaymode();
     }
 }
