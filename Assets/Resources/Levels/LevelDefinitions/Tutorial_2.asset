@@ -20,16 +20,20 @@ MonoBehaviour:
   gridHeight: 7
   cellSize: 1
   levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 7,\n    \"cellSize\":
-    1.0,\n    \"blocks\": [],\n    \"permanentBlocks\": [\n        {\n           
-    \"blockType\": 0,\n            \"gridIndex\": 19,\n            \"inventoryKey\":
+    1.0,\n    \"cameraSettings\": {\n        \"fieldOfView\": 38.0,\n        \"nearClipPlane\":
+    0.30000001192092898,\n        \"farClipPlane\": 100.0,\n        \"verticalOffset\":
+    4.0,\n        \"horizontalOffset\": 0.0,\n        \"tiltAngle\": -30.0,\n       
+    \"panAngle\": 0.0,\n        \"gridMargin\": 1.0,\n        \"minDistance\": 8.0\n   
+    },\n    \"blocks\": [],\n    \"permanentBlocks\": [\n        {\n            \"blockType\":
+    0,\n            \"gridIndex\": 19,\n            \"inventoryKey\": \"Default\",\n           
+    \"flavorId\": \"\",\n            \"routeSteps\": []\n        },\n        {\n           
+    \"blockType\": 0,\n            \"gridIndex\": 18,\n            \"inventoryKey\":
     \"Default\",\n            \"flavorId\": \"\",\n            \"routeSteps\": []\n       
-    },\n        {\n            \"blockType\": 0,\n            \"gridIndex\": 18,\n           
+    },\n        {\n            \"blockType\": 0,\n            \"gridIndex\": 12,\n           
     \"inventoryKey\": \"Default\",\n            \"flavorId\": \"\",\n           
     \"routeSteps\": []\n        },\n        {\n            \"blockType\": 0,\n           
-    \"gridIndex\": 12,\n            \"inventoryKey\": \"Default\",\n            \"flavorId\":
-    \"\",\n            \"routeSteps\": []\n        },\n        {\n            \"blockType\":
-    0,\n            \"gridIndex\": 11,\n            \"inventoryKey\": \"Default\",\n           
-    \"flavorId\": \"\",\n            \"routeSteps\": []\n        }\n    ],\n    \"inventoryEntries\":
+    \"gridIndex\": 11,\n            \"inventoryKey\": \"Default\",\n            \"flavorId\":
+    \"\",\n            \"routeSteps\": []\n        }\n    ],\n    \"inventoryEntries\":
     [\n        {\n            \"entryId\": \"Default\",\n            \"blockType\":
     0,\n            \"displayName\": \"\",\n            \"inventoryGroupId\": \"\",\n           
     \"flavorId\": \"\",\n            \"routeSteps\": [],\n            \"isPairInventory\":
