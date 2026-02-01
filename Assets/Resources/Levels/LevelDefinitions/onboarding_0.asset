@@ -16,7 +16,21 @@ MonoBehaviour:
   levelName: Onboarding 0
   worldId: onboarding
   orderInWorld: 0
-  gridWidth: 10
-  gridHeight: 10
+  gridWidth: 8
+  gridHeight: 4
   cellSize: 1
-  levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 10,\n    \"cellSize\": 1.0,\n    \"blocks\": [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\": [],\n    \"placeableSpaceIndices\": [],\n    \"lems\": [],\n    \"keyStates\": [],\n    \"levelName\": \"Onboarding 0\",\n    \"saveTimestamp\": \"2026-01-28 12:13:57\"\n}"
+  levelDataJson: "{\n    \"gridWidth\": 8,\n    \"gridHeight\": 4,\n    \"cellSize\":
+    1.0,\n    \"cameraSettings\": {\n        \"fieldOfView\": 1.8187609910964966,\n       
+    \"nearClipPlane\": 0.23999999463558198,\n        \"farClipPlane\": 500.0,\n       
+    \"verticalOffset\": 10.399999618530274,\n        \"horizontalOffset\": 0.0,\n       
+    \"tiltAngle\": 3.700000047683716,\n        \"panAngle\": 0.0,\n        \"gridMargin\":
+    1.0,\n        \"minDistance\": 5.0,\n        \"distanceMultiplier\": 23.700000762939454,\n       
+    \"tiltOffset\": 756.0,\n        \"rollOffset\": 0.0\n    },\n    \"blocks\":
+    [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\": [\n        {\n           
+    \"entryId\": \"Walk\",\n            \"blockType\": 0,\n            \"displayName\":
+    \"\",\n            \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n           
+    \"routeSteps\": [],\n            \"isPairInventory\": false,\n            \"pairSize\":
+    2,\n            \"maxCount\": 10,\n            \"currentCount\": 10\n       
+    }\n    ],\n    \"placeableSpaceIndices\": [\n        3,\n        25\n    ],\n   
+    \"lems\": [],\n    \"keyStates\": [],\n    \"levelName\": \"\",\n    \"saveTimestamp\":
+    \"2026-02-01 16:28:39\"\n}"
