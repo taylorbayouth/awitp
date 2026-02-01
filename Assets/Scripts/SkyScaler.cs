@@ -2,8 +2,12 @@ using UnityEngine;
 
 /// <summary>
 /// Scales and positions a sky quad to always fill the camera view.
-/// Designed for 2D/2.5D puzzle games where the camera pans/zooms minimally.
-/// Keeps the sky image undistorted and always visible behind the grid.
+///
+/// DYNAMIC SYSTEM:
+/// - Sky positioned very close to grid (default Z=5)
+/// - Sky always rotates to face the camera (perpendicular to camera view)
+/// - Sky scales dynamically based on camera FOV and distance
+/// - Works with any grid size and extreme camera settings
 /// </summary>
 public class SkyScaler : MonoBehaviour
 {
@@ -12,14 +16,14 @@ public class SkyScaler : MonoBehaviour
     public Camera targetCamera;
 
     [Header("Positioning")]
-    [Tooltip("Distance behind the grid (positive Z from grid center at origin)")]
+    [Tooltip("Distance behind the grid (grid is at Z=0, positive values go behind)")]
     [Range(5f, 50f)]
-    public float distanceBehindGrid = 20f;
+    public float distanceBehindGrid = 5f;
 
     [Header("Scaling")]
-    [Tooltip("Scale multiplier for full bleed coverage (1.05 = 5% overscan)")]
-    [Range(1.0f, 1.2f)]
-    public float overscanMultiplier = 1.05f;
+    [Tooltip("Scale multiplier for full bleed coverage (1.5 = 50% overscan)")]
+    [Range(1.2f, 3.0f)]
+    public float overscanMultiplier = 1.5f;
 
     [Header("Auto-Update")]
     [Tooltip("Automatically update when camera settings change")]
@@ -27,7 +31,9 @@ public class SkyScaler : MonoBehaviour
 
     private float lastAspect;
     private float lastFOV;
-    private float lastCameraZ;
+    private Vector3 lastCameraPosition;
+    private Quaternion lastCameraRotation;
+    private float lastDistanceBehindGrid;
 
     private void Awake()
     {
@@ -48,23 +54,25 @@ public class SkyScaler : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!autoUpdate) return;
+        if (!autoUpdate || targetCamera == null) return;
 
-        // Check if camera settings changed
-        bool cameraChanged =
+        // Check if camera or sky settings changed
+        bool settingsChanged =
             !Mathf.Approximately(lastAspect, targetCamera.aspect) ||
             !Mathf.Approximately(lastFOV, targetCamera.fieldOfView) ||
-            !Mathf.Approximately(lastCameraZ, targetCamera.transform.position.z);
+            !Mathf.Approximately(lastDistanceBehindGrid, distanceBehindGrid) ||
+            lastCameraPosition != targetCamera.transform.position ||
+            lastCameraRotation != targetCamera.transform.rotation;
 
-        if (cameraChanged)
+        if (settingsChanged)
         {
             UpdateSkyPlane();
         }
     }
 
     /// <summary>
-    /// Updates the sky plane position and scale to fill camera view with overscan.
-    /// Called automatically when camera settings change.
+    /// Updates the sky plane position and scale to fill camera view.
+    /// Sky is positioned close to grid and always faces the camera.
     /// </summary>
     [ContextMenu("Update Sky Plane")]
     public void UpdateSkyPlane()
@@ -75,22 +83,31 @@ public class SkyScaler : MonoBehaviour
             return;
         }
 
-        // Position sky plane behind the grid (grid is at world origin Z=0)
-        transform.position = new Vector3(0f, 0f, distanceBehindGrid);
+        // Position sky plane behind the grid at fixed Z
+        Vector3 skyPosition = new Vector3(0f, 0f, distanceBehindGrid);
+        transform.position = skyPosition;
 
-        // Calculate distance from camera to sky plane
-        float distanceFromCamera = distanceBehindGrid - targetCamera.transform.position.z;
+        // Calculate distance from camera to sky
+        Vector3 cameraPosition = targetCamera.transform.position;
+        float distanceToSky = Vector3.Distance(cameraPosition, skyPosition);
 
-        // Ensure distance is positive
-        if (distanceFromCamera <= 0)
+        // Rotate sky to face the camera (perpendicular to view direction)
+        // Unity Quad's front face is visible when +Z points AWAY from camera
+        // So we point +Z from camera toward sky (opposite direction)
+        Vector3 directionToCamera = (cameraPosition - skyPosition).normalized;
+        if (directionToCamera.magnitude > 0.001f)
         {
-            Debug.LogWarning($"SkyScaler: Sky is in front of or at camera position. Adjust distanceBehindGrid. Camera Z={targetCamera.transform.position.z}, Sky Z={distanceBehindGrid}");
-            distanceFromCamera = Mathf.Abs(distanceFromCamera) + 1f;
+            // Flip direction so front face is visible
+            transform.rotation = Quaternion.LookRotation(-directionToCamera, Vector3.up);
+        }
+        else
+        {
+            transform.rotation = Quaternion.identity;
         }
 
-        // Calculate visible dimensions at the sky plane's distance
+        // Calculate visible dimensions at the sky's distance from camera
         float fovRadians = targetCamera.fieldOfView * Mathf.Deg2Rad;
-        float viewHeight = 2f * distanceFromCamera * Mathf.Tan(fovRadians / 2f);
+        float viewHeight = 2f * distanceToSky * Mathf.Tan(fovRadians / 2f);
         float viewWidth = viewHeight * targetCamera.aspect;
 
         // Apply overscan multiplier for full bleed
@@ -100,14 +117,14 @@ public class SkyScaler : MonoBehaviour
         // Unity Quad is 1x1 units by default, so scale directly
         transform.localScale = new Vector3(viewWidth, viewHeight, 1f);
 
-        // Ensure quad faces the camera (rotation should be identity for XY plane)
-        transform.rotation = Quaternion.identity;
-
         // Cache values for change detection
         lastAspect = targetCamera.aspect;
         lastFOV = targetCamera.fieldOfView;
-        lastCameraZ = targetCamera.transform.position.z;
+        lastCameraPosition = cameraPosition;
+        lastCameraRotation = targetCamera.transform.rotation;
+        lastDistanceBehindGrid = distanceBehindGrid;
 
-        DebugLog.Info($"SkyScaler: Scaled to {viewWidth:F1}x{viewHeight:F1} units at Z={distanceBehindGrid}, distance from camera={distanceFromCamera:F1}");
+        DebugLog.Info($"SkyScaler: Scaled to {viewWidth:F1}x{viewHeight:F1} units at Z={distanceBehindGrid}, " +
+                  $"distance from camera={distanceToSky:F1}, FOV={targetCamera.fieldOfView:F2}°");
     }
 }

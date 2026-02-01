@@ -684,7 +684,7 @@ public class GridManager : MonoBehaviour
             levelData.cameraSettings = cameraSetup.ExportSettings();
         }
 
-        DebugLog.Info($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems");
+        DebugLog.Info($"Captured level data: {levelData.permanentBlocks.Count} permanent blocks, {levelData.blocks.Count} blocks, {levelData.placeableSpaceIndices.Count} placeable spaces, {levelData.lems.Count} Lems, camera settings={(levelData.cameraSettings != null ? "saved" : "none")}");
         return levelData;
     }
 
@@ -862,7 +862,7 @@ public class GridManager : MonoBehaviour
 
         UpdateCursorState();
 
-        DebugLog.Info($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems");
+        DebugLog.Info($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems, camera settings={(levelData.cameraSettings != null ? "restored" : "default")}");
     }
 
     /// <summary>
