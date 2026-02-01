@@ -53,9 +53,13 @@ public class LevelDefinitionEditor : Editor
 
         // Grid configuration
         EditorGUILayout.LabelField("Grid Configuration", EditorStyles.boldLabel);
+
+        // Track if grid settings changed
+        EditorGUI.BeginChangeCheck();
         EditorGUILayout.PropertyField(gridWidthProp, new GUIContent("Grid Width", "Number of columns"));
         EditorGUILayout.PropertyField(gridHeightProp, new GUIContent("Grid Height", "Number of rows"));
         EditorGUILayout.PropertyField(cellSizeProp, new GUIContent("Cell Size", "Size of each cell in world units"));
+        bool gridSettingsChanged = EditorGUI.EndChangeCheck();
 
         EditorGUILayout.Space();
 
@@ -99,6 +103,12 @@ public class LevelDefinitionEditor : Editor
         EditorGUILayout.EndHorizontal();
 
         serializedObject.ApplyModifiedProperties();
+
+        // Auto-sync grid settings to JSON when they change
+        if (gridSettingsChanged)
+        {
+            SaveGridSettingsToJson();
+        }
     }
 
     private void DrawInventoryEditor()
@@ -328,5 +338,57 @@ public class LevelDefinitionEditor : Editor
         AssetDatabase.Refresh();
 
         Debug.Log($"[LevelDefinitionEditor] Saved {inventoryEntries.Count} inventory entries to {levelNameProp.stringValue}");
+    }
+
+    private void SaveGridSettingsToJson()
+    {
+        string json = levelDataJsonProp.stringValue;
+        LevelData levelData;
+
+        // Parse existing or create new
+        if (!string.IsNullOrEmpty(json))
+        {
+            try
+            {
+                levelData = JsonUtility.FromJson<LevelData>(json);
+                if (levelData == null)
+                {
+                    levelData = new LevelData();
+                }
+            }
+            catch
+            {
+                levelData = new LevelData();
+            }
+        }
+        else
+        {
+            levelData = new LevelData();
+        }
+
+        // Ensure all required lists are initialized
+        if (levelData.blocks == null) levelData.blocks = new List<LevelData.BlockData>();
+        if (levelData.permanentBlocks == null) levelData.permanentBlocks = new List<LevelData.BlockData>();
+        if (levelData.placeableSpaceIndices == null) levelData.placeableSpaceIndices = new List<int>();
+        if (levelData.lems == null) levelData.lems = new List<LevelData.LemData>();
+        if (levelData.keyStates == null) levelData.keyStates = new List<LevelData.KeyStateData>();
+        if (levelData.inventoryEntries == null) levelData.inventoryEntries = new List<BlockInventoryEntry>();
+
+        // Update grid settings from properties
+        levelData.gridWidth = gridWidthProp.intValue;
+        levelData.gridHeight = gridHeightProp.intValue;
+        levelData.cellSize = cellSizeProp.floatValue;
+        levelData.levelName = levelNameProp.stringValue;
+
+        // Serialize back
+        string newJson = JsonUtility.ToJson(levelData, true);
+        levelDataJsonProp.stringValue = newJson;
+
+        // Force Unity to save the changes
+        serializedObject.ApplyModifiedProperties();
+        EditorUtility.SetDirty(target);
+        AssetDatabase.SaveAssets();
+
+        Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight}, cell size {levelData.cellSize}");
     }
 }
