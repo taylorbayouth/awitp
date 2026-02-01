@@ -1,4 +1,5 @@
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 /// <summary>
@@ -47,6 +48,12 @@ public class GameSceneInitializerEditor : Editor
             {
                 selectedLevelProp.objectReferenceValue = allLevels[selectedIndex];
                 serializedObject.ApplyModifiedProperties();
+
+                // Mark scene as dirty and save to persist the change
+                EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+                EditorSceneManager.SaveOpenScenes();
+
+                Debug.Log($"[GameSceneInitializer] Level selection saved: {allLevels[selectedIndex].levelId}");
             }
 
             // Show level info
