@@ -61,17 +61,29 @@ public class LevelData
     [Serializable]
     public class CameraSettings
     {
-        public bool useOrthographic = false;
-        public float fieldOfView = 60f;
-        public float nearClipPlane = 0.3f;
-        public float farClipPlane = 100f;
-        public float distanceFromGrid = 15f;
-        public float topMarginOffset = 0f;
+        // Perspective settings (FOV calculated from focal length, ~1.82° for 756mm)
+        public float fieldOfView = 1.82f;
+        public float nearClipPlane = 0.24f;
+        public float farClipPlane = 500f;
+
+        // Camera offsets
+        public float verticalOffset = 10.4f;
         public float horizontalOffset = 0f;
-        public float tiltAngle = 0f;
+
+        // Camera rotation
+        public float tiltAngle = 3.7f;
         public float panAngle = 0f;
-        public float paddingPercent = 0.15f;
-        public float minOrthographicSize = 3f;
+
+        // Framing settings
+        public float gridMargin = 1f;
+        public float minDistance = 5f;
+
+        // Perspective flattening (23.7x = extreme flat perspective)
+        public float distanceMultiplier = 23.7f;
+
+        // Additional fields (tiltOffset repurposed for focal length storage)
+        public float tiltOffset = 756f;  // Stores focal length in mm
+        public float rollOffset = 0f;    // Roll angle
     }
 
     // Grid settings
