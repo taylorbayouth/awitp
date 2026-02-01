@@ -2,8 +2,14 @@ using UnityEngine;
 
 /// <summary>
 /// Sets up the camera to view the grid on the XY plane.
-/// Camera looks along -Z axis at the grid.
-/// All settings are configurable in the Inspector and changes apply in real-time.
+///
+/// SIMPLE POSITIONING SYSTEM:
+/// 1. Camera starts centered with grid at (0, 0, -distance)
+/// 2. Vertical/Horizontal offsets move the camera position
+/// 3. Tilt angles the camera down/up to see block tops
+/// 4. Distance is auto-calculated to frame the grid, or can be manually controlled
+///
+/// All camera settings are saved per-level via the CameraSettings class in LevelData.
 /// </summary>
 public class CameraSetup : MonoBehaviour
 {
@@ -14,57 +20,67 @@ public class CameraSetup : MonoBehaviour
     [Tooltip("The camera to configure (defaults to Main Camera if not set)")]
     public Camera targetCamera;
 
-    [Header("Camera Mode")]
-    [Tooltip("Use orthographic (true) or perspective (false) projection")]
-    public bool useOrthographic = false;
-
-    [Header("Perspective Settings")]
-    [Tooltip("Field of view for perspective camera (in degrees)")]
-    [Range(20f, 120f)]
-    public float fieldOfView = 60f;
-
-    [Tooltip("Near clipping plane distance")]
-    [Range(0.01f, 10f)]
-    public float nearClipPlane = 0.3f;
-
-    [Tooltip("Far clipping plane distance")]
-    [Range(10f, 1000f)]
-    public float farClipPlane = 100f;
-
     [Header("Camera Position")]
-    [Tooltip("Distance from grid along -Z axis")]
-    [Range(5f, 50f)]
-    public float distanceFromGrid = 15f;
+    [Tooltip("Vertical position offset - moves camera up (positive) or down (negative) from grid center")]
+    [Range(0f, 28f)]
+    public float verticalOffset = 10.4f;
 
-    [Tooltip("Vertical offset (moves camera up/down)")]
-    [Range(-20f, 20f)]
-    public float topMarginOffset = 0f;
-
-    [Tooltip("Horizontal offset (moves camera left/right)")]
-    [Range(-20f, 20f)]
+    [Tooltip("Horizontal position offset - moves camera left (negative) or right (positive) from grid center")]
+    [Range(-10f, 10f)]
     public float horizontalOffset = 0f;
 
     [Header("Camera Rotation")]
-    [Tooltip("Tilt angle (negative = look down, positive = look up)")]
-    [Range(-45f, 45f)]
-    public float tiltAngle = 0f;
+    [Tooltip("Tilt/pitch angle - negative looks down (to see block tops), positive looks up")]
+    [Range(-5f, 20f)]
+    public float tiltAngle = 3.7f;
 
-    [Tooltip("Pan angle (rotate left/right around the grid)")]
-    [Range(-45f, 45f)]
+    [Tooltip("Pan/yaw angle - rotates camera left/right")]
+    [Range(-15f, 15f)]
     public float panAngle = 0f;
 
-    [Header("Framing Settings")]
-    [Tooltip("Extra space around grid as percentage (0.0 = tight fit, 1.0 = 2x grid size)")]
-    [Range(0f, 2f)]
-    public float paddingPercent = 0.15f;
+    [Tooltip("Roll angle - tilts the horizon (usually keep at 0)")]
+    [Range(-10f, 10f)]
+    public float rollAngle = 0f;
 
-    [Tooltip("Minimum orthographic size (prevents over-zooming on small grids)")]
+    [Header("Perspective Settings")]
+    [Tooltip("Focal length in mm (like camera lenses). Higher = telephoto (flatter perspective), Lower = wide angle (more distortion). 50mm is 'normal'.")]
+    [Range(100f, 1200f)]
+    public float focalLength = 756f;
+
+    [Tooltip("Field of view (auto-calculated from focal length). Shown for reference.")]
+    [Range(1f, 30f)]
+    public float fieldOfView = 1.82f;
+
+    [Tooltip("Near clipping plane distance")]
+    [Range(0.01f, 1f)]
+    public float nearClipPlane = 0.24f;
+
+    [Tooltip("Far clipping plane distance")]
+    [Range(100f, 1000f)]
+    public float farClipPlane = 500f;
+
+    [Header("Distance Settings")]
+    [Tooltip("Multiplier for camera distance. Higher values = flatter perspective (less distortion between blocks).")]
+    [Range(5f, 40f)]
+    public float distanceMultiplier = 23.7f;
+
+    [Tooltip("Minimum distance from grid (prevents camera getting too close)")]
     [Range(1f, 10f)]
-    public float minOrthographicSize = 3f;
+    public float minDistance = 5f;
+
+    [Tooltip("Fixed margin around grid in world units for framing calculations")]
+    [Range(0f, 3f)]
+    public float gridMargin = 1f;
 
     [Header("Auto-Update")]
-    [Tooltip("Automatically update camera when these values change in the Inspector")]
+    [Tooltip("Automatically update camera when values change in the Inspector")]
     public bool autoUpdateInEditor = true;
+
+    // Legacy fields for backwards compatibility with old save data
+    [HideInInspector] public float viewAngle = 0f;
+    [HideInInspector] public float orbitAngle = 0f;
+    [HideInInspector] public float tiltOffset = 0f;
+    [HideInInspector] public float rollOffset = 0f;
 
     private void Awake()
     {
@@ -99,15 +115,54 @@ public class CameraSetup : MonoBehaviour
     }
 
     #if UNITY_EDITOR
-    /// <summary>
-    /// Called when values change in the Inspector (Editor only).
-    /// Automatically updates camera if autoUpdateInEditor is enabled.
-    /// </summary>
+    private float lastFocalLength;
+    private float lastGridMargin;
+    private float lastVerticalOffset;
+    private float lastHorizontalOffset;
+    private float lastDistanceMultiplier;
+    private float lastMinDistance;
+    private float lastTiltAngle;
+    private float lastPanAngle;
+    private float lastRollAngle;
+
+    private void LateUpdate()
+    {
+        // In editor play mode, detect changes and auto-refresh
+        if (Application.isPlaying && autoUpdateInEditor)
+        {
+            bool settingsChanged =
+                lastFocalLength != focalLength ||
+                lastGridMargin != gridMargin ||
+                lastVerticalOffset != verticalOffset ||
+                lastHorizontalOffset != horizontalOffset ||
+                lastDistanceMultiplier != distanceMultiplier ||
+                lastMinDistance != minDistance ||
+                lastTiltAngle != tiltAngle ||
+                lastPanAngle != panAngle ||
+                lastRollAngle != rollAngle;
+
+            if (settingsChanged)
+            {
+                SetupCamera();
+                lastFocalLength = focalLength;
+                lastGridMargin = gridMargin;
+                lastVerticalOffset = verticalOffset;
+                lastHorizontalOffset = horizontalOffset;
+                lastDistanceMultiplier = distanceMultiplier;
+                lastMinDistance = minDistance;
+                lastTiltAngle = tiltAngle;
+                lastPanAngle = panAngle;
+                lastRollAngle = rollAngle;
+            }
+        }
+    }
+    #endif
+
+    #if UNITY_EDITOR
     private void OnValidate()
     {
         if (autoUpdateInEditor && Application.isPlaying)
         {
-            // Delay to ensure all serialized values are updated
             UnityEditor.EditorApplication.delayCall += () =>
             {
                 if (this != null) SetupCamera();
@@ -116,10 +171,6 @@ public class CameraSetup : MonoBehaviour
     }
     #endif
 
-    /// <summary>
-    /// Context menu item to manually refresh camera setup.
-    /// Right-click component in Inspector and select "Refresh Camera Setup".
-    /// </summary>
     [ContextMenu("Refresh Camera Setup")]
     private void RefreshCameraSetup()
     {
@@ -135,77 +186,86 @@ public class CameraSetup : MonoBehaviour
             return;
         }
 
-        // Set camera position with offsets
-        targetCamera.transform.position = new Vector3(horizontalOffset, topMarginOffset, -distanceFromGrid);
+        // Always use perspective
+        targetCamera.orthographic = false;
 
-        // Apply rotation (tilt and pan)
-        targetCamera.transform.rotation = Quaternion.Euler(tiltAngle, panAngle, 0f);
-
-        // Apply camera mode
-        targetCamera.orthographic = useOrthographic;
+        // Convert focal length to FOV (assuming 35mm full-frame equivalent)
+        // FOV = 2 * atan(sensorHeight / (2 * focalLength))
+        // For 35mm film, sensor height is 24mm
+        const float sensorHeight = 24f;
+        fieldOfView = 2f * Mathf.Atan(sensorHeight / (2f * focalLength)) * Mathf.Rad2Deg;
+        targetCamera.fieldOfView = fieldOfView;
 
         // Apply clipping planes
         targetCamera.nearClipPlane = nearClipPlane;
         targetCamera.farClipPlane = farClipPlane;
 
-        if (useOrthographic)
-        {
-            targetCamera.orthographicSize = CalculateOrthographicSize();
-            DebugLog.Info($"CameraSetup: Orthographic camera at {targetCamera.transform.position}, " +
-                      $"size={targetCamera.orthographicSize:F2}, padding={paddingPercent:F2}");
-        }
-        else
-        {
-            targetCamera.fieldOfView = fieldOfView;
-            DebugLog.Info($"CameraSetup: Perspective camera at {targetCamera.transform.position}, " +
-                      $"rotation=({tiltAngle:F1}°, {panAngle:F1}°, 0°), distance={distanceFromGrid:F2}, FOV={fieldOfView:F1}°");
-        }
-    }
+        // Calculate distance to frame grid
+        float distance = CalculateCameraDistance();
 
-    private Vector3 CalculateGridCenter()
-    {
-        // Grid is now auto-centered at world origin (0,0,0)
-        return Vector3.zero;
+        // Position camera: centered with grid, offset by user values
+        // Camera looks along -Z axis, so position is at negative Z
+        Vector3 cameraPosition = new Vector3(horizontalOffset, verticalOffset, -distance);
+        targetCamera.transform.position = cameraPosition;
+
+        // Apply rotation: tilt (pitch), pan (yaw), roll
+        // Euler angles: (X=pitch/tilt, Y=yaw/pan, Z=roll)
+        targetCamera.transform.rotation = Quaternion.Euler(tiltAngle, panAngle, rollAngle);
+
+        DebugLog.Info($"CameraSetup: Camera at {cameraPosition}, " +
+                  $"tilt={tiltAngle:F1}°, pan={panAngle:F1}°, roll={rollAngle:F1}°, " +
+                  $"focalLength={focalLength:F0}mm, FOV={fieldOfView:F1}°, distance={distance:F2}, " +
+                  $"grid={gridManager.gridWidth}x{gridManager.gridHeight}");
     }
 
     /// <summary>
-    /// Calculates the orthographic size needed to fit the entire grid with padding.
-    /// Accounts for aspect ratio to ensure grid fits both horizontally and vertically.
+    /// Calculates the camera distance needed to fit the entire grid with padding.
+    /// Distance is calculated at a FIXED reference FOV (50mm equivalent) so that
+    /// focal length can be changed independently to control zoom without affecting distance.
     /// </summary>
-    /// <returns>Orthographic size value (half the vertical view height)</returns>
-    private float CalculateOrthographicSize()
+    private float CalculateCameraDistance()
     {
         float gridWorldWidth = gridManager.gridWidth * gridManager.cellSize;
         float gridWorldHeight = gridManager.gridHeight * gridManager.cellSize;
 
-        float aspect = targetCamera.aspect;
+        // Add margins
+        gridWorldWidth += (gridMargin * 2f);
+        gridWorldHeight += (gridMargin * 2f);
 
-        // Validate aspect ratio to prevent division by zero or invalid values
+        float aspect = targetCamera.aspect;
         if (aspect <= 0 || float.IsNaN(aspect) || float.IsInfinity(aspect))
         {
             Debug.LogWarning("Invalid camera aspect ratio, using fallback 16:9");
             aspect = 16f / 9f;
         }
 
-        // Orthographic size is half the vertical view height
-        // We need to fit the grid width OR height, whichever requires more zoom
-        float heightNeeded = gridWorldHeight / 2f;
-        float widthNeeded = gridWorldWidth / (2f * aspect);
+        // Use a FIXED reference FOV for distance calculation (50mm = ~47°)
+        // This decouples distance from focal length, allowing independent control
+        const float referenceFOV = 47f;
+        float refFovRadians = referenceFOV * Mathf.Deg2Rad;
 
-        // Use whichever dimension requires more space
-        float size = Mathf.Max(heightNeeded, widthNeeded);
+        // Distance needed to fit grid height at reference FOV
+        float distanceForHeight = (gridWorldHeight / 2f) / Mathf.Tan(refFovRadians / 2f);
 
-        // Apply padding as a multiplier (e.g., 0.15 = 15% extra space)
-        size *= (1f + paddingPercent);
+        // Distance needed to fit grid width at reference FOV
+        float horizontalFovRadians = 2f * Mathf.Atan(Mathf.Tan(refFovRadians / 2f) * aspect);
+        float distanceForWidth = (gridWorldWidth / 2f) / Mathf.Tan(horizontalFovRadians / 2f);
 
-        // Enforce minimum size to prevent extreme zoom on tiny grids
-        size = Mathf.Max(size, minOrthographicSize);
+        // Use larger distance to ensure both dimensions fit
+        float distance = Mathf.Max(distanceForHeight, distanceForWidth);
 
-        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight}, " +
-                  $"aspect={aspect:F2}, heightNeeded={heightNeeded:F2}, widthNeeded={widthNeeded:F2}, " +
-                  $"padding={paddingPercent:F2}, final size={size:F2}");
+        // Apply multiplier - this is what controls perspective flattening
+        distance *= distanceMultiplier;
 
-        return size;
+        // Enforce minimum
+        distance = Mathf.Max(distance, minDistance);
+
+        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight} " +
+                  $"({gridWorldWidth:F1}x{gridWorldHeight:F1} world units), " +
+                  $"aspect={aspect:F2}, refFOV={referenceFOV:F1}°, actualFOV={fieldOfView:F1}°, " +
+                  $"multiplier={distanceMultiplier:F1}x, final distance={distance:F2}");
+
+        return distance;
     }
 
     public void RefreshCamera()
@@ -215,45 +275,62 @@ public class CameraSetup : MonoBehaviour
 
     /// <summary>
     /// Exports current camera settings to a CameraSettings data object.
-    /// Used when saving levels in the editor.
     /// </summary>
     public LevelData.CameraSettings ExportSettings()
     {
+        // Calculate FOV from focal length for storage
+        const float sensorHeight = 24f;
+        float fov = 2f * Mathf.Atan(sensorHeight / (2f * focalLength)) * Mathf.Rad2Deg;
+
         return new LevelData.CameraSettings
         {
-            useOrthographic = useOrthographic,
-            fieldOfView = fieldOfView,
+            fieldOfView = fov,  // Store FOV (calculated from focal length)
             nearClipPlane = nearClipPlane,
             farClipPlane = farClipPlane,
-            distanceFromGrid = distanceFromGrid,
-            topMarginOffset = topMarginOffset,
+            verticalOffset = verticalOffset,
             horizontalOffset = horizontalOffset,
             tiltAngle = tiltAngle,
             panAngle = panAngle,
-            paddingPercent = paddingPercent,
-            minOrthographicSize = minOrthographicSize
+            gridMargin = gridMargin,
+            minDistance = minDistance,
+            distanceMultiplier = distanceMultiplier,
+            rollOffset = rollAngle,
+            tiltOffset = focalLength  // Repurpose tiltOffset to store focal length
         };
     }
 
     /// <summary>
     /// Imports camera settings from a CameraSettings data object.
-    /// Used when loading levels.
     /// </summary>
     public void ImportSettings(LevelData.CameraSettings settings)
     {
         if (settings == null) return;
 
-        useOrthographic = settings.useOrthographic;
-        fieldOfView = settings.fieldOfView;
         nearClipPlane = settings.nearClipPlane;
         farClipPlane = settings.farClipPlane;
-        distanceFromGrid = settings.distanceFromGrid;
-        topMarginOffset = settings.topMarginOffset;
+        verticalOffset = settings.verticalOffset;
         horizontalOffset = settings.horizontalOffset;
         tiltAngle = settings.tiltAngle;
         panAngle = settings.panAngle;
-        paddingPercent = settings.paddingPercent;
-        minOrthographicSize = settings.minOrthographicSize;
+        gridMargin = settings.gridMargin;
+        minDistance = settings.minDistance;
+        distanceMultiplier = settings.distanceMultiplier > 0 ? settings.distanceMultiplier : 1.0f;
+        rollAngle = settings.rollOffset;
+
+        // Check if focal length was saved (stored in tiltOffset field)
+        // If > 0, use it; otherwise convert from FOV
+        if (settings.tiltOffset > 5f)  // Reasonable focal length range
+        {
+            focalLength = settings.tiltOffset;
+        }
+        else
+        {
+            // Convert FOV to focal length for old saves
+            const float sensorHeight = 24f;
+            float fovRadians = settings.fieldOfView * Mathf.Deg2Rad;
+            focalLength = sensorHeight / (2f * Mathf.Tan(fovRadians / 2f));
+            focalLength = Mathf.Clamp(focalLength, 10f, 200f);
+        }
 
         SetupCamera();
     }
@@ -263,10 +340,19 @@ public class CameraSetup : MonoBehaviour
     {
         if (gridManager == null || targetCamera == null) return;
 
+        Vector3 gridCenter = Vector3.zero;
+
+        // Draw grid center
         Gizmos.color = Color.cyan;
-        Vector3 center = CalculateGridCenter();
-        Gizmos.DrawWireSphere(center, 0.5f);
-        Gizmos.DrawLine(targetCamera.transform.position, center);
+        Gizmos.DrawWireSphere(gridCenter, 0.5f);
+
+        // Draw line from camera to grid center
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(targetCamera.transform.position, gridCenter);
+
+        // Draw camera forward direction
+        Gizmos.color = Color.blue;
+        Gizmos.DrawRay(targetCamera.transform.position, targetCamera.transform.forward * 5f);
     }
     #endregion
 }

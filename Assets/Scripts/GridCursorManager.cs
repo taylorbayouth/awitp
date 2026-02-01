@@ -44,6 +44,14 @@ public class GridCursorManager : MonoBehaviour
         this.gridManager = gridManager;
 
         CreateCursor(cellSize);
+
+        // Start cursor at upper-left corner (top row, left column)
+        int topRow = coordinateSystem.GridHeight - 1;
+        int leftCol = 0;
+        int upperLeftIndex = coordinateSystem.CoordinatesToIndex(new Vector2Int(leftCol, topRow));
+        SetCursorIndex(upperLeftIndex);
+
+        DebugLog.Info($"[GridCursorManager] Cursor initialized at upper-left corner: index {upperLeftIndex} (row {topRow}, col {leftCol})");
     }
 
     /// <summary>
