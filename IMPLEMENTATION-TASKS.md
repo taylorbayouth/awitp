@@ -1139,7 +1139,7 @@ public class LevelManager : MonoBehaviour {
 
     void Update() {
         // Check win condition each frame in Play Mode
-        if (EditorModeManager.Instance.CurrentMode == GameMode.Play) {
+        if (GameModeManager.Instance.CurrentMode == GameMode.Play) {
             if (IsLevelComplete() && !levelCompletedThisSession) {
                 OnLevelComplete();
                 levelCompletedThisSession = true;

@@ -81,7 +81,7 @@ public class TeleporterBlock : BaseBlock
 
     protected override void OnPlayerReachCenter()
     {
-        LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
+        LemController lem = currentPlayer != null ? currentPlayer : ServiceRegistry.Get<LemController>();
         if (lem == null) return;
 
         if (IsOnCooldown(lem))
@@ -333,7 +333,7 @@ public class TeleporterBlock : BaseBlock
     {
         if (!string.IsNullOrEmpty(flavorId)) return;
 
-        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
         if (inventory == null) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntries();

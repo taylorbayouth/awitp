@@ -77,11 +77,16 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 ### Core Components
 
-**GridManager** - Singleton managing grid state, block placement, and spatial queries
+**ServiceRegistry** - Centralized service locator for core game systems
+**GridManager** - Singleton managing grid state with delegated subsystems:
+  - **BlockPlacementManager** - Handles block placement and removal operations
+  - **LemPlacementManager** - Manages Lem tracking and spawning
+  - **GridCursorManager** - Handles cursor state and visual feedback
+  - **GridCoordinateSystem** - Pure coordinate math and conversions
 **BaseBlock** - Base class for all blocks with spatial detection and player interaction
 **BlockInventory** - Per-level block type constraints and tracking
-**EditorController** - Mouse-based placement and editing controls
-**EditorModeManager** - Visual mode switching (normal/editor)
+**BuilderController** - Mouse-based placement and editing controls
+**GameModeManager** - Visual mode switching (Build/Level Designer/Play modes)
 
 ### Visualization
 
@@ -166,10 +171,17 @@ bool exists = LevelSaveSystem.LevelExists();
 
 ## Project Structure
 
+The project uses a flat file structure in `Assets/Scripts/` rather than nested folders.
+
 ```
 Assets/
-├── Scripts/
+├── Scripts/                         # All scripts in flat structure
+│   ├── ServiceRegistry.cs          # Centralized service locator pattern
 │   ├── GridManager.cs              # Core grid state and management
+│   ├── BlockPlacementManager.cs    # Block operations delegate
+│   ├── LemPlacementManager.cs      # Lem tracking delegate
+│   ├── GridCursorManager.cs        # Cursor state delegate
+│   ├── GridCoordinateSystem.cs     # Pure coordinate math
 │   ├── GridVisualizer.cs           # Grid line rendering
 │   ├── GridCursor.cs               # Interactive cursor
 │   ├── PlaceableSpaceVisualizer.cs # Placeable space borders
@@ -185,19 +197,23 @@ Assets/
 │   ├── RouteParser.cs              # Shared transporter route parsing utility
 │   ├── LemController.cs            # Lem AI and movement
 │   ├── LemSpawner.cs               # Lem spawning utility
-│   ├── EditorController.cs         # Editor input handling
-│   ├── EditorModeManager.cs        # Mode management
+│   ├── BuilderController.cs        # Builder input handling
+│   ├── GameModeManager.cs          # Mode management
 │   ├── GameMode.cs                 # Game mode enum
 │   ├── BorderRenderer.cs           # Border rendering utility
 │   ├── RenderingConstants.cs       # Rendering constants
+│   ├── DebugLog.cs                 # Controlled logging utility
 │   ├── LevelData.cs                # Level data structure
 │   ├── LevelSaveSystem.cs          # Save/load operations
+│   ├── LevelManager.cs             # Level loading and management
+│   ├── WorldManager.cs             # World progression system
+│   ├── ProgressManager.cs          # Player progress tracking
 │   ├── CameraSetup.cs              # Camera positioning
 │   ├── GameInitializer.cs          # Game initialization
 │   ├── InventoryUI.cs              # Inventory display
 │   ├── ControlsUI.cs               # Controls help display
-│   └── Editor/
-│       └── LightmapperFix.cs       # Unity lightmapper fix
+│   └── Editor/                     # Editor-only scripts
+│       └── (Editor tools)
 ├── Resources/
 │   └── Blocks/                     # Block prefabs
 │       ├── Block_Key.prefab
@@ -265,11 +281,17 @@ Built with Unity 2022+ using C# scripting.
 - **Region organization** for code clarity
 
 ### Architecture Patterns
+- **Service Locator**: ServiceRegistry provides centralized access to core systems
+- **Manager Decomposition**: GridManager delegates to specialized subsystems
+  - BlockPlacementManager: Block operations
+  - LemPlacementManager: Lem tracking
+  - GridCursorManager: Cursor state
+  - GridCoordinateSystem: Pure math utilities
 - **State Management**: GameMode enum with mode-specific behaviors
 - **Event-Driven**: Lem placement tracking for reset functionality
 - **Separation of Concerns**: Visualization separated from logic
 - **Centralized Constants**: RenderingConstants utilities
-- **Performance Optimization**: Cached component references to avoid FindObjectOfType
+- **Performance Optimization**: Cached component references, ServiceRegistry pattern replaces FindObjectOfType
 - **Error Handling**: Comprehensive try-catch blocks with detailed logging
 - **Self-Contained Validation**: Blocks define their own placement rules via virtual methods
 - **Template Method Pattern**: BaseBlock provides hooks (OnPlayerEnter, OnPlayerExit, OnPlayerReachCenter) for subclasses

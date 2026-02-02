@@ -118,7 +118,7 @@ public class CenterTrigger : MonoBehaviour
     {
         if (_cachedBuilderController == null)
         {
-            _cachedBuilderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            _cachedBuilderController = ServiceRegistry.Get<BuilderController>();
         }
 
         return _cachedBuilderController != null && _cachedBuilderController.currentMode == GameMode.Play;

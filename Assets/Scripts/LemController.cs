@@ -302,7 +302,7 @@ public class LemController : MonoBehaviour
         yield return new WaitForSeconds(delay);
 
         // Exit play mode - this will restore the snapshot which resets Lem position
-        BuilderController builderController = FindAnyObjectByType<BuilderController>();
+        BuilderController builderController = ServiceRegistry.Get<BuilderController>();
         if (builderController != null)
         {
             builderController.ExitPlayMode();
