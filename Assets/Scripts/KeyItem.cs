@@ -41,7 +41,13 @@ public class KeyItem : MonoBehaviour
         IsLocked = false;
         holderLem = null;
         holderLock = null;
-        SetParentAndTransform(blockTransform, Vector3.up * sourceLocalYOffset, GetWorldScale(cellSize));
+
+        // Look for ApplePlacement marker on key block
+        Transform applePlacement = blockTransform.Find("ApplePlacement");
+        Transform parentTarget = applePlacement != null ? applePlacement : blockTransform;
+        Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * sourceLocalYOffset;
+
+        SetParentAndTransform(parentTarget, localPos, GetWorldScale(cellSize));
     }
 
     public void AttachToLem(LemController lem, float localYOffset, float worldScale)
@@ -50,8 +56,13 @@ public class KeyItem : MonoBehaviour
 
         holderLem = lem;
         holderLock = null;
-        Transform target = lem.transform;
-        SetParentAndTransform(target, Vector3.up * localYOffset, worldScale);
+
+        // Look for ApplePlacement marker on Lem
+        Transform applePlacement = lem.transform.Find("ApplePlacement");
+        Transform parentTarget = applePlacement != null ? applePlacement : lem.transform;
+        Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * localYOffset;
+
+        SetParentAndTransform(parentTarget, localPos, worldScale);
     }
 
     public void AttachToLock(Transform lockTransform, float localYOffset, float worldScale)
@@ -61,7 +72,13 @@ public class KeyItem : MonoBehaviour
         holderLem = null;
         holderLock = lockTransform;
         IsLocked = true;
-        SetParentAndTransform(lockTransform, Vector3.up * localYOffset, worldScale);
+
+        // Look for ApplePlacement marker on lock block
+        Transform applePlacement = lockTransform.Find("ApplePlacement");
+        Transform parentTarget = applePlacement != null ? applePlacement : lockTransform;
+        Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * localYOffset;
+
+        SetParentAndTransform(parentTarget, localPos, worldScale);
     }
 
     public static KeyItem FindHeldKey(LemController lem)
