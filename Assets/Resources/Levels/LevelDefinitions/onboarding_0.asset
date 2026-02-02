@@ -17,20 +17,32 @@ MonoBehaviour:
   worldId: onboarding
   orderInWorld: 0
   gridWidth: 8
-  gridHeight: 4
+  gridHeight: 6
   cellSize: 1
-  levelDataJson: "{\n    \"gridWidth\": 8,\n    \"gridHeight\": 4,\n    \"cellSize\":
+  levelDataJson: "{\n    \"gridWidth\": 8,\n    \"gridHeight\": 6,\n    \"cellSize\":
     1.0,\n    \"cameraSettings\": {\n        \"fieldOfView\": 1.8187609910964966,\n       
     \"nearClipPlane\": 0.23999999463558198,\n        \"farClipPlane\": 500.0,\n       
-    \"verticalOffset\": 10.399999618530274,\n        \"horizontalOffset\": 0.0,\n       
-    \"tiltAngle\": 3.700000047683716,\n        \"panAngle\": 0.0,\n        \"gridMargin\":
-    1.0,\n        \"minDistance\": 5.0,\n        \"distanceMultiplier\": 23.700000762939454,\n       
+    \"verticalOffset\": 14.0,\n        \"horizontalOffset\": 0.0,\n        \"tiltAngle\":
+    3.700000047683716,\n        \"panAngle\": 0.0,\n        \"gridMargin\": 1.0,\n       
+    \"minDistance\": 5.0,\n        \"distanceMultiplier\": 23.700000762939454,\n       
     \"tiltOffset\": 756.0,\n        \"rollOffset\": 0.0\n    },\n    \"blocks\":
-    [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\": [\n        {\n           
-    \"entryId\": \"Walk\",\n            \"blockType\": 0,\n            \"displayName\":
-    \"\",\n            \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n           
-    \"routeSteps\": [],\n            \"isPairInventory\": false,\n            \"pairSize\":
-    2,\n            \"maxCount\": 10,\n            \"currentCount\": 10\n       
-    }\n    ],\n    \"placeableSpaceIndices\": [\n        3,\n        25\n    ],\n   
-    \"lems\": [],\n    \"keyStates\": [],\n    \"levelName\": \"\",\n    \"saveTimestamp\":
-    \"2026-02-01 16:28:39\"\n}"
+    [],\n    \"permanentBlocks\": [\n        {\n            \"blockType\": 0,\n           
+    \"gridIndex\": 16,\n            \"inventoryKey\": \"Walk\",\n            \"flavorId\":
+    \"\",\n            \"routeSteps\": []\n        },\n        {\n            \"blockType\":
+    0,\n            \"gridIndex\": 17,\n            \"inventoryKey\": \"Walk\",\n           
+    \"flavorId\": \"\",\n            \"routeSteps\": []\n        }\n    ],\n    \"inventoryEntries\":
+    [\n        {\n            \"entryId\": \"Walk\",\n            \"blockType\":
+    0,\n            \"displayName\": \"\",\n            \"inventoryGroupId\": \"\",\n           
+    \"flavorId\": \"\",\n            \"routeSteps\": [],\n            \"isPairInventory\":
+    false,\n            \"pairSize\": 2,\n            \"maxCount\": 10,\n           
+    \"currentCount\": 10\n        },\n        {\n            \"entryId\": \"Transporter_U1,R2\",\n           
+    \"blockType\": 3,\n            \"displayName\": \"\",\n            \"inventoryGroupId\":
+    \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\": [\n               
+    \"U1\",\n                \"R2\",\n                \"U3\"\n            ],\n           
+    \"isPairInventory\": false,\n            \"pairSize\": 2,\n            \"maxCount\":
+    1,\n            \"currentCount\": 1\n        }\n    ],\n    \"placeableSpaceIndices\":
+    [\n        2\n    ],\n    \"lems\": [\n        {\n            \"gridIndex\":
+    24,\n            \"facingRight\": true,\n            \"worldPosition\": {\n               
+    \"x\": -3.5,\n                \"y\": 0.0,\n                \"z\": 0.5\n           
+    },\n            \"hasWorldPosition\": true\n        }\n    ],\n    \"keyStates\":
+    [],\n    \"levelName\": \"\",\n    \"saveTimestamp\": \"2026-02-01 20:17:31\"\n}"

@@ -49,6 +49,8 @@ public class FlufflyCloudGenerator : MonoBehaviour
     [Header("Appearance")]
     [SerializeField] private Material blobMaterial;
     [SerializeField] private Color blobColor = Color.white;
+    [SerializeField] private Color shadowColor = new Color(0.7f, 0.7f, 0.8f, 1f);
+    [SerializeField, Range(0f, 1f)] private float shadowBlend = 0.2f;
 
     [Header("Seed")]
     [SerializeField] private int seed = 12345;
@@ -94,18 +96,6 @@ public class FlufflyCloudGenerator : MonoBehaviour
         }
     }
 
-    private void CreateMaterial()
-    {
-        Shader shader = Shader.Find("Custom/FlufflyCloud");
-        if (shader == null)
-        {
-            shader = Shader.Find("Standard");
-        }
-        sharedMaterial = new Material(shader);
-        sharedMaterial.SetColor("_Color", blobColor);
-        UpdateMaterial();
-    }
-
     void Update()
     {
         if (needsRegeneration)
@@ -131,6 +121,8 @@ public class FlufflyCloudGenerator : MonoBehaviour
         sharedMaterial.SetFloat("_PulseSpeed", pulseSpeed);
         sharedMaterial.SetFloat("_PulseAmount", pulseAmount);
         sharedMaterial.SetColor("_Color", blobColor);
+        sharedMaterial.SetColor("_ShadowColor", shadowColor);
+        sharedMaterial.SetFloat("_ShadowBlend", shadowBlend);
     }
 
 
@@ -330,6 +322,8 @@ public class FlufflyCloudGenerator : MonoBehaviour
             }
             sharedMaterial = new Material(shader);
             sharedMaterial.SetColor("_Color", blobColor);
+            sharedMaterial.SetColor("_ShadowColor", shadowColor);
+            sharedMaterial.SetFloat("_ShadowBlend", shadowBlend);
         }
 
         foreach (var blob in Blobs)
