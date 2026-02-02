@@ -157,7 +157,7 @@ public class KeyBlock : BaseBlock
         if (keyTransform == null || lem == null) return;
 
         keyClaimed = true;
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float carryOffset = cellSize * keyCarryYOffset;
         if (keyItem != null)
         {
@@ -172,7 +172,7 @@ public class KeyBlock : BaseBlock
             EnsureKeyVisual();
         }
 
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         keyClaimed = false;
         keyItem?.AttachToKeyBlock(transform, cellSize);
     }
@@ -188,7 +188,7 @@ public class KeyBlock : BaseBlock
 
     private float GetKeyWorldScale()
     {
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         return cellSize * keyScale * keyVisualScaleMultiplier;
     }
 

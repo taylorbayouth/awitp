@@ -151,7 +151,7 @@ public class TeleporterBlock : BaseBlock
 
     private Vector3 GetTeleportLandingPosition(float yOffset)
     {
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         Vector3 target = transform.position;
         target.y += cellSize * 0.5f + yOffset;
         return target;

@@ -36,7 +36,7 @@ public class LockBlock : BaseBlock
         if (key == null || key.IsLocked) return;
         if (HasKeyLocked()) return;
 
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float keyWorldScale = cellSize * 0.2f;
         float keyLocalOffset = cellSize * keyLockYOffset;
         key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
@@ -56,7 +56,7 @@ public class LockBlock : BaseBlock
         if (key == null || key.IsLocked) return;
         if (HasKeyLocked()) return;
 
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float keyWorldScale = cellSize * 0.2f;
         float keyLocalOffset = cellSize * keyLockYOffset;
         key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
@@ -70,7 +70,7 @@ public class LockBlock : BaseBlock
         }
         if (lockTransform == null) return;
 
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float worldScale = cellSize * statueScale;
 
         // Position statue so base aligns with block surface (mesh pivot is at center, so offset up by half)

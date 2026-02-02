@@ -13,7 +13,6 @@ public class LevelDefinitionEditor : Editor
     private SerializedProperty orderInWorldProp;
     private SerializedProperty gridWidthProp;
     private SerializedProperty gridHeightProp;
-    private SerializedProperty cellSizeProp;
     private SerializedProperty levelDataJsonProp;
 
     private List<BlockInventoryEntry> inventoryEntries = new List<BlockInventoryEntry>();
@@ -29,7 +28,6 @@ public class LevelDefinitionEditor : Editor
         orderInWorldProp = serializedObject.FindProperty("orderInWorld");
         gridWidthProp = serializedObject.FindProperty("gridWidth");
         gridHeightProp = serializedObject.FindProperty("gridHeight");
-        cellSizeProp = serializedObject.FindProperty("cellSize");
         levelDataJsonProp = serializedObject.FindProperty("levelDataJson");
 
         LoadInventoryFromJson();
@@ -77,8 +75,7 @@ public class LevelDefinitionEditor : Editor
         // Track if grid settings changed
         EditorGUI.BeginChangeCheck();
         EditorGUILayout.PropertyField(gridWidthProp, new GUIContent("Grid Width", "Number of columns"));
-        EditorGUILayout.PropertyField(gridHeightProp, new GUIContent("Grid Height", "Number of rows"));
-        EditorGUILayout.PropertyField(cellSizeProp, new GUIContent("Cell Size", "Size of each cell in world units"));
+        EditorGUILayout.PropertyField(gridHeightProp, new GUIContent("Grid Height", "Number of rows (cells are 1.0 world unit)"));
         bool gridSettingsChanged = EditorGUI.EndChangeCheck();
 
         EditorGUILayout.Space();
@@ -344,7 +341,6 @@ public class LevelDefinitionEditor : Editor
         // Update grid settings from properties
         levelData.gridWidth = gridWidthProp.intValue;
         levelData.gridHeight = gridHeightProp.intValue;
-        levelData.cellSize = cellSizeProp.floatValue;
         levelData.levelName = levelNameProp.stringValue;
 
         // Serialize back
@@ -397,7 +393,6 @@ public class LevelDefinitionEditor : Editor
         // Update grid settings from properties
         levelData.gridWidth = gridWidthProp.intValue;
         levelData.gridHeight = gridHeightProp.intValue;
-        levelData.cellSize = cellSizeProp.floatValue;
         levelData.levelName = levelNameProp.stringValue;
 
         // Serialize back
@@ -409,7 +404,7 @@ public class LevelDefinitionEditor : Editor
         EditorUtility.SetDirty(target);
         AssetDatabase.SaveAssets();
 
-        Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight}, cell size {levelData.cellSize}");
+        Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight} (1.0 unit cells)");
     }
 
     private void EditLevelVisually()
