@@ -4,7 +4,7 @@ Shader "Custom/FlufflyCloud"
     {
         _Color ("Primary Color", Color) = (1, 1, 1, 1)
         _ShadowColor ("Shadow Color", Color) = (0.7, 0.7, 0.8, 1)
-        _ShadowBlend ("Shadow Blend", Range(0, 1)) = 0.5
+        _ShadowBlend ("Shadow Blend", Range(0, 1)) = 0.2
         _CoreOpacity ("Core Opacity", Range(0, 1)) = 0.95
         _EdgeFalloff ("Edge Falloff", Range(0.5, 5)) = 2.0
         _EdgeBrightness ("Edge Brightness", Range(0, 2)) = 0.3
