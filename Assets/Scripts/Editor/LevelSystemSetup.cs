@@ -289,7 +289,6 @@ public class LevelSystemSetup : EditorWindow
             levels[i].orderInWorld = i;
             levels[i].gridWidth = 10;
             levels[i].gridHeight = 10;
-            levels[i].cellSize = 1.0f;
             levels[i].levelDataJson = CreateBasicLevelJson(i);
 
             string levelPath = $"Assets/Resources/Levels/LevelDefinitions/{levels[i].levelId}.asset";
@@ -326,7 +325,6 @@ public class LevelSystemSetup : EditorWindow
         {
             gridWidth = 10,
             gridHeight = 10,
-            cellSize = 1.0f,
             levelName = GetTutorialLevelName(levelIndex)
         };
 
@@ -377,14 +375,12 @@ public class LevelSystemSetup : EditorWindow
         template.orderInWorld = 0;
         template.gridWidth = 10;
         template.gridHeight = 10;
-        template.cellSize = 1.0f;
 
         // Create basic level data
         LevelData data = new LevelData
         {
             gridWidth = 10,
             gridHeight = 10,
-            cellSize = 1.0f,
             levelName = "New Level"
         };
         template.levelDataJson = JsonUtility.ToJson(data, true);
