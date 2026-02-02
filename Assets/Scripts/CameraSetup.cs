@@ -21,9 +21,16 @@ public class CameraSetup : MonoBehaviour
     public Camera targetCamera;
 
     [Header("Camera Position")]
-    [Tooltip("Vertical position offset - moves camera up (positive) or down (negative) from grid center")]
+    [Tooltip("Vertical position offset - calculated automatically based on grid height, or set manually if useAutoVerticalOffset is false")]
     [Range(0f, 28f)]
     public float verticalOffset = 10.4f;
+
+    [Tooltip("Automatically calculate vertical offset based on grid dimensions")]
+    public bool useAutoVerticalOffset = true;
+
+    [Tooltip("Multiplier for auto-calculated vertical offset (higher = camera farther above grid)")]
+    [Range(1.5f, 3f)]
+    public float verticalOffsetMultiplier = 2.18f;
 
     [Tooltip("Horizontal position offset - moves camera left (negative) or right (positive) from grid center")]
     [Range(-10f, 10f)]
@@ -123,6 +130,8 @@ public class CameraSetup : MonoBehaviour
     private float lastTiltAngle;
     private float lastPanAngle;
     private float lastRollAngle;
+    private float lastVerticalOffsetMultiplier;
+    private bool lastUseAutoVerticalOffset;
 
     private void LateUpdate()
     {
@@ -138,7 +147,9 @@ public class CameraSetup : MonoBehaviour
                 lastMinDistance != minDistance ||
                 lastTiltAngle != tiltAngle ||
                 lastPanAngle != panAngle ||
-                lastRollAngle != rollAngle;
+                lastRollAngle != rollAngle ||
+                lastVerticalOffsetMultiplier != verticalOffsetMultiplier ||
+                lastUseAutoVerticalOffset != useAutoVerticalOffset;
 
             if (settingsChanged)
             {
@@ -152,6 +163,8 @@ public class CameraSetup : MonoBehaviour
                 lastTiltAngle = tiltAngle;
                 lastPanAngle = panAngle;
                 lastRollAngle = rollAngle;
+                lastVerticalOffsetMultiplier = verticalOffsetMultiplier;
+                lastUseAutoVerticalOffset = useAutoVerticalOffset;
             }
         }
     }
@@ -201,9 +214,18 @@ public class CameraSetup : MonoBehaviour
         // Calculate distance to frame grid
         float distance = CalculateCameraDistance();
 
-        // Position camera: centered with grid, offset by user values
+        // Calculate vertical offset if auto mode is enabled
+        float finalVerticalOffset = verticalOffset;
+        if (useAutoVerticalOffset)
+        {
+            // Position camera above grid based on grid height
+            // This ensures proper framing regardless of grid size
+            finalVerticalOffset = gridManager.gridHeight * verticalOffsetMultiplier;
+        }
+
+        // Position camera: centered with grid, offset by calculated/user values
         // Camera looks along -Z axis, so position is at negative Z
-        Vector3 cameraPosition = new Vector3(horizontalOffset, verticalOffset, -distance);
+        Vector3 cameraPosition = new Vector3(horizontalOffset, finalVerticalOffset, -distance);
         targetCamera.transform.position = cameraPosition;
 
         // Apply rotation: tilt (pitch), pan (yaw), roll
@@ -284,7 +306,10 @@ public class CameraSetup : MonoBehaviour
             minDistance = minDistance,
             distanceMultiplier = distanceMultiplier,
             rollOffset = rollAngle,
-            tiltOffset = focalLength  // Repurpose tiltOffset to store focal length
+            tiltOffset = focalLength,  // Repurpose tiltOffset to store focal length
+            // Store auto offset settings in viewAngle and orbitAngle (repurposed fields)
+            viewAngle = useAutoVerticalOffset ? 1f : 0f,
+            orbitAngle = verticalOffsetMultiplier
         };
     }
 
@@ -319,6 +344,13 @@ public class CameraSetup : MonoBehaviour
             float fovRadians = settings.fieldOfView * Mathf.Deg2Rad;
             focalLength = sensorHeight / (2f * Mathf.Tan(fovRadians / 2f));
             focalLength = Mathf.Clamp(focalLength, 10f, 200f);
+        }
+
+        // Load auto vertical offset settings (repurposed from viewAngle and orbitAngle)
+        useAutoVerticalOffset = settings.viewAngle > 0.5f;  // Stored as 1.0 or 0.0
+        if (settings.orbitAngle > 0)
+        {
+            verticalOffsetMultiplier = settings.orbitAngle;
         }
 
         SetupCamera();
