@@ -28,7 +28,7 @@ public class GameModeManager : MonoBehaviour
             if (mainCamera == null)
             {
                 Debug.LogError("GameModeManager: Camera.main returned null! Looking for any camera...");
-                mainCamera = UnityEngine.Object.FindAnyObjectByType<Camera>();
+                mainCamera = ServiceRegistry.Get<Camera>();
             }
         }
 
@@ -41,7 +41,7 @@ public class GameModeManager : MonoBehaviour
         // If still not found, search scene
         if (builderController == null)
         {
-            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            builderController = ServiceRegistry.Get<BuilderController>();
         }
 
         // builderController may be assigned later in Update if not found here.
@@ -73,7 +73,7 @@ public class GameModeManager : MonoBehaviour
         if (builderController == null)
         {
             // Try to find it if not found
-            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            builderController = ServiceRegistry.Get<BuilderController>();
             return;
         }
 
@@ -153,7 +153,7 @@ public class GameModeManager : MonoBehaviour
     {
         if (gridVisualizer == null)
         {
-            gridVisualizer = UnityEngine.Object.FindAnyObjectByType<GridVisualizer>();
+            gridVisualizer = ServiceRegistry.Get<GridVisualizer>();
         }
 
         if (gridVisualizer == null) return;

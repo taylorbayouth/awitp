@@ -8,8 +8,18 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 
 ### Core Systems
 
+#### Service Locator Pattern
+- **ServiceRegistry** - Centralized service locator providing access to core game systems
+  - Eliminates expensive FindObjectOfType calls
+  - Provides type-safe access to singleton managers
+  - Improves performance and maintainability
+
 #### Grid System
-- **GridManager** - Central singleton managing the grid, blocks, and Lems
+- **GridManager** - Central singleton managing the grid with delegated subsystems:
+  - **BlockPlacementManager** - Handles all block placement and removal operations
+  - **LemPlacementManager** - Manages Lem tracking, spawning, and cleanup
+  - **GridCursorManager** - Handles cursor state and visual feedback
+  - **GridCoordinateSystem** - Pure coordinate math and grid-to-world conversions
 - **GridVisualizer** - Renders grid lines on the XY plane
 - **PlaceableSpaceVisualizer** - Shows which grid spaces can have blocks placed
 - **GridCursor** - Interactive cursor for navigating the grid
@@ -28,10 +38,10 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **LemController** - Controls Lem movement, physics, and AI
 - **LemSpawner** - Handles Lem spawning at specified grid positions
 
-#### Editor System
-- **EditorController** - Handles all editor input and mode switching
-- **EditorModeManager** - Manages transitions between Editor, Level Editor, and Play modes
-- **GameMode** enum - Defines the three game modes
+#### Builder System
+- **BuilderController** - Handles all builder input and mode switching
+- **GameModeManager** - Manages transitions between Build Mode, Level Designer mode, and Play Mode
+- **GameMode** enum - Defines the three game modes (Build, LevelDesigner, Play)
 
 #### Rendering System
 - **RenderingConstants** - Centralized constants for depths, sorting, line widths, and opacity
@@ -46,9 +56,9 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 
 The game has three distinct modes:
 
-1. **Designer mode** - Place and edit blocks on the grid
-2. **Level Designer mode** - Define placeable spaces and place Lems
-3. **Play Mode** - Test the level with active Lem AI
+1. **Build Mode** - Player-facing mode where blocks are placed from inventory (default)
+2. **Level Designer mode** - Dev-only mode to define placeable spaces and place Lems (press E)
+3. **Play Mode** - Test the level with active Lem AI (press P)
 
 ### Coordinate System
 
@@ -60,34 +70,61 @@ The game uses a 2D grid on the XY plane:
 
 ## File Structure
 
+The project uses a **flat file structure** in Assets/Scripts/ for simplicity and ease of navigation. All scripts are in the root Scripts directory rather than nested folders.
+
 ```
 Assets/
-├── Scripts/
-│   ├── Core/
-│   │   ├── GridManager.cs           # Grid state and block/Lem management
-│   │   ├── GridVisualizer.cs        # Grid line rendering
-│   │   ├── GridCursor.cs            # Interactive cursor
-│   │   └── PlaceableSpaceVisualizer.cs
-│   ├── Blocks/
-│   │   ├── BaseBlock.cs             # Base block class
-│   │   └── BlockInventory.cs        # Block count management
-│   ├── Characters/
-│   │   ├── LemController.cs         # Lem AI and movement
-│   │   └── LemSpawner.cs            # Lem spawning logic
-│   ├── Editor/
-│   │   ├── EditorController.cs      # Editor input handling
-│   │   ├── EditorModeManager.cs     # Mode management
-│   │   └── GameMode.cs              # Game mode enum
-│   ├── Rendering/
-│   │   ├── RenderingConstants.cs    # Rendering constants
-│   │   └── BorderRenderer.cs        # Border rendering utility
-│   ├── SaveSystem/
-│   │   ├── LevelData.cs             # Level data structure
-│   │   └── LevelSaveSystem.cs       # Save/load operations
-│   └── Utilities/
-│       ├── CameraSetup.cs           # Camera positioning
-│       └── GameInitializer.cs       # Game initialization
-└── Master.unity                      # Main scene
+├── Scripts/                          # Flat structure - all scripts here
+│   ├── ServiceRegistry.cs           # Service locator pattern
+│   ├── GridManager.cs               # Grid state and delegated management
+│   ├── BlockPlacementManager.cs     # Block operations subsystem
+│   ├── LemPlacementManager.cs       # Lem tracking subsystem
+│   ├── GridCursorManager.cs         # Cursor state subsystem
+│   ├── GridCoordinateSystem.cs      # Pure coordinate math
+│   ├── GridVisualizer.cs            # Grid line rendering
+│   ├── GridCursor.cs                # Interactive cursor
+│   ├── PlaceableSpaceVisualizer.cs  # Placeable space visuals
+│   ├── BaseBlock.cs                 # Base block class
+│   ├── BlockInventory.cs            # Block count management
+│   ├── BlockType.cs                 # Block type enum
+│   ├── BlockColors.cs               # Block color definitions
+│   ├── WalkBlock.cs                 # Simple platform block
+│   ├── CrumblerBlock.cs             # Breaking block
+│   ├── TeleporterBlock.cs           # Paired teleport block
+│   ├── TransporterBlock.cs          # Moving platform block
+│   ├── KeyBlock.cs                  # Collectible key block
+│   ├── LockBlock.cs                 # Goal lock block
+│   ├── CenterTrigger.cs             # Center detection system
+│   ├── RouteParser.cs               # Transporter route parsing
+│   ├── LemController.cs             # Lem AI and movement
+│   ├── LemSpawner.cs                # Lem spawning logic
+│   ├── BuilderController.cs         # Builder input handling
+│   ├── GameModeManager.cs           # Mode management
+│   ├── GameMode.cs                  # Game mode enum
+│   ├── RenderingConstants.cs        # Rendering constants
+│   ├── BorderRenderer.cs            # Border rendering utility
+│   ├── DebugLog.cs                  # Controlled logging utility
+│   ├── LevelData.cs                 # Level data structure
+│   ├── LevelDefinition.cs           # ScriptableObject level definition
+│   ├── WorldData.cs                 # ScriptableObject world definition
+│   ├── LevelSaveSystem.cs           # Save/load operations
+│   ├── LevelManager.cs              # Level loading and management
+│   ├── WorldManager.cs              # World progression system
+│   ├── ProgressManager.cs           # Player progress tracking
+│   ├── GameProgressData.cs          # Progress data structure
+│   ├── CameraSetup.cs               # Camera positioning
+│   ├── GameInitializer.cs           # Game initialization
+│   ├── GameSceneInitializer.cs      # Scene-specific initialization
+│   ├── InventoryUI.cs               # Inventory display
+│   ├── ControlsUI.cs                # Controls help display
+│   ├── MainMenuUI.cs                # Main menu UI controller
+│   ├── WorldMapUI.cs                # World map UI controller
+│   ├── LevelSelectUI.cs             # Level select UI controller
+│   ├── VictoryScreenUI.cs           # Victory screen UI controller
+│   └── Editor/                      # Editor-only scripts
+│       ├── LevelDefinitionCreator.cs
+│       └── WorldDataCreator.cs
+└── Master.unity                      # Main game scene
 ```
 
 ## Key Features
@@ -144,10 +181,25 @@ Assets/
 ## Development Guidelines
 
 ### Code Organization
+- Flat file structure in Assets/Scripts/ for easy navigation
 - Keep related functionality together in regions
 - Use summary comments for all public methods
 - Centralize constants in dedicated classes (RenderingConstants)
 - Follow Unity naming conventions (PascalCase for public, camelCase for private)
+
+### Service Access Pattern
+- Use ServiceRegistry to access core systems instead of FindObjectOfType
+- Example: `ServiceRegistry.Get<GridManager>()` instead of `FindObjectOfType<GridManager>()`
+- Provides better performance and type safety
+- Initialize services in ServiceRegistry.Awake()
+
+### Manager Decomposition
+- GridManager delegates to specialized subsystems:
+  - BlockPlacementManager: Block operations
+  - LemPlacementManager: Lem tracking
+  - GridCursorManager: Cursor state
+  - GridCoordinateSystem: Pure math
+- This separation improves maintainability and testability
 
 ### Adding New Block Types
 1. Add new entry to BlockType enum

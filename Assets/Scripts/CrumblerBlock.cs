@@ -11,10 +11,6 @@ public class CrumblerBlock : BaseBlock
     public float crumbleDelay = 0.2f;
     [SerializeField] private bool debugCrumbleLogs = true;
     private bool isCrumbing = false;
-    // (unused) kept for backward compatibility if serialized
-#pragma warning disable CS0414
-    [SerializeField] private bool isCracked = false;
-#pragma warning restore CS0414
     private static Material crackMaterial;
     private bool loggedEnter = false;
     private bool loggedCenter = false;
@@ -61,7 +57,6 @@ public class CrumblerBlock : BaseBlock
             renderer.material = crackMaterial;
             appliedCount++;
         }
-        isCracked = true;
         loggedCenter = true;
         LogCrumble($"[Crumbler] Block {gridIndex}: reached center, applied crack color {crumbleColor} to {appliedCount} renderer(s).");
     }

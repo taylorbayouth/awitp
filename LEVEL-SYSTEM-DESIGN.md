@@ -242,7 +242,7 @@ public class LevelProgress {
 
 ## File Structure
 
-### Proposed Directory Layout
+### Actual Directory Layout (Implemented)
 
 ```
 Assets/
@@ -258,56 +258,51 @@ Assets/
 │   │   └── Lem.prefab
 │   └── Levels/                      # Level data
 │       ├── Worlds/
-│       │   ├── World_Tutorial.asset
-│       │   ├── World_Basics.asset
-│       │   └── World_Advanced.asset
+│       │   └── world_tutorial.asset (and other worlds)
 │       └── LevelDefinitions/
-│           ├── Tutorial/
-│           │   ├── Level_FirstSteps.asset
-│           │   ├── Level_Crumblers.asset
-│           │   └── Level_Teleporters.asset
-│           ├── Basics/
-│           │   ├── Level_ResourceManagement.asset
-│           │   └── Level_Timing.asset
-│           └── Advanced/
-│               └── (future levels)
+│           └── (level assets)
 │
-├── Scripts/
-│   ├── Core/
-│   │   ├── GridManager.cs
-│   │   ├── GameMode.cs
-│   │   └── (existing core files)
-│   ├── Blocks/
-│   │   ├── BaseBlock.cs             # Abstract base
-│   │   ├── WalkBlock.cs             # Concrete implementations
-│   │   ├── CrumblerBlock.cs
-│   │   ├── TransporterBlock.cs
-│   │   ├── TeleporterBlock.cs
-│   │   ├── KeyBlock.cs
-│   │   ├── LockBlock.cs
-│   │   ├── BlockType.cs
-│   │   └── BlockInventory.cs
-│   ├── LevelSystem/                 # NEW
-│   │   ├── LevelData.cs             # Enhanced level data
-│   │   ├── WorldData.cs             # World configuration
-│   │   ├── GameProgressData.cs      # Player progress
-│   │   ├── LevelManager.cs          # Level loading/switching
-│   │   ├── WorldManager.cs          # World progression logic
-│   │   ├── ProgressManager.cs       # Save/load progress
-│   │   └── LevelDefinition.cs       # ScriptableObject for levels
-│   ├── UI/
-│   │   ├── WorldMapUI.cs            # NEW: World selection screen
-│   │   ├── LevelSelectUI.cs         # NEW: Level selection within world
-│   │   ├── InventoryUI.cs
-│   │   ├── ControlsUI.cs
-│   │   └── WinConditionUI.cs        # NEW: Victory screen
-│   └── (other existing scripts)
+├── Scripts/                         # FLAT STRUCTURE - all scripts here
+│   ├── ServiceRegistry.cs           # Service locator pattern
+│   ├── GridManager.cs               # Core grid management
+│   ├── BlockPlacementManager.cs     # Block operations subsystem
+│   ├── LemPlacementManager.cs       # Lem tracking subsystem
+│   ├── GridCursorManager.cs         # Cursor state subsystem
+│   ├── GridCoordinateSystem.cs      # Pure coordinate math
+│   ├── GameMode.cs                  # Game mode enum
+│   ├── BaseBlock.cs                 # Abstract base
+│   ├── WalkBlock.cs                 # Concrete block implementations
+│   ├── CrumblerBlock.cs
+│   ├── TransporterBlock.cs
+│   ├── TeleporterBlock.cs
+│   ├── KeyBlock.cs
+│   ├── LockBlock.cs
+│   ├── BlockType.cs
+│   ├── BlockInventory.cs
+│   ├── LevelData.cs                 # Level data structure
+│   ├── WorldData.cs                 # World configuration
+│   ├── GameProgressData.cs          # Player progress
+│   ├── LevelManager.cs              # Level loading/switching
+│   ├── WorldManager.cs              # World progression logic
+│   ├── ProgressManager.cs           # Save/load progress
+│   ├── LevelDefinition.cs           # ScriptableObject for levels
+│   ├── BuilderController.cs         # Builder input handling
+│   ├── GameModeManager.cs           # Mode management
+│   ├── MainMenuUI.cs                # Main menu UI
+│   ├── WorldMapUI.cs                # World selection screen
+│   ├── LevelSelectUI.cs             # Level selection within world
+│   ├── VictoryScreenUI.cs           # Victory screen
+│   ├── InventoryUI.cs
+│   ├── ControlsUI.cs
+│   ├── DebugLog.cs                  # Controlled logging
+│   └── Editor/                      # Editor-only scripts
+│       ├── LevelDefinitionCreator.cs
+│       └── WorldDataCreator.cs
 │
 └── Scenes/
-    ├── MainMenu.unity               # NEW: Entry point
-    ├── WorldMap.unity               # NEW: World selection
-    ├── Game.unity                   # Gameplay scene (replaces Master.unity)
-    └── Designer.unity               # NEW: Designer-only scene
+    ├── MainMenu.unity               # Entry point
+    ├── Overworld.unity              # World/level selection
+    └── Master.unity                 # Gameplay scene
 ```
 
 ---
@@ -611,16 +606,16 @@ Lem.prefab
 ```
 [Unity Editor]
     ↓
-[Designer Scene]
-    ├─ Build Mode ← Test player experience
-    ├─ Designer Mode (E key) ← Create level
-    │   ├─ Place permanent blocks
-    │   ├─ Mark placeable spaces
-    │   ├─ Configure inventory
-    │   └─ Place Lems
+[Master Scene]
+    ├─ Build Mode ← Test player experience (default mode)
+    ├─ Level Designer Mode (E key) ← Create level
+    │   ├─ Place permanent blocks (B key)
+    │   ├─ Mark placeable spaces (Space key)
+    │   ├─ Configure inventory (in LevelDefinition asset)
+    │   └─ Place Lems (L key)
     ├─ Play Mode (P key) ← Test level
     │   ↓
-    ├─ [Save Level] (Ctrl+S) → Create LevelDefinition asset
+    ├─ [Save Level] (Ctrl+S) → Saves to LevelDefinition asset
     └─ [Export to Build] → Level becomes playable in game
 ```
 

@@ -2,7 +2,7 @@
 
 **STATUS: ✅ STILL RELEVANT - Future Enhancement Wishlist**
 
-**Note**: These features are separate from the multi-level system (which is now implemented). These are quality-of-life improvements for the Designer Mode level creation workflow.
+**Note**: These features are separate from the multi-level system (which is now implemented). These are quality-of-life improvements for the Level Designer Mode level creation workflow.
 
 **What Was Completed (2026-01-27)**:
 - ✅ Multi-level system with progression (LevelManager, WorldManager, ProgressManager)
@@ -10,7 +10,7 @@
 - ✅ UI system for menu navigation
 
 **What This Document Covers**:
-- Enhancements to Designer Mode workflow (undo/redo, error messages, etc.)
+- Enhancements to Level Designer Mode workflow (undo/redo, error messages, etc.)
 - Polish features for level editing experience
 - Future improvements for content creators
 
@@ -32,7 +32,7 @@ These features are essential for a smooth level creation experience:
 - [ ] Clear history on level load
 
 **Files to Modify**:
-- [EditorController.cs](Assets/Scripts/EditorController.cs) - Add undo/redo input handling
+- [BuilderController.cs](Assets/Scripts/BuilderController.cs) - Add undo/redo input handling
 - Create new `EditorCommandSystem.cs` - Command pattern implementation
 - [GridManager.cs](Assets/Scripts/GridManager.cs) - Make actions reversible
 
@@ -55,7 +55,7 @@ These features are essential for a smooth level creation experience:
 - `Assets/Scripts/UI/ErrorNotificationUI.cs` - Toast message system
 
 **Files to Modify**:
-- [EditorController.cs](Assets/Scripts/EditorController.cs) - Call error UI on failed placement
+- [BuilderController.cs](Assets/Scripts/BuilderController.cs) - Call error UI on failed placement
 - [BaseBlock.cs](Assets/Scripts/BaseBlock.cs) - Ensure all errors return user-friendly messages
 
 **Estimated Complexity**: Medium
@@ -108,7 +108,7 @@ These features significantly improve the level creation workflow:
 
 **Files to Modify**:
 - [LevelSaveSystem.cs](Assets/Scripts/LevelSaveSystem.cs) - Support named files
-- [EditorController.cs](Assets/Scripts/EditorController.cs) - Add save as hotkey
+- [BuilderController.cs](Assets/Scripts/BuilderController.cs) - Add save as hotkey
 - [LevelData.cs](Assets/Scripts/LevelData.cs) - Add `levelName` field (already exists!)
 
 **Estimated Complexity**: Medium
@@ -174,7 +174,7 @@ These features significantly improve the level creation workflow:
 - `Assets/Scripts/Editor/SelectionBox.cs` - Multi-block selection
 
 **Files to Modify**:
-- [EditorController.cs](Assets/Scripts/EditorController.cs) - Add copy/paste hotkeys
+- [BuilderController.cs](Assets/Scripts/BuilderController.cs) - Add copy/paste hotkeys
 - [GridCursor.cs](Assets/Scripts/GridCursor.cs) - Show paste preview
 
 **Estimated Complexity**: High

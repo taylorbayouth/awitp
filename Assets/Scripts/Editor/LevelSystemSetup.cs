@@ -136,7 +136,7 @@ public class LevelSystemSetup : EditorWindow
         so.ApplyModifiedProperties();
 
         // Add EventSystem
-        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (ServiceRegistry.Get<UnityEngine.EventSystems.EventSystem>() == null)
         {
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -244,7 +244,7 @@ public class LevelSystemSetup : EditorWindow
         so.ApplyModifiedProperties();
 
         // Add EventSystem
-        if (FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+        if (ServiceRegistry.Get<UnityEngine.EventSystems.EventSystem>() == null)
         {
             GameObject eventSystem = new GameObject("EventSystem");
             eventSystem.AddComponent<UnityEngine.EventSystems.EventSystem>();
@@ -402,7 +402,7 @@ public class LevelSystemSetup : EditorWindow
     public static void AddVictoryScreenToScene()
     {
         // Find or create Canvas
-        Canvas canvas = FindAnyObjectByType<Canvas>();
+        Canvas canvas = ServiceRegistry.Get<Canvas>();
         if (canvas == null)
         {
             GameObject canvasObj = new GameObject("Canvas");
@@ -478,7 +478,7 @@ public class LevelSystemSetup : EditorWindow
 
         // Add LevelManager
         System.Type levelManagerType = System.Type.GetType("LevelManager");
-        if (levelManagerType != null && FindAnyObjectByType(levelManagerType) == null)
+        if (levelManagerType != null && UnityEngine.Object.FindAnyObjectByType(levelManagerType) == null)
         {
             managers.AddComponent(levelManagerType);
             Debug.Log("Added LevelManager");
@@ -486,7 +486,7 @@ public class LevelSystemSetup : EditorWindow
 
         // Add WorldManager
         System.Type worldManagerType = System.Type.GetType("WorldManager");
-        if (worldManagerType != null && FindAnyObjectByType(worldManagerType) == null)
+        if (worldManagerType != null && UnityEngine.Object.FindAnyObjectByType(worldManagerType) == null)
         {
             managers.AddComponent(worldManagerType);
             Debug.Log("Added WorldManager");
@@ -494,7 +494,7 @@ public class LevelSystemSetup : EditorWindow
 
         // Add ProgressManager
         System.Type progressManagerType = System.Type.GetType("ProgressManager");
-        if (progressManagerType != null && FindAnyObjectByType(progressManagerType) == null)
+        if (progressManagerType != null && UnityEngine.Object.FindAnyObjectByType(progressManagerType) == null)
         {
             managers.AddComponent(progressManagerType);
             Debug.Log("Added ProgressManager");

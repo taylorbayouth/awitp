@@ -38,7 +38,7 @@ public class LevelManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = UnityEngine.Object.FindAnyObjectByType<LevelManager>();
+                _instance = ServiceRegistry.Get<LevelManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("LevelManager");
@@ -171,7 +171,7 @@ public class LevelManager : MonoBehaviour
         if (_levelLoaded && !_levelCompletedThisSession)
         {
             // Only check in play mode
-            BuilderController builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            BuilderController builderController = ServiceRegistry.Get<BuilderController>();
             if (builderController != null && builderController.currentMode == GameMode.Play)
             {
                 if (CheckLevelComplete())
@@ -578,12 +578,12 @@ public class LevelManager : MonoBehaviour
     {
         if (_gridManager == null)
         {
-            _gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
+            _gridManager = ServiceRegistry.Get<GridManager>();
         }
 
         if (_blockInventory == null)
         {
-            _blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            _blockInventory = ServiceRegistry.Get<BlockInventory>();
         }
     }
 
