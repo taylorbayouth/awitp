@@ -103,11 +103,15 @@ public class BlockInventoryEntry
 }
 ```
 
-#### 6. Lems (NOT saved by Cmd+S)
-Lem placements are **NOT** saved during designer saves. Lems are placed during **Play mode** and are part of the level solution, not the level design.
+#### 6. Lem Placements ✅
+Lem starting positions and facing directions ARE saved:
+- Place Lems in **Design mode** to set their starting positions
+- Facing direction (left/right) is saved
+- World position is captured
+- Lems are the characters that need to reach the goal - the designer places them, players build paths for them
 
-#### 7. Placed Blocks During Play (NOT saved by Cmd+S)
-Blocks placed by the player during Play mode are **NOT** saved by the designer save (Cmd+S). This is intentional - you're designing the level, not solving it.
+#### 7. Player-Placed Blocks During Play (NOT saved by Cmd+S)
+Blocks placed by the player during Play mode are **NOT** saved by the designer save (Cmd+S). This is intentional - you're designing the level, not solving it. The player places blocks from the inventory to create paths for the Lems to reach the goal.
 
 ---
 
@@ -340,11 +344,21 @@ Press **Cmd+Shift+S** in Play mode to see the asset path in console.
 
 ## Tips & Best Practices
 
-### Level Design
-- ✅ Use **Design mode** to place permanent blocks
-- ✅ Mark placeable spaces for player interaction
-- ✅ Test in **Play mode** (Tab key)
+### Level Design (Designer Role)
+- ✅ Use **Design mode** to place permanent blocks:
+  - Walk blocks (platforms for Lems to stand on)
+  - Lock blocks (statues - the goal Lems must reach)
+  - Key blocks (trees with apples - keys to unlock locks)
+- ✅ Place **Lems** in Design mode at their starting positions
+- ✅ Mark placeable spaces where players can build paths
+- ✅ Configure inventory with blocks players can use to help Lems reach the goal
+- ✅ Test in **Play mode** (Tab key) by placing blocks to create paths for Lems
 - ✅ Save often with **Cmd+S**
+
+### Player Role (During Gameplay)
+- Player places blocks from the inventory to create paths
+- Player does NOT place Lems - Lems are part of the level design
+- Goal: Help Lems reach the lock blocks (statues) by building paths
 
 ### Camera Settings
 - ✅ Start with defaults (756mm focal length, 23.7x distance)
