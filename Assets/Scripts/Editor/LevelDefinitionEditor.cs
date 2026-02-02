@@ -548,7 +548,7 @@ public class LevelDefinitionEditor : Editor
         }
 
         // Find or create GameSceneInitializer
-        GameSceneInitializer initializer = FindAnyObjectByType<GameSceneInitializer>();
+        GameSceneInitializer initializer = ServiceRegistry.Get<GameSceneInitializer>();
 
         if (initializer == null)
         {

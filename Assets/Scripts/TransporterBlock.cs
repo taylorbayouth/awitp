@@ -40,7 +40,7 @@ public class TransporterBlock : BaseBlock
         if (isTransporting || !isArmed) return;
 
         // Find Lem (the player character)
-        LemController lem = currentPlayer != null ? currentPlayer : UnityEngine.Object.FindAnyObjectByType<LemController>();
+        LemController lem = currentPlayer != null ? currentPlayer : ServiceRegistry.Get<LemController>();
         if (lem == null)
         {
             Debug.LogError("Cannot transport - Lem not found");
@@ -392,7 +392,7 @@ public class TransporterBlock : BaseBlock
     private static GridManager GetGridManager()
     {
         if (GridManager.Instance != null) return GridManager.Instance;
-        return Object.FindAnyObjectByType<GridManager>();
+        return ServiceRegistry.Get<GridManager>();
     }
 
     /// <summary>

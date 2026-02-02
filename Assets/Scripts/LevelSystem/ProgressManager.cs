@@ -37,7 +37,7 @@ public class ProgressManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = UnityEngine.Object.FindAnyObjectByType<ProgressManager>();
+                _instance = ServiceRegistry.Get<ProgressManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("ProgressManager");

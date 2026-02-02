@@ -23,7 +23,7 @@ public class BuilderController : MonoBehaviour
         gameModeManager = GetComponent<GameModeManager>();
         if (gameModeManager == null)
         {
-            gameModeManager = UnityEngine.Object.FindAnyObjectByType<GameModeManager>();
+            gameModeManager = ServiceRegistry.Get<GameModeManager>();
         }
 
         // GameModeManager is ensured by GameInitializer; don't add it here.
@@ -32,7 +32,7 @@ public class BuilderController : MonoBehaviour
         blockInventory = GetComponent<BlockInventory>();
         if (blockInventory == null)
         {
-            blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            blockInventory = ServiceRegistry.Get<BlockInventory>();
         }
 
         InitializeInventorySelection();
@@ -66,7 +66,7 @@ public class BuilderController : MonoBehaviour
         blockInventory = GetComponent<BlockInventory>();
         if (blockInventory == null)
         {
-            blockInventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            blockInventory = ServiceRegistry.Get<BlockInventory>();
         }
 
         if (blockInventory != null)

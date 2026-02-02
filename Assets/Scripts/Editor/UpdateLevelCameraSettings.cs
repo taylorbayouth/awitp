@@ -204,7 +204,7 @@ public class UpdateLevelCameraSettings : EditorWindow
 
     private void UpdateSceneCamera()
     {
-        CameraSetup cameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+        CameraSetup cameraSetup = ServiceRegistry.Get<CameraSetup>();
         if (cameraSetup == null)
         {
             EditorUtility.DisplayDialog("Not Found", "No CameraSetup in scene.", "OK");

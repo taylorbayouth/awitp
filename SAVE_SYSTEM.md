@@ -21,7 +21,7 @@ This document describes how each layer works and what data is (and is not) persi
 **Who uses it**: Designer only. Players never use the save hotkey.
 
 **How it works**:
-- `EditorController.HandleSaveLoad()` checks for Ctrl/Cmd+S.
+- `BuilderController.HandleSaveLoad()` checks for Ctrl/Cmd+S.
 - Requires `LevelManager.CurrentLevelDef` to be assigned.
 - Calls `GridManager.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false)`.
 - Writes JSON into the `LevelDefinition` via `SaveFromLevelData()`.
