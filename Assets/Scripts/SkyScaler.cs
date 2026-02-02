@@ -4,16 +4,21 @@ using UnityEngine;
 /// Scales and positions a sky quad to always fill the camera view.
 ///
 /// DYNAMIC SYSTEM:
-/// - Sky positioned very close to grid (default Z=5)
+/// - Sky positioned behind grid at fixed Z distance (default Z=5)
+/// - Sky aligns with camera's horizontal/vertical offsets to stay centered in view
 /// - Sky always rotates to face the camera (perpendicular to camera view)
 /// - Sky scales dynamically based on camera FOV and distance
 /// - Works with any grid size and extreme camera settings
+/// - Fully adapts when grid dimensions or camera settings change
 /// </summary>
 public class SkyScaler : MonoBehaviour
 {
     [Header("References")]
     [Tooltip("The camera to frame against (defaults to Main Camera)")]
     public Camera targetCamera;
+
+    [Tooltip("The camera setup component for offset values (optional - will auto-find if not set)")]
+    public CameraSetup cameraSetup;
 
     [Header("Positioning")]
     [Tooltip("Distance behind the grid (grid is at Z=0, positive values go behind)")]
@@ -34,6 +39,8 @@ public class SkyScaler : MonoBehaviour
     private Vector3 lastCameraPosition;
     private Quaternion lastCameraRotation;
     private float lastDistanceBehindGrid;
+    private float lastHorizontalOffset;
+    private float lastVerticalOffset;
 
     private void Awake()
     {
@@ -44,6 +51,11 @@ public class SkyScaler : MonoBehaviour
             {
                 targetCamera = ServiceRegistry.Get<Camera>();
             }
+        }
+
+        if (cameraSetup == null)
+        {
+            cameraSetup = ServiceRegistry.Get<CameraSetup>();
         }
     }
 
@@ -56,11 +68,17 @@ public class SkyScaler : MonoBehaviour
     {
         if (!autoUpdate || targetCamera == null) return;
 
+        // Get current offsets
+        float currentHorizontalOffset = cameraSetup != null ? cameraSetup.horizontalOffset : 0f;
+        float currentVerticalOffset = cameraSetup != null ? cameraSetup.verticalOffset : 0f;
+
         // Check if camera or sky settings changed
         bool settingsChanged =
             !Mathf.Approximately(lastAspect, targetCamera.aspect) ||
             !Mathf.Approximately(lastFOV, targetCamera.fieldOfView) ||
             !Mathf.Approximately(lastDistanceBehindGrid, distanceBehindGrid) ||
+            !Mathf.Approximately(lastHorizontalOffset, currentHorizontalOffset) ||
+            !Mathf.Approximately(lastVerticalOffset, currentVerticalOffset) ||
             lastCameraPosition != targetCamera.transform.position ||
             lastCameraRotation != targetCamera.transform.rotation;
 
@@ -83,8 +101,18 @@ public class SkyScaler : MonoBehaviour
             return;
         }
 
-        // Position sky plane behind the grid at fixed Z
-        Vector3 skyPosition = new Vector3(0f, 0f, distanceBehindGrid);
+        // Get camera offsets to align sky with camera's view center
+        float horizontalOffset = 0f;
+        float verticalOffset = 0f;
+        if (cameraSetup != null)
+        {
+            horizontalOffset = cameraSetup.horizontalOffset;
+            verticalOffset = cameraSetup.verticalOffset;
+        }
+
+        // Position sky plane behind the grid, aligned with camera's offset position
+        // This ensures the sky stays centered in the camera view even with camera offsets
+        Vector3 skyPosition = new Vector3(horizontalOffset, verticalOffset, distanceBehindGrid);
         transform.position = skyPosition;
 
         // Calculate distance from camera to sky
@@ -123,8 +151,10 @@ public class SkyScaler : MonoBehaviour
         lastCameraPosition = cameraPosition;
         lastCameraRotation = targetCamera.transform.rotation;
         lastDistanceBehindGrid = distanceBehindGrid;
+        lastHorizontalOffset = horizontalOffset;
+        lastVerticalOffset = verticalOffset;
 
         DebugLog.Info($"SkyScaler: Scaled to {viewWidth:F1}x{viewHeight:F1} units at Z={distanceBehindGrid}, " +
-                  $"distance from camera={distanceToSky:F1}, FOV={targetCamera.fieldOfView:F2}°");
+                  $"offset=({horizontalOffset:F1}, {verticalOffset:F1}), distance from camera={distanceToSky:F1}, FOV={targetCamera.fieldOfView:F2}°");
     }
 }
