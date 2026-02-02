@@ -64,6 +64,18 @@ PrefabInstance:
       propertyPath: m_ConstrainProportionsScale
       value: 1
       objectReference: {fileID: 0}
+    - target: {fileID: 2664352442419917824, guid: 979ff946502d44f8894a8cd8ef60f9f9, type: 3}
+      propertyPath: blobColor.b
+      value: 0.8867924
+      objectReference: {fileID: 0}
+    - target: {fileID: 2664352442419917824, guid: 979ff946502d44f8894a8cd8ef60f9f9, type: 3}
+      propertyPath: blobColor.g
+      value: 0.8854597
+      objectReference: {fileID: 0}
+    - target: {fileID: 2664352442419917824, guid: 979ff946502d44f8894a8cd8ef60f9f9, type: 3}
+      propertyPath: blobColor.r
+      value: 0.8742435
+      objectReference: {fileID: 0}
     - target: {fileID: 8934368700285712684, guid: 979ff946502d44f8894a8cd8ef60f9f9, type: 3}
       propertyPath: m_Name
       value: CloudCube
@@ -222,4 +234,3 @@ MonoBehaviour:
   speedMultiplier: 0.25
   debugLogs: 0
   showRoutePreview: 1
-  previewAlpha: 0.5
