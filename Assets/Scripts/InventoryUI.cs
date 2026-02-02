@@ -594,7 +594,8 @@ public class InventoryUI : MonoBehaviour
         texture.hideFlags = HideFlags.HideAndDontSave;
 
         Color clear = new Color(1f, 1f, 1f, 0f);
-        Color fill = Color.white;
+        Color originalBlock = Color.white;              // Full opacity for original block
+        Color previewPath = new Color(1f, 1f, 1f, 0.2f); // 20% opacity for preview path
         Color[] pixels = new Color[size * size];
         for (int i = 0; i < pixels.Length; i++)
         {
@@ -608,6 +609,9 @@ public class InventoryUI : MonoBehaviour
             int localY = pos.y - minY;
             int pixelX = offsetX + (localX * cellSize);
             int pixelY = offsetY + (localY * cellSize);
+
+            // First position is the original block (full opacity), rest are preview path (20% opacity)
+            Color fill = (i == 0) ? originalBlock : previewPath;
 
             for (int y = 0; y < cellSize; y++)
             {

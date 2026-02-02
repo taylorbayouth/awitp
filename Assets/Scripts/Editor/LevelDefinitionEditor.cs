@@ -20,6 +20,10 @@ public class LevelDefinitionEditor : Editor
     private bool showJsonData = false;
     private Vector2 inventoryScrollPos;
 
+    // Track previous grid dimensions to detect actual changes
+    private int previousGridWidth = -1;
+    private int previousGridHeight = -1;
+
     private void OnEnable()
     {
         levelIdProp = serializedObject.FindProperty("levelId");
@@ -31,6 +35,10 @@ public class LevelDefinitionEditor : Editor
         levelDataJsonProp = serializedObject.FindProperty("levelDataJson");
 
         LoadInventoryFromJson();
+
+        // Initialize previous grid dimensions
+        previousGridWidth = gridWidthProp.intValue;
+        previousGridHeight = gridHeightProp.intValue;
     }
 
     public override void OnInspectorGUI()
@@ -358,53 +366,142 @@ public class LevelDefinitionEditor : Editor
 
     private void SaveGridSettingsToJson()
     {
-        string json = levelDataJsonProp.stringValue;
-        LevelData levelData;
+        int newWidth = gridWidthProp.intValue;
+        int newHeight = gridHeightProp.intValue;
 
-        // Parse existing or create new
-        if (!string.IsNullOrEmpty(json))
+        // Check if grid dimensions actually changed
+        bool dimensionsChanged = (newWidth != previousGridWidth || newHeight != previousGridHeight);
+
+        if (dimensionsChanged && previousGridWidth > 0 && previousGridHeight > 0)
         {
-            try
+            // Grid size changed - reset level data
+            Debug.LogWarning($"[LevelDefinitionEditor] Grid size changed for '{levelNameProp.stringValue}': " +
+                           $"{previousGridWidth}x{previousGridHeight} → {newWidth}x{newHeight}");
+            Debug.LogWarning($"[LevelDefinitionEditor] Resetting level data (blocks, Lems, keys cleared; inventory and camera preserved)");
+
+            ResetLevelDataForGridChange(newWidth, newHeight);
+
+            // Update tracked dimensions
+            previousGridWidth = newWidth;
+            previousGridHeight = newHeight;
+
+            // Delete runtime save file if it exists
+            string levelName = levelNameProp.stringValue;
+            if (!string.IsNullOrEmpty(levelName) && LevelSaveSystem.LevelExists(levelName))
             {
-                levelData = JsonUtility.FromJson<LevelData>(json);
-                if (levelData == null)
+                bool deleted = LevelSaveSystem.DeleteLevel(levelName);
+                if (deleted)
                 {
-                    levelData = new LevelData();
+                    Debug.Log($"<color=yellow>✓ Deleted runtime save file for '{levelName}'</color>");
                 }
-            }
-            catch
-            {
-                levelData = new LevelData();
             }
         }
         else
         {
-            levelData = new LevelData();
+            // Just update the grid dimensions without resetting
+            string json = levelDataJsonProp.stringValue;
+            LevelData levelData;
+
+            // Parse existing or create new
+            if (!string.IsNullOrEmpty(json))
+            {
+                try
+                {
+                    levelData = JsonUtility.FromJson<LevelData>(json);
+                    if (levelData == null)
+                    {
+                        levelData = new LevelData();
+                    }
+                }
+                catch
+                {
+                    levelData = new LevelData();
+                }
+            }
+            else
+            {
+                levelData = new LevelData();
+            }
+
+            // Ensure all required lists are initialized
+            if (levelData.blocks == null) levelData.blocks = new List<LevelData.BlockData>();
+            if (levelData.permanentBlocks == null) levelData.permanentBlocks = new List<LevelData.BlockData>();
+            if (levelData.placeableSpaceIndices == null) levelData.placeableSpaceIndices = new List<int>();
+            if (levelData.lems == null) levelData.lems = new List<LevelData.LemData>();
+            if (levelData.keyStates == null) levelData.keyStates = new List<LevelData.KeyStateData>();
+            if (levelData.inventoryEntries == null) levelData.inventoryEntries = new List<BlockInventoryEntry>();
+
+            // Update grid settings from properties
+            levelData.gridWidth = newWidth;
+            levelData.gridHeight = newHeight;
+            levelData.levelName = levelNameProp.stringValue;
+
+            // Serialize back
+            string newJson = JsonUtility.ToJson(levelData, true);
+            levelDataJsonProp.stringValue = newJson;
+
+            // Force Unity to save the changes
+            serializedObject.ApplyModifiedProperties();
+            EditorUtility.SetDirty(target);
+            AssetDatabase.SaveAssets();
+
+            Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight} (1.0 unit cells)");
+
+            // Update tracked dimensions
+            previousGridWidth = newWidth;
+            previousGridHeight = newHeight;
+        }
+    }
+
+    private void ResetLevelDataForGridChange(int newWidth, int newHeight)
+    {
+        // Preserve inventory only (reset camera to defaults for new grid size)
+        List<BlockInventoryEntry> preservedInventory = new List<BlockInventoryEntry>();
+
+        string json = levelDataJsonProp.stringValue;
+        if (!string.IsNullOrEmpty(json))
+        {
+            try
+            {
+                LevelData existingData = JsonUtility.FromJson<LevelData>(json);
+                if (existingData != null && existingData.inventoryEntries != null)
+                {
+                    preservedInventory = existingData.inventoryEntries;
+                }
+            }
+            catch
+            {
+                // If parsing fails, just start fresh
+            }
         }
 
-        // Ensure all required lists are initialized
-        if (levelData.blocks == null) levelData.blocks = new List<LevelData.BlockData>();
-        if (levelData.permanentBlocks == null) levelData.permanentBlocks = new List<LevelData.BlockData>();
-        if (levelData.placeableSpaceIndices == null) levelData.placeableSpaceIndices = new List<int>();
-        if (levelData.lems == null) levelData.lems = new List<LevelData.LemData>();
-        if (levelData.keyStates == null) levelData.keyStates = new List<LevelData.KeyStateData>();
-        if (levelData.inventoryEntries == null) levelData.inventoryEntries = new List<BlockInventoryEntry>();
+        // Create fresh level data with new dimensions and default camera settings
+        LevelData newData = new LevelData
+        {
+            gridWidth = newWidth,
+            gridHeight = newHeight,
+            levelName = levelNameProp.stringValue,
+            cameraSettings = new LevelData.CameraSettings(), // Fresh camera settings for new grid
+            inventoryEntries = preservedInventory,
+            // All other lists remain empty (blocks, permanentBlocks, lems, keyStates, placeableSpaceIndices)
+            blocks = new List<LevelData.BlockData>(),
+            permanentBlocks = new List<LevelData.BlockData>(),
+            placeableSpaceIndices = new List<int>(),
+            lems = new List<LevelData.LemData>(),
+            keyStates = new List<LevelData.KeyStateData>()
+        };
 
-        // Update grid settings from properties
-        levelData.gridWidth = gridWidthProp.intValue;
-        levelData.gridHeight = gridHeightProp.intValue;
-        levelData.levelName = levelNameProp.stringValue;
-
-        // Serialize back
-        string newJson = JsonUtility.ToJson(levelData, true);
-        levelDataJsonProp.stringValue = newJson;
+        // Update the JSON
+        levelDataJsonProp.stringValue = JsonUtility.ToJson(newData, true);
 
         // Force Unity to save the changes
         serializedObject.ApplyModifiedProperties();
         EditorUtility.SetDirty(target);
         AssetDatabase.SaveAssets();
 
-        Debug.Log($"[LevelDefinitionEditor] Auto-synced grid settings: {levelData.gridWidth}x{levelData.gridHeight} (1.0 unit cells)");
+        Debug.Log($"<color=orange>✓ Reset level data for '{levelNameProp.stringValue}' to {newWidth}x{newHeight} grid</color>");
+        Debug.Log($"  • Cleared: blocks, permanent blocks, Lems, keys, placeable spaces, camera settings");
+        Debug.Log($"  • Preserved: inventory ({preservedInventory.Count} entries)");
     }
 
     private void EditLevelVisually()
