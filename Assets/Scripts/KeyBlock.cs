@@ -50,6 +50,9 @@ public class KeyBlock : BaseBlock
     {
         if (keyTransform != null) return;
 
+        // Find ApplePlacement child if it exists
+        Transform applePlacement = transform.Find("ApplePlacement");
+
         GameObject keyObj;
         if (keyVisualPrefab != null)
         {
@@ -67,14 +70,27 @@ public class KeyBlock : BaseBlock
         }
         else
         {
-            keyObj = CreateKeyFromMeshOrSphere();
+            // Try loading GreenApple prefab from Resources
+            GameObject applePrefab = Resources.Load<GameObject>("GreenApple");
+            if (applePrefab != null)
+            {
+                keyObj = Instantiate(applePrefab);
+                DebugLog.Info($"[KeyBlock] Loaded GreenApple prefab from Resources");
+            }
+            else
+            {
+                keyObj = CreateKeyFromMeshOrSphere();
+            }
         }
         keyObj.name = "Key";
         foreach (Collider collider in keyObj.GetComponentsInChildren<Collider>())
         {
             Destroy(collider);
         }
-        keyObj.transform.SetParent(transform, false);
+
+        // Parent to ApplePlacement if it exists, otherwise to the block itself
+        Transform parentTransform = applePlacement != null ? applePlacement : transform;
+        keyObj.transform.SetParent(parentTransform, false);
 
         MeshFilter meshFilter = keyObj.GetComponentInChildren<MeshFilter>();
         if (meshFilter != null && meshFilter.sharedMesh != null)
@@ -96,7 +112,19 @@ public class KeyBlock : BaseBlock
         keyTransform = keyObj.transform;
         keyItem = keyObj.AddComponent<KeyItem>();
         keyItem.ConfigureSource(gridIndex, keyLocalYOffset, keyScale * keyVisualScaleMultiplier, keyCarryYOffset);
-        ApplyKeyTransform(keyTransform, Vector3.up * keyLocalYOffset, GetKeyWorldScale());
+
+        // If parented to ApplePlacement, use its position; otherwise apply offset
+        if (keyTransform.parent != transform)
+        {
+            // Already positioned by ApplePlacement, just apply scale
+            ApplyKeyTransform(keyTransform, Vector3.zero, GetKeyWorldScale());
+            DebugLog.Info($"[KeyBlock] Key positioned at ApplePlacement marker");
+        }
+        else
+        {
+            // No ApplePlacement found, use legacy offset positioning
+            ApplyKeyTransform(keyTransform, Vector3.up * keyLocalYOffset, GetKeyWorldScale());
+        }
     }
 
     private GameObject CreateKeyFromMeshOrSphere()
