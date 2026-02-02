@@ -333,8 +333,7 @@ public class LevelManager : MonoBehaviour
                 LevelData emptyData = new LevelData
                 {
                     gridWidth = _gridManager.gridWidth,
-                    gridHeight = _gridManager.gridHeight,
-                    cellSize = _gridManager.cellSize
+                    gridHeight = _gridManager.gridHeight
                 };
                 _gridManager.RestoreLevelData(emptyData);
             }

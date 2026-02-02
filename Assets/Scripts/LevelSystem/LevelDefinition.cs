@@ -34,11 +34,8 @@ public class LevelDefinition : ScriptableObject
     [Tooltip("Number of columns in the grid")]
     public int gridWidth = 10;
 
-    [Tooltip("Number of rows in the grid")]
+    [Tooltip("Number of rows in the grid (cells are 1.0 world unit each)")]
     public int gridHeight = 10;
-
-    [Tooltip("Size of each grid cell in world units")]
-    public float cellSize = 1.0f;
 
     [Header("Level Data")]
     [Tooltip("JSON string containing the complete level data (blocks, lems, inventory, etc.)")]
@@ -66,7 +63,6 @@ public class LevelDefinition : ScriptableObject
             {
                 if (data.gridWidth <= 0) data.gridWidth = gridWidth;
                 if (data.gridHeight <= 0) data.gridHeight = gridHeight;
-                if (data.cellSize <= 0f) data.cellSize = cellSize;
                 if (string.IsNullOrEmpty(data.levelName)) data.levelName = levelName;
             }
 
@@ -94,7 +90,6 @@ public class LevelDefinition : ScriptableObject
 
         gridWidth = data.gridWidth;
         gridHeight = data.gridHeight;
-        cellSize = data.cellSize;
         levelDataJson = JsonUtility.ToJson(data, true);
 
         if (!string.IsNullOrEmpty(data.levelName))
@@ -125,7 +120,7 @@ public class LevelDefinition : ScriptableObject
 
         // Log detailed save information
         Debug.Log($"<color=green>✓ SAVED '{levelName}' ({levelId})</color>");
-        Debug.Log($"  Grid: {data.gridWidth}x{data.gridHeight}, Cell Size: {data.cellSize}");
+        Debug.Log($"  Grid: {data.gridWidth}x{data.gridHeight} (1.0 unit cells)");
         Debug.Log($"  Blocks: {data.blocks?.Count ?? 0} placed, {data.permanentBlocks?.Count ?? 0} permanent");
         Debug.Log($"  Inventory: {data.inventoryEntries?.Count ?? 0} entries");
         Debug.Log($"  Lems: {data.lems?.Count ?? 0}");

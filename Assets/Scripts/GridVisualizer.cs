@@ -39,18 +39,19 @@ public class GridVisualizer : MonoBehaviour
         float z = RenderingConstants.GRID_DEPTH;
 
         // Horizontal lines (along X axis, at each Y level)
+        // Grid cells are normalized to 1.0 world unit
         for (int y = 0; y <= gridManager.gridHeight; y++)
         {
-            Vector3 start = gridManager.gridOrigin + new Vector3(0, y * gridManager.cellSize, z);
-            Vector3 end = gridManager.gridOrigin + new Vector3(gridManager.gridWidth * gridManager.cellSize, y * gridManager.cellSize, z);
+            Vector3 start = gridManager.gridOrigin + new Vector3(0, y, z);
+            Vector3 end = gridManager.gridOrigin + new Vector3(gridManager.gridWidth, y, z);
             CreateGridLine($"HorizontalLine_{y}", start, end, gridColor);
         }
 
         // Vertical lines (along Y axis, at each X level)
         for (int x = 0; x <= gridManager.gridWidth; x++)
         {
-            Vector3 start = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, 0, z);
-            Vector3 end = gridManager.gridOrigin + new Vector3(x * gridManager.cellSize, gridManager.gridHeight * gridManager.cellSize, z);
+            Vector3 start = gridManager.gridOrigin + new Vector3(x, 0, z);
+            Vector3 end = gridManager.gridOrigin + new Vector3(x, gridManager.gridHeight, z);
             CreateGridLine($"VerticalLine_{x}", start, end, gridColor);
         }
 

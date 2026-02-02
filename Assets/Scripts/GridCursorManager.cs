@@ -35,15 +35,14 @@ public class GridCursorManager : MonoBehaviour
     /// </summary>
     /// <param name="coordinateSystem">Grid coordinate system</param>
     /// <param name="prefab">Optional cursor prefab (creates default if null)</param>
-    /// <param name="cellSize">Grid cell size for cursor initialization</param>
     /// <param name="gridManager">Reference to GridManager for state queries</param>
-    public void Initialize(GridCoordinateSystem coordinateSystem, GameObject prefab, float cellSize, GridManager gridManager)
+    public void Initialize(GridCoordinateSystem coordinateSystem, GameObject prefab, GridManager gridManager)
     {
         this.coordinateSystem = coordinateSystem;
         this.cursorHighlightPrefab = prefab;
         this.gridManager = gridManager;
 
-        CreateCursor(cellSize);
+        CreateCursor();
 
         // Start cursor at upper-left corner (top row, left column)
         int topRow = coordinateSystem.GridHeight - 1;
@@ -56,8 +55,9 @@ public class GridCursorManager : MonoBehaviour
 
     /// <summary>
     /// Creates the cursor GameObject and GridCursor component.
+    /// Grid cells are normalized to 1.0 world unit.
     /// </summary>
-    private void CreateCursor(float cellSize)
+    private void CreateCursor()
     {
         if (cursorHighlightPrefab != null)
         {
@@ -73,7 +73,7 @@ public class GridCursorManager : MonoBehaviour
 
         if (gridCursor != null)
         {
-            gridCursor.Initialize(cellSize);
+            gridCursor.Initialize();
         }
 
         UpdateCursorPosition();

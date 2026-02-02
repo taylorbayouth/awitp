@@ -362,7 +362,7 @@ public class LemController : MonoBehaviour
             GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
 
             // Scale Lem to 80% of cell size
-            float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+            const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
             float targetHeight = cellSize * 0.80f;
             ScaleLemToHeight(lem, targetHeight);
 
@@ -412,7 +412,7 @@ public class LemController : MonoBehaviour
         lem.transform.localScale = Vector3.one;
         lem.tag = "Player";
 
-        float cellSize = GridManager.Instance != null ? GridManager.Instance.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float lemHeight = cellSize * 0.80f;
         float lemRadius = lemHeight * 0.25f;
 

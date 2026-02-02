@@ -68,7 +68,6 @@ public class LevelDefinitionCreator : EditorWindow
             levelDef.orderInWorld = orderInWorld;
             levelDef.gridWidth = levelData.gridWidth;
             levelDef.gridHeight = levelData.gridHeight;
-            levelDef.cellSize = levelData.cellSize;
             levelDef.levelDataJson = jsonFile.text;
         }
         catch (System.Exception e)

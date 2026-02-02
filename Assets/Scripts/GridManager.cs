@@ -49,16 +49,12 @@ public class GridManager : MonoBehaviour
     [Header("Grid Settings (Read-Only - Set by Level Data)")]
     [SerializeField, HideInInspector] private int _gridWidth = 10;
     [SerializeField, HideInInspector] private int _gridHeight = 10;
-    [SerializeField, HideInInspector] private float _cellSize = 1f;
 
     /// <summary>Grid width in cells. Set by level data when loading.</summary>
     public int gridWidth => _gridWidth;
 
     /// <summary>Grid height in cells. Set by level data when loading.</summary>
     public int gridHeight => _gridHeight;
-
-    /// <summary>Size of each grid cell in world units. Set by level data when loading.</summary>
-    public float cellSize => _cellSize;
 
     [Header("Grid Origin (Auto-Calculated)")]
     [SerializeField] private Vector3 _gridOrigin = Vector3.zero;
@@ -99,8 +95,8 @@ public class GridManager : MonoBehaviour
             // === NEW ARCHITECTURE: Initialize Managers ===
 
             // 1. Create coordinate system (no dependencies)
-            coordinateSystem = new GridCoordinateSystem(gridWidth, gridHeight, cellSize);
-            DebugLog.Info($"[GridManager] GridCoordinateSystem created: {gridWidth}x{gridHeight}, cell size {cellSize}");
+            coordinateSystem = new GridCoordinateSystem(gridWidth, gridHeight);
+            DebugLog.Info($"[GridManager] GridCoordinateSystem created: {gridWidth}x{gridHeight}");
 
             // 2. Initialize placeable spaces array
             InitializePlaceableSpaces();
@@ -119,7 +115,7 @@ public class GridManager : MonoBehaviour
 
             // 5. Initialize GridCursorManager
             gridCursorManager = gameObject.AddComponent<GridCursorManager>();
-            gridCursorManager.Initialize(coordinateSystem, cursorHighlightPrefab, cellSize, this);
+            gridCursorManager.Initialize(coordinateSystem, cursorHighlightPrefab, this);
 
             // 6. Register with ServiceRegistry for easy access across codebase
             ServiceRegistry.Register(this);
@@ -128,7 +124,7 @@ public class GridManager : MonoBehaviour
             // TODO: Remove once all code uses coordinateSystem.GridOrigin
             CalculateGridOrigin();
 
-            DebugLog.Info($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid, cell size {cellSize}");
+            DebugLog.Info($"[GridManager] Initialization complete: {gridWidth}x{gridHeight} grid");
         }
         catch (Exception ex)
         {
@@ -139,11 +135,12 @@ public class GridManager : MonoBehaviour
     /// <summary>
     /// Calculates grid origin so the grid is perfectly centered around world origin (0,0,0).
     /// This ensures the camera can be positioned at (0,0,-Z) for perfect centering.
+    /// Each cell is 1.0 world unit.
     /// </summary>
     private void CalculateGridOrigin()
     {
-        float totalWidth = gridWidth * cellSize;
-        float totalHeight = gridHeight * cellSize;
+        float totalWidth = gridWidth;
+        float totalHeight = gridHeight;
 
         // Position grid so its center is at world origin
         _gridOrigin = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0);
@@ -566,7 +563,7 @@ public class GridManager : MonoBehaviour
                 Debug.LogWarning("[GridManager] No CameraSetup found in scene");
             }
 
-            DebugLog.Info($"[GridManager] Grid refreshed: {gridWidth}x{gridHeight}, cell size {cellSize}");
+            DebugLog.Info($"[GridManager] Grid refreshed: {gridWidth}x{gridHeight}");
         }
         catch (Exception ex)
         {
@@ -603,8 +600,7 @@ public class GridManager : MonoBehaviour
         LevelData levelData = new LevelData
         {
             gridWidth = gridWidth,
-            gridHeight = gridHeight,
-            cellSize = cellSize
+            gridHeight = gridHeight
         };
 
         BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
@@ -721,22 +717,21 @@ public class GridManager : MonoBehaviour
 
         // Restore grid settings (if they changed, we need to reinitialize)
         // Validate loaded grid dimensions before applying
-        if (levelData.gridWidth <= 0 || levelData.gridHeight <= 0 || levelData.cellSize <= 0)
+        if (levelData.gridWidth <= 0 || levelData.gridHeight <= 0)
         {
-            Debug.LogError($"Invalid grid dimensions in level data: {levelData.gridWidth}x{levelData.gridHeight}, cell: {levelData.cellSize}");
+            Debug.LogError($"Invalid grid dimensions in level data: {levelData.gridWidth}x{levelData.gridHeight}");
             return;
         }
 
-        bool gridSizeChanged = (gridWidth != levelData.gridWidth || gridHeight != levelData.gridHeight || cellSize != levelData.cellSize);
+        bool gridSizeChanged = (gridWidth != levelData.gridWidth || gridHeight != levelData.gridHeight);
 
         if (gridSizeChanged)
         {
             _gridWidth = levelData.gridWidth;
             _gridHeight = levelData.gridHeight;
-            _cellSize = levelData.cellSize;
 
             // Update coordinate system with new dimensions
-            coordinateSystem.UpdateDimensions(gridWidth, gridHeight, cellSize);
+            coordinateSystem.UpdateDimensions(gridWidth, gridHeight);
 
             CalculateGridOrigin();
             InitializePlaceableSpaces();
@@ -1008,8 +1003,6 @@ public class GridManager : MonoBehaviour
                 continue;
             }
 
-            float size = cellSize;
-
             switch (state.location)
             {
                 case LevelData.KeyLocation.LockBlock:
@@ -1028,7 +1021,7 @@ public class GridManager : MonoBehaviour
                     LemController lemController = lem != null ? lem.GetComponent<LemController>() : null;
                     if (lemController != null)
                     {
-                        key.AttachToLem(lemController, key.GetCarryYOffset(size), key.GetWorldScale(size));
+                        key.AttachToLem(lemController, key.GetCarryYOffset(1.0f), key.GetWorldScale(1.0f));
                     }
                     break;
                 }
@@ -1075,16 +1068,16 @@ public class GridManager : MonoBehaviour
         // Draw horizontal lines (along X axis)
         for (int y = 0; y <= gridHeight; y++)
         {
-            Vector3 start = gridOrigin + new Vector3(0, y * cellSize, 0);
-            Vector3 end = gridOrigin + new Vector3(gridWidth * cellSize, y * cellSize, 0);
+            Vector3 start = gridOrigin + new Vector3(0, y, 0);
+            Vector3 end = gridOrigin + new Vector3(gridWidth, y, 0);
             Gizmos.DrawLine(start, end);
         }
 
         // Draw vertical lines (along Y axis)
         for (int x = 0; x <= gridWidth; x++)
         {
-            Vector3 start = gridOrigin + new Vector3(x * cellSize, 0, 0);
-            Vector3 end = gridOrigin + new Vector3(x * cellSize, gridHeight * cellSize, 0);
+            Vector3 start = gridOrigin + new Vector3(x, 0, 0);
+            Vector3 end = gridOrigin + new Vector3(x, gridHeight, 0);
             Gizmos.DrawLine(start, end);
         }
 
@@ -1093,8 +1086,8 @@ public class GridManager : MonoBehaviour
         {
             Gizmos.color = Color.cyan;
             Vector3 cursorPos = IndexToWorldPosition(gridCursorManager.CurrentCursorIndex);
-            cursorPos.z += cellSize * 0.5f; // Visualize block volume at placement depth
-            Gizmos.DrawWireCube(cursorPos, Vector3.one * cellSize);
+            cursorPos.z += 0.5f; // Visualize block volume at placement depth
+            Gizmos.DrawWireCube(cursorPos, Vector3.one);
         }
     }
 

@@ -639,10 +639,10 @@ public class BlockPlacementManager : MonoBehaviour
     private void PositionBlock(BaseBlock block, int gridIndex)
     {
         Vector3 position = coordinateSystem.IndexToWorldPosition(gridIndex);
-        position.z += coordinateSystem.CellSize * 0.5f; // Center block so front face is flush with grid (z=0)
+        position.z += 0.5f; // Center block so front face is flush with grid (z=0, cells are 1.0 unit)
 
         block.transform.position = position;
-        block.transform.localScale = Vector3.one * coordinateSystem.CellSize;
+        block.transform.localScale = Vector3.one; // Grid cells are normalized to 1.0 world unit
     }
 
     /// <summary>

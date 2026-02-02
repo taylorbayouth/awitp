@@ -18,7 +18,6 @@ public class GridCoordinateSystem
     // Grid dimensions
     private readonly int gridWidth;
     private readonly int gridHeight;
-    private readonly float cellSize;
 
     // Calculated origin point (bottom-left corner of grid)
     private Vector3 gridOrigin;
@@ -34,11 +33,6 @@ public class GridCoordinateSystem
     public int GridHeight => gridHeight;
 
     /// <summary>
-    /// Gets the size of each grid cell in world units.
-    /// </summary>
-    public float CellSize => cellSize;
-
-    /// <summary>
     /// Gets the calculated grid origin (bottom-left corner in world space).
     /// </summary>
     public Vector3 GridOrigin => gridOrigin;
@@ -50,15 +44,14 @@ public class GridCoordinateSystem
 
     /// <summary>
     /// Creates a new grid coordinate system.
+    /// Grid cells are normalized to 1.0 world unit.
     /// </summary>
     /// <param name="width">Grid width in cells</param>
     /// <param name="height">Grid height in cells</param>
-    /// <param name="cellSize">Size of each cell in world units</param>
-    public GridCoordinateSystem(int width, int height, float cellSize)
+    public GridCoordinateSystem(int width, int height)
     {
         this.gridWidth = width;
         this.gridHeight = height;
-        this.cellSize = cellSize;
 
         CalculateGridOrigin();
     }
@@ -68,11 +61,12 @@ public class GridCoordinateSystem
     ///
     /// Why: Unity uses bottom-left origin (0,0) by default, but we want centered grid.
     /// Rationale: Makes level design more intuitive and symmetric layouts easier.
+    /// Each cell is 1.0 world unit, so total size equals grid dimensions.
     /// </summary>
     private void CalculateGridOrigin()
     {
-        float totalWidth = gridWidth * cellSize;
-        float totalHeight = gridHeight * cellSize;
+        float totalWidth = gridWidth;
+        float totalHeight = gridHeight;
 
         // Position grid so its center is at world origin (0, 0, 0)
         gridOrigin = new Vector3(-totalWidth / 2f, -totalHeight / 2f, 0);
@@ -82,7 +76,7 @@ public class GridCoordinateSystem
     /// Updates grid dimensions and recalculates origin.
     /// Used when loading levels with different grid sizes.
     /// </summary>
-    public void UpdateDimensions(int newWidth, int newHeight, float newCellSize)
+    public void UpdateDimensions(int newWidth, int newHeight)
     {
         // Note: Using reflection to set readonly fields
         // This is safe because we control when this is called (level load only)
@@ -93,10 +87,6 @@ public class GridCoordinateSystem
         typeof(GridCoordinateSystem).GetField("gridHeight",
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
             ?.SetValue(this, newHeight);
-
-        typeof(GridCoordinateSystem).GetField("cellSize",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.SetValue(this, newCellSize);
 
         CalculateGridOrigin();
     }
@@ -143,16 +133,17 @@ public class GridCoordinateSystem
     /// <summary>
     /// Converts grid coordinates to world position (center of cell).
     /// Grid is on XY plane: X = horizontal, Y = vertical, Z = 0.
+    /// Each cell is 1.0 world unit.
     /// </summary>
     /// <param name="coords">Grid coordinates</param>
     /// <returns>World position at center of cell</returns>
     public Vector3 CoordinatesToWorldPosition(Vector2Int coords)
     {
-        float halfCell = cellSize * 0.5f;
+        const float halfCell = 0.5f;
         return gridOrigin + new Vector3(
-            (coords.x * cellSize) + halfCell,  // X = horizontal
-            (coords.y * cellSize) + halfCell,  // Y = vertical
-            0                                   // Z = 0 (on the wall)
+            coords.x + halfCell,  // X = horizontal
+            coords.y + halfCell,  // Y = vertical
+            0                     // Z = 0 (on the wall)
         );
     }
 
@@ -169,14 +160,15 @@ public class GridCoordinateSystem
 
     /// <summary>
     /// Converts world position to grid coordinates.
+    /// Each cell is 1.0 world unit.
     /// </summary>
     /// <param name="worldPos">World position</param>
     /// <returns>Grid coordinates (may be outside valid range)</returns>
     public Vector2Int WorldPositionToCoordinates(Vector3 worldPos)
     {
         Vector3 localPos = worldPos - gridOrigin;
-        int x = Mathf.FloorToInt(localPos.x / cellSize);
-        int y = Mathf.FloorToInt(localPos.y / cellSize);
+        int x = Mathf.FloorToInt(localPos.x);
+        int y = Mathf.FloorToInt(localPos.y);
         return new Vector2Int(x, y);
     }
 
@@ -248,12 +240,13 @@ public class GridCoordinateSystem
 
     /// <summary>
     /// Gets the bounds of the grid in world space.
+    /// Each cell is 1.0 world unit.
     /// </summary>
     /// <returns>Bounds struct representing grid area</returns>
     public Bounds GetWorldBounds()
     {
-        float totalWidth = gridWidth * cellSize;
-        float totalHeight = gridHeight * cellSize;
+        float totalWidth = gridWidth;
+        float totalHeight = gridHeight;
 
         // Center is at world origin since grid is centered
         Vector3 center = Vector3.zero;
