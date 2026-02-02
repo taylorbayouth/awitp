@@ -274,14 +274,13 @@ public class LemPlacementManager : MonoBehaviour
         if (coordinateSystem == null) return Vector3.zero;
 
         Vector2Int coords = coordinateSystem.IndexToCoordinates(gridIndex);
-        float cellSize = coordinateSystem.CellSize;
-        float halfCell = cellSize * 0.5f;
+        const float halfCell = 0.5f; // Grid cells are normalized to 1.0 world unit
         Vector3 gridOrigin = coordinateSystem.GridOrigin;
 
         return gridOrigin + new Vector3(
-            (coords.x * cellSize) + halfCell,  // Centered horizontally
-            coords.y * cellSize,                // Bottom of cell
-            0.5f                                // Slightly forward in Z
+            coords.x + halfCell,  // Centered horizontally
+            coords.y,             // Bottom of cell
+            0.5f                  // Slightly forward in Z
         );
     }
 

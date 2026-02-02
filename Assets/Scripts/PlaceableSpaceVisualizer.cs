@@ -68,7 +68,7 @@ public class PlaceableSpaceVisualizer : MonoBehaviour
         borderObj.SetActive(isVisible);
 
         BorderRenderer border = borderObj.AddComponent<BorderRenderer>();
-        border.Initialize(placeableColor, gridManager.cellSize, RenderingConstants.BORDER_DEPTH, RenderingConstants.BORDER_SORTING, borderLineWidth);
+        border.Initialize(placeableColor, 1f, RenderingConstants.BORDER_DEPTH, RenderingConstants.BORDER_SORTING, borderLineWidth);
 
         placeableBorders[index] = borderObj;
     }

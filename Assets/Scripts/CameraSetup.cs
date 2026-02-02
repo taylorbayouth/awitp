@@ -215,18 +215,19 @@ public class CameraSetup : MonoBehaviour
         DebugLog.Info($"CameraSetup: Camera at {cameraPosition}, " +
                   $"tilt={tiltAngle:F1}°, pan={panAngle:F1}°, roll={rollAngle:F1}°, " +
                   $"focalLength={focalLength:F0}mm, FOV={fieldOfView:F1}°, distance={distance:F2}, " +
-                  $"grid={gridManager.gridWidth}x{gridManager.gridHeight}");
+                  $"grid={gridManager.gridWidth}x{gridManager.gridHeight} (1.0 unit cells)");
     }
 
     /// <summary>
     /// Calculates the camera distance needed to fit the entire grid with padding.
     /// Distance is calculated at a FIXED reference FOV (50mm equivalent) so that
     /// focal length can be changed independently to control zoom without affecting distance.
+    /// Each grid cell is 1.0 world unit.
     /// </summary>
     private float CalculateCameraDistance()
     {
-        float gridWorldWidth = gridManager.gridWidth * gridManager.cellSize;
-        float gridWorldHeight = gridManager.gridHeight * gridManager.cellSize;
+        float gridWorldWidth = gridManager.gridWidth;
+        float gridWorldHeight = gridManager.gridHeight;
 
         // Add margins
         gridWorldWidth += (gridMargin * 2f);

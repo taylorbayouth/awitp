@@ -24,17 +24,17 @@ public class KeyItem : MonoBehaviour
         carryYOffset = carryOffset;
     }
 
-    public float GetCarryYOffset(float cellSize)
+    public float GetCarryYOffset(float cellSize = 1f)
     {
         return cellSize * carryYOffset;
     }
 
-    public float GetWorldScale(float cellSize)
+    public float GetWorldScale(float cellSize = 1f)
     {
         return cellSize * sourceScale;
     }
 
-    public void AttachToKeyBlock(Transform blockTransform, float cellSize)
+    public void AttachToKeyBlock(Transform blockTransform, float cellSize = 1f)
     {
         if (blockTransform == null) return;
 

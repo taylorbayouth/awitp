@@ -86,10 +86,9 @@ public class LevelData
         public float rollOffset = 0f;    // Roll angle
     }
 
-    // Grid settings
+    // Grid settings (cells are 1.0 world unit each)
     public int gridWidth;
     public int gridHeight;
-    public float cellSize;
 
     // Camera settings
     public CameraSettings cameraSettings;

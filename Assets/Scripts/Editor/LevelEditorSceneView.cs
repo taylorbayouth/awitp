@@ -32,11 +32,11 @@ public static class LevelEditorSceneView
     {
         int width = gridManager.gridWidth;
         int height = gridManager.gridHeight;
-        float cellSize = gridManager.cellSize;
+        // Grid cells are normalized to 1.0 world unit
 
         // Grid is centered at world origin
         Vector3 gridCenter = Vector3.zero;
-        Vector3 gridStart = gridCenter - new Vector3(width * cellSize * 0.5f, height * cellSize * 0.5f, 0);
+        Vector3 gridStart = gridCenter - new Vector3(width * 0.5f, height * 0.5f, 0);
 
         // Draw grid lines
         Handles.color = _gridColor;
@@ -44,25 +44,25 @@ public static class LevelEditorSceneView
         // Vertical lines
         for (int x = 0; x <= width; x++)
         {
-            Vector3 start = gridStart + new Vector3(x * cellSize, 0, 0);
-            Vector3 end = start + new Vector3(0, height * cellSize, 0);
+            Vector3 start = gridStart + new Vector3(x, 0, 0);
+            Vector3 end = start + new Vector3(0, height, 0);
             Handles.DrawLine(start, end);
         }
 
         // Horizontal lines
         for (int y = 0; y <= height; y++)
         {
-            Vector3 start = gridStart + new Vector3(0, y * cellSize, 0);
-            Vector3 end = start + new Vector3(width * cellSize, 0, 0);
+            Vector3 start = gridStart + new Vector3(0, y, 0);
+            Vector3 end = start + new Vector3(width, 0, 0);
             Handles.DrawLine(start, end);
         }
 
         // Draw boundary (thicker)
         Handles.color = _boundaryColor;
         Vector3 topLeft = gridStart;
-        Vector3 topRight = gridStart + new Vector3(width * cellSize, 0, 0);
-        Vector3 bottomLeft = gridStart + new Vector3(0, height * cellSize, 0);
-        Vector3 bottomRight = gridStart + new Vector3(width * cellSize, height * cellSize, 0);
+        Vector3 topRight = gridStart + new Vector3(width, 0, 0);
+        Vector3 bottomLeft = gridStart + new Vector3(0, height, 0);
+        Vector3 bottomRight = gridStart + new Vector3(width, height, 0);
 
         Handles.DrawLine(topLeft, topRight, 3f);
         Handles.DrawLine(topRight, bottomRight, 3f);

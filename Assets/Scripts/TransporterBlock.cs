@@ -130,11 +130,11 @@ public class TransporterBlock : BaseBlock
         lem.transform.SetParent(transform, true);
 
         GridManager grid = GetGridManager();
-        float cellSize = grid != null ? grid.cellSize : 1f;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         Vector2Int currentCoords = grid != null ? grid.IndexToCoordinates(gridIndex) : Vector2Int.zero;
 
         // Snap Lem to the block's center if they're slightly misaligned
-        TrySnapLemToBlockCenter(lem, cellSize);
+        TrySnapLemToBlockCenter(lem);
 
         // Execute each step of the route
         foreach (Vector2Int step in steps)
@@ -331,7 +331,7 @@ public class TransporterBlock : BaseBlock
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count == 0) return;
 
-        float cellSize = grid.cellSize;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
 
         // Convert grid indices to world positions (waypoints)
         List<Vector3> waypoints = new List<Vector3>();
@@ -363,7 +363,7 @@ public class TransporterBlock : BaseBlock
         pathLineRenderer.useWorldSpace = true;
 
         // Create directional arrowhead at the end of the path
-        CreateArrowhead(waypoints[waypoints.Count - 1], waypoints[waypoints.Count - 2], cellSize);
+        CreateArrowhead(waypoints[waypoints.Count - 1], waypoints[waypoints.Count - 2]);
     }
 
     private void ClearPreview()
@@ -480,8 +480,10 @@ public class TransporterBlock : BaseBlock
     /// Creates a cone-shaped arrowhead at the end of the path to show transport direction.
     /// Not parented to the block so it stays stationary in world space.
     /// </summary>
-    private void CreateArrowhead(Vector3 endPosition, Vector3 previousPosition, float cellSize)
+    private void CreateArrowhead(Vector3 endPosition, Vector3 previousPosition)
     {
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+
         arrowheadObject = new GameObject("TransportArrowhead");
         arrowheadObject.transform.position = endPosition;
 
@@ -519,7 +521,7 @@ public class TransporterBlock : BaseBlock
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count < 2) return;
 
-        float cellSize = grid.cellSize;
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
 
         // Convert path indices to world positions
         List<Vector3> waypoints = new List<Vector3>();
@@ -633,10 +635,11 @@ public class TransporterBlock : BaseBlock
     /// Snaps Lem to the block's center position to prevent visual misalignment during transport.
     /// Only snaps once per ride to avoid fighting with other positioning logic.
     /// </summary>
-    private void TrySnapLemToBlockCenter(LemController lem, float cellSize)
+    private void TrySnapLemToBlockCenter(LemController lem)
     {
         if (lem == null || hasSnappedThisRide) return;
 
+        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
         float topPlaneY = transform.position.y + (cellSize * 0.5f);
         Vector3 pos = lem.transform.position;
         Collider lemCollider = lem.GetComponent<Collider>();
