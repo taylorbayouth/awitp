@@ -2,7 +2,9 @@ Shader "Custom/FlufflyCloud"
 {
     Properties
     {
-        _Color ("Color", Color) = (1, 1, 1, 1)
+        _Color ("Primary Color", Color) = (1, 1, 1, 1)
+        _ShadowColor ("Shadow Color", Color) = (0.7, 0.7, 0.8, 1)
+        _ShadowBlend ("Shadow Blend", Range(0, 1)) = 0.5
         _CoreOpacity ("Core Opacity", Range(0, 1)) = 0.95
         _EdgeFalloff ("Edge Falloff", Range(0.5, 5)) = 2.0
         _EdgeBrightness ("Edge Brightness", Range(0, 2)) = 0.3
@@ -45,6 +47,8 @@ Shader "Custom/FlufflyCloud"
             };
 
             fixed4 _Color;
+            fixed4 _ShadowColor;
+            float _ShadowBlend;
             float _CoreOpacity;
             float _EdgeFalloff;
             float _EdgeBrightness;
@@ -115,11 +119,18 @@ Shader "Custom/FlufflyCloud"
                 float NdotV = saturate(dot(normal, viewDir));
                 float fresnel = 1.0 - NdotV;
 
-                // Soft alpha falloff at edges
+                // Soft alpha falloff at edges (unchanged - preserves existing behavior)
                 float alpha = pow(NdotV, _EdgeFalloff) * _CoreOpacity;
 
-                // Brighten edges slightly for that fluffy glow
-                float3 col = _Color.rgb + fresnel * _EdgeBrightness;
+                // Shadow factor based on normal facing down (underside of blob)
+                // 0 = facing up/side (primary color), 1 = facing down (shadow color)
+                float shadowFactor = saturate(-normal.y) * _ShadowBlend;
+
+                // Blend between primary and shadow colors
+                float3 baseColor = lerp(_Color.rgb, _ShadowColor.rgb, shadowFactor);
+
+                // Brighten edges slightly for that fluffy glow (applied to blended color)
+                float3 col = baseColor + fresnel * _EdgeBrightness;
 
                 return fixed4(col, alpha);
             }
