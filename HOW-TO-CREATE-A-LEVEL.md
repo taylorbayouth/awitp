@@ -958,7 +958,7 @@ Happy level designing! May your puzzles be clever, your blocks well-placed, and 
 **Quick Links**:
 - [README.md](README.md) - Project overview
 - [PROJECT.md](PROJECT.md) - Technical architecture
-- [LEVEL_EDITOR.md](LEVEL_EDITOR.md) - User guide for editor controls
+- [DESIGNER-GUIDE.md](DESIGNER-GUIDE.md) - Level Designer mode controls and workflow
 
 **Need Help?**
 - Check the console for debug messages

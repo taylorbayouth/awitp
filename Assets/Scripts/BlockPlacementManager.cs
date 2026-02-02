@@ -141,7 +141,7 @@ public class BlockPlacementManager : MonoBehaviour
             }
 
             // Check 5: Inventory availability (most expensive - queries external system)
-            BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
             BlockInventoryEntry resolvedEntry = entry ?? GetDefaultInventoryEntry(blockType);
 
             if (inventory != null && resolvedEntry == null)
@@ -252,7 +252,7 @@ public class BlockPlacementManager : MonoBehaviour
         BaseBlock newBlock = BaseBlock.Instantiate(blockType, gridIndex);
         newBlock.isPermanent = true;
 
-        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
         ApplyEntryMetadata(newBlock, entry, inventory);
         PositionBlock(newBlock, gridIndex);
 
@@ -668,7 +668,7 @@ public class BlockPlacementManager : MonoBehaviour
     /// </summary>
     private static BlockInventoryEntry GetDefaultInventoryEntry(BlockType blockType)
     {
-        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
         return inventory?.GetDefaultEntryForBlockType(blockType);
     }
 

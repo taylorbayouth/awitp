@@ -42,7 +42,7 @@ public class SkyScaler : MonoBehaviour
             targetCamera = Camera.main;
             if (targetCamera == null)
             {
-                targetCamera = FindAnyObjectByType<Camera>();
+                targetCamera = ServiceRegistry.Get<Camera>();
             }
         }
     }

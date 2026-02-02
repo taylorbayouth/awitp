@@ -20,7 +20,7 @@ public class ControlsUI : MonoBehaviour
     {
         if (builderController == null)
         {
-            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            builderController = ServiceRegistry.Get<BuilderController>();
         }
     }
 

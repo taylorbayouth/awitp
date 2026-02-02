@@ -161,11 +161,11 @@ public class GridManager : MonoBehaviour
             // Cache CameraSetup reference to avoid repeated FindObjectOfType calls
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+                _cachedCameraSetup = ServiceRegistry.Get<CameraSetup>();
             }
 
             // Check if a scene initializer is present - if so, let it handle camera setup
-            GameSceneInitializer sceneInitializer = UnityEngine.Object.FindAnyObjectByType<GameSceneInitializer>();
+            GameSceneInitializer sceneInitializer = ServiceRegistry.Get<GameSceneInitializer>();
 
             if (sceneInitializer == null && _cachedCameraSetup != null)
             {
@@ -530,7 +530,7 @@ public class GridManager : MonoBehaviour
 
             if (_cachedCameraSetup == null)
             {
-                _cachedCameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+                _cachedCameraSetup = ServiceRegistry.Get<CameraSetup>();
             }
 
             // Refresh grid lines
@@ -603,7 +603,7 @@ public class GridManager : MonoBehaviour
             gridHeight = gridHeight
         };
 
-        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
         if (inventory != null)
         {
             // Persist per-level inventory configuration so editor saves restore the same entries.
@@ -674,7 +674,7 @@ public class GridManager : MonoBehaviour
         }
 
         // Capture camera settings
-        CameraSetup cameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+        CameraSetup cameraSetup = ServiceRegistry.Get<CameraSetup>();
         if (cameraSetup != null)
         {
             levelData.cameraSettings = cameraSetup.ExportSettings();
@@ -701,7 +701,7 @@ public class GridManager : MonoBehaviour
         lemPlacementManager.ClearAll();
         ClearPlaceableSpaces();
 
-        BlockInventory inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+        BlockInventory inventory = ServiceRegistry.Get<BlockInventory>();
         if (inventory != null)
         {
             if (levelData.inventoryEntries != null && levelData.inventoryEntries.Count > 0)
@@ -844,7 +844,7 @@ public class GridManager : MonoBehaviour
         }
 
         // Restore camera settings
-        CameraSetup cameraSetup = UnityEngine.Object.FindAnyObjectByType<CameraSetup>();
+        CameraSetup cameraSetup = ServiceRegistry.Get<CameraSetup>();
         if (cameraSetup != null && levelData.cameraSettings != null)
         {
             cameraSetup.ImportSettings(levelData.cameraSettings);

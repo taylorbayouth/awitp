@@ -89,13 +89,13 @@ public class CameraSetup : MonoBehaviour
             targetCamera = Camera.main;
             if (targetCamera == null)
             {
-                targetCamera = UnityEngine.Object.FindAnyObjectByType<Camera>();
+                targetCamera = ServiceRegistry.Get<Camera>();
             }
         }
 
         if (gridManager == null)
         {
-            gridManager = UnityEngine.Object.FindAnyObjectByType<GridManager>();
+            gridManager = ServiceRegistry.Get<GridManager>();
         }
     }
 
@@ -110,7 +110,6 @@ public class CameraSetup : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.C))
         {
             SetupCamera();
-            DebugLog.Info("Camera setup refreshed manually (C key pressed)");
         }
     }
 
@@ -175,7 +174,6 @@ public class CameraSetup : MonoBehaviour
     private void RefreshCameraSetup()
     {
         SetupCamera();
-        DebugLog.Info("Camera setup refreshed via context menu");
     }
 
     public void SetupCamera()
@@ -211,11 +209,6 @@ public class CameraSetup : MonoBehaviour
         // Apply rotation: tilt (pitch), pan (yaw), roll
         // Euler angles: (X=pitch/tilt, Y=yaw/pan, Z=roll)
         targetCamera.transform.rotation = Quaternion.Euler(tiltAngle, panAngle, rollAngle);
-
-        DebugLog.Info($"CameraSetup: Camera at {cameraPosition}, " +
-                  $"tilt={tiltAngle:F1}°, pan={panAngle:F1}°, roll={rollAngle:F1}°, " +
-                  $"focalLength={focalLength:F0}mm, FOV={fieldOfView:F1}°, distance={distance:F2}, " +
-                  $"grid={gridManager.gridWidth}x{gridManager.gridHeight} (1.0 unit cells)");
     }
 
     /// <summary>
@@ -260,11 +253,6 @@ public class CameraSetup : MonoBehaviour
 
         // Enforce minimum
         distance = Mathf.Max(distance, minDistance);
-
-        DebugLog.Info($"CameraSetup: Grid {gridManager.gridWidth}x{gridManager.gridHeight} " +
-                  $"({gridWorldWidth:F1}x{gridWorldHeight:F1} world units), " +
-                  $"aspect={aspect:F2}, refFOV={referenceFOV:F1}°, actualFOV={fieldOfView:F1}°, " +
-                  $"multiplier={distanceMultiplier:F1}x, final distance={distance:F2}");
 
         return distance;
     }

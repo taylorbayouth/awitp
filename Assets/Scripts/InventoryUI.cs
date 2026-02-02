@@ -87,12 +87,12 @@ public class InventoryUI : MonoBehaviour
 
         if (inventory == null)
         {
-            inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            inventory = ServiceRegistry.Get<BlockInventory>();
         }
 
         if (builderController == null)
         {
-            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            builderController = ServiceRegistry.Get<BuilderController>();
         }
 
         if (font == null)
@@ -118,12 +118,12 @@ public class InventoryUI : MonoBehaviour
     {
         if (inventory == null)
         {
-            inventory = UnityEngine.Object.FindAnyObjectByType<BlockInventory>();
+            inventory = ServiceRegistry.Get<BlockInventory>();
         }
 
         if (Application.isPlaying && builderController == null)
         {
-            builderController = UnityEngine.Object.FindAnyObjectByType<BuilderController>();
+            builderController = ServiceRegistry.Get<BuilderController>();
         }
 
         UpdateUI();

@@ -45,7 +45,7 @@ public class LevelNameDisplay : MonoBehaviour
         if (textComponent == null)
         {
             // Create Canvas if needed
-            canvas = FindAnyObjectByType<Canvas>();
+            canvas = ServiceRegistry.Get<Canvas>();
             if (canvas == null)
             {
                 GameObject canvasObj = new GameObject("LevelNameCanvas");
