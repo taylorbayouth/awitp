@@ -84,6 +84,10 @@ public class LevelData
         // Additional fields (tiltOffset repurposed for focal length storage)
         public float tiltOffset = 756f;  // Stores focal length in mm
         public float rollOffset = 0f;    // Roll angle
+
+        // Auto vertical offset settings (repurposed legacy fields)
+        public float viewAngle = 1f;     // 1.0 = auto vertical offset enabled, 0.0 = disabled
+        public float orbitAngle = 2.18f; // Vertical offset multiplier
     }
 
     // Grid settings (cells are 1.0 world unit each)
