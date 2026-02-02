@@ -31,15 +31,16 @@ Quick cheat sheet for level creation and editing.
 ## What Gets Saved (Cmd+S)
 
 ✅ **SAVED:**
-- Permanent blocks (placed in Design mode)
-- Placeable spaces
+- Permanent blocks (walk blocks, lock blocks, key blocks)
+- **Lem starting positions** (placed in Design mode)
+- Placeable spaces (where players can build)
 - Camera settings
-- Inventory configuration
+- Inventory configuration (what blocks players can use)
 - Grid dimensions
 
 ❌ **NOT SAVED:**
-- Blocks placed in Play mode
-- Lem positions (player solution)
+- Blocks placed by **player** in Play mode (their solution)
+- Runtime key states
 - Player progress
 
 ---
@@ -115,11 +116,15 @@ Tools → Update Level Camera Settings
 - [ ] Set metadata (levelId, levelName, worldId)
 - [ ] Configure grid size
 - [ ] Click "Edit Level Visually"
-- [ ] Place permanent blocks (Design mode)
-- [ ] Mark placeable spaces
-- [ ] Configure inventory (what players can place)
+- [ ] **Design mode:** Place permanent blocks
+  - Walk blocks (starting platforms)
+  - Lock blocks (statues = goals)
+  - Key blocks (trees with apples)
+- [ ] **Design mode:** Place Lems at starting positions
+- [ ] Mark placeable spaces (where players can build)
+- [ ] Configure inventory (blocks players can use)
 - [ ] Adjust camera settings
-- [ ] Test in Play mode (Tab)
+- [ ] Test in Play mode (Tab) - place blocks to help Lems
 - [ ] **Press Cmd+S to save**
 - [ ] Exit Play mode
 
