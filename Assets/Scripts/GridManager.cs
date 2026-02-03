@@ -45,6 +45,7 @@ public class GridManager : MonoBehaviour
     private static CameraSetup _cachedCameraSetup;
     private static PlaceableSpaceVisualizer _cachedPlaceableVisualizer;
     private static GridVisualizer _cachedGridVisualizer;
+    private LevelDefinition _currentLevelDefinition;
 
     [Header("Grid Settings (Read-Only - Set by Level Data)")]
     [SerializeField, HideInInspector] private int _gridWidth = 10;
@@ -64,6 +65,7 @@ public class GridManager : MonoBehaviour
     /// Auto-calculated to center grid at world origin.
     /// </summary>
     public Vector3 gridOrigin => _gridOrigin;
+    public LevelDefinition CurrentLevelDefinition => _currentLevelDefinition;
 
     [Header("Cursor Settings")]
     public GameObject cursorHighlightPrefab;
@@ -855,34 +857,15 @@ public class GridManager : MonoBehaviour
             cameraSetup.RefreshCamera();
         }
 
+        if (gridCursorManager != null)
+        {
+            gridCursorManager.ResetToUpperLeft();
+        }
+
         UpdateCursorState();
 
         DebugLog.Info($"Restored level data: {levelData.permanentBlocks?.Count ?? 0} permanent blocks, {levelData.blocks?.Count ?? 0} blocks, {levelData.placeableSpaceIndices?.Count ?? 0} placeable spaces, {levelData.lems?.Count ?? 0} Lems, camera settings={(levelData.cameraSettings != null ? "restored" : "default")}");
     }
-
-    /// <summary>
-    /// Saves the current level to a file.
-    /// </summary>
-    public bool SaveLevel(string levelName = null)
-    {
-        LevelData levelData = CaptureLevelData();
-        return LevelSaveSystem.SaveLevel(levelData, levelName);
-    }
-
-    /// <summary>
-    /// Loads a level from a file.
-    /// </summary>
-    public bool LoadLevel(string levelName = null)
-    {
-        LevelData levelData = LevelSaveSystem.LoadLevel(levelName);
-        if (levelData != null)
-        {
-            RestoreLevelData(levelData);
-            return true;
-        }
-        return false;
-    }
-
 
     /// <summary>
     /// Clears all placeable space markers.
@@ -900,6 +883,29 @@ public class GridManager : MonoBehaviour
     public bool HasTransporterConflicts()
     {
         return blockPlacementManager.HasTransporterConflicts();
+    }
+
+    public void ApplyLevelDefinitionSettings(LevelDefinition levelDef)
+    {
+        _currentLevelDefinition = levelDef;
+
+        if (_cachedGridVisualizer == null)
+        {
+            _cachedGridVisualizer = GetComponent<GridVisualizer>();
+        }
+        if (_cachedGridVisualizer != null && levelDef != null)
+        {
+            _cachedGridVisualizer.ApplySettings(levelDef);
+        }
+
+        if (gridCursorManager != null && levelDef != null)
+        {
+            gridCursorManager.ApplyCursorColors(
+                levelDef.cursorPlaceableColor,
+                levelDef.cursorEditableColor,
+                levelDef.cursorNonPlaceableColor
+            );
+        }
     }
 
     /// <summary>

@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &7714848711789383560
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8227780239153415097}
+  m_Layer: 0
+  m_Name: CrumblingRocks
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8227780239153415097
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7714848711789383560}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1140334580669677559}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &7964971046538100646
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -59,12 +90,20 @@ PrefabInstance:
     m_RemovedComponents:
     - {fileID: 7215074762794049176, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 7014931142470287441, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8227780239153415097}
     m_AddedComponents:
     - targetCorrespondingSourceObject: {fileID: 634973474784941246, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7215074762794049176}
   m_SourcePrefab: {fileID: 100100000, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+--- !u!4 &1140334580669677559 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 7014931142470287441, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
+  m_PrefabInstance: {fileID: 7964971046538100646}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &7369758115676728088 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 634973474784941246, guid: ab81acba6eabe455c8870232666d3be9, type: 3}
@@ -103,3 +142,4 @@ MonoBehaviour:
   centerLabelDuration: 0.15
   crumbleColor: {r: 0.05, g: 0.05, b: 0.05, a: 1}
   crumbleDelay: 0.5
+  debugCrumbleLogs: 1
