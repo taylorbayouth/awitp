@@ -16,25 +16,57 @@ MonoBehaviour:
   levelName: Onboarding 0
   worldId: onboarding
   orderInWorld: 0
-  gridWidth: 8
-  gridHeight: 7
-  levelDataJson: "{\n    \"gridWidth\": 8,\n    \"gridHeight\": 7,\n    \"cameraSettings\":
-    {\n        \"fieldOfView\": 1.8200000524520875,\n        \"nearClipPlane\": 0.23999999463558198,\n       
-    \"farClipPlane\": 500.0,\n        \"verticalOffset\": 10.399999618530274,\n       
-    \"horizontalOffset\": 0.0,\n        \"tiltAngle\": 3.700000047683716,\n       
-    \"panAngle\": 0.0,\n        \"gridMargin\": 1.0,\n        \"minDistance\": 5.0,\n       
-    \"distanceMultiplier\": 23.700000762939454,\n        \"tiltOffset\": 756.0,\n       
-    \"rollOffset\": 0.0\n    },\n    \"blocks\": [],\n    \"permanentBlocks\": [],\n   
-    \"inventoryEntries\": [\n        {\n            \"entryId\": \"Walk\",\n           
-    \"blockType\": 0,\n            \"displayName\": \"\",\n            \"inventoryGroupId\":
-    \"\",\n            \"flavorId\": \"\",\n            \"routeSteps\": [],\n           
-    \"isPairInventory\": false,\n            \"pairSize\": 2,\n            \"maxCount\":
-    10,\n            \"currentCount\": 10\n        },\n        {\n            \"entryId\":
-    \"Transporter_U1,R2\",\n            \"blockType\": 3,\n            \"displayName\":
-    \"\",\n            \"inventoryGroupId\": \"\",\n            \"flavorId\": \"\",\n           
-    \"routeSteps\": [\n                \"U1\",\n                \"R2\",\n               
-    \"U3\"\n            ],\n            \"isPairInventory\": false,\n           
-    \"pairSize\": 2,\n            \"maxCount\": 1,\n            \"currentCount\":
-    1\n        }\n    ],\n    \"placeableSpaceIndices\": [],\n    \"lems\": [],\n   
-    \"keyStates\": [],\n    \"levelName\": \"Onboarding 0\",\n    \"saveTimestamp\":
-    \"2026-02-02 01:23:29\"\n}"
+  gridLineWidth: 0.01
+  gridLineColor: {r: 0.052954778, g: 0.20279202, b: 0.3207547, a: 1}
+  cursorPlaceableColor: {r: 0, g: 0.17614937, b: 1, a: 1}
+  cursorEditableColor: {r: 0, g: 1, b: 0, a: 0.3882353}
+  cursorNonPlaceableColor: {r: 0, g: 0.08500188, b: 0.18867922, a: 1}
+  levelData:
+    gridWidth: 6
+    gridHeight: 4
+    cameraSettings:
+      cameraDistance: 150
+      gridMargin: 1
+      nearClipPlane: 0.24
+      farClipPlane: 500
+    blocks: []
+    permanentBlocks: []
+    inventoryEntries:
+    - entryId: 
+      blockType: 0
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps: []
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 4
+      currentCount: 10
+    - entryId: 
+      blockType: 1
+      displayName: 
+      inventoryGroupId: 
+      flavorId: A
+      routeSteps: []
+      isPairInventory: 1
+      pairSize: 2
+      maxCount: 1
+      currentCount: 10
+    - entryId: 
+      blockType: 3
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps:
+      - U1
+      - R1
+      - U1
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 10
+      currentCount: 10
+    placeableSpaceIndices: 
+    lems: []
+    keyStates: []
+    levelName: 
+    saveTimestamp: 2026-02-02 19:18:46

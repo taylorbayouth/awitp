@@ -34,12 +34,19 @@ public static class LevelEditorSceneView
         int height = gridManager.gridHeight;
         // Grid cells are normalized to 1.0 world unit
 
+        Color gridColor = _gridColor;
+        LevelDefinition levelDef = gridManager.CurrentLevelDefinition;
+        if (levelDef != null)
+        {
+            gridColor = levelDef.gridLineColor;
+        }
+
         // Grid is centered at world origin
         Vector3 gridCenter = Vector3.zero;
         Vector3 gridStart = gridCenter - new Vector3(width * 0.5f, height * 0.5f, 0);
 
         // Draw grid lines
-        Handles.color = _gridColor;
+        Handles.color = gridColor;
 
         // Vertical lines
         for (int x = 0; x <= width; x++)

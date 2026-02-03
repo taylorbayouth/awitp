@@ -26,5 +26,4 @@ public static class RenderingConstants
     public const float CURSOR_LINE_WIDTH = 0.037f;        // Thickest cursor
 
     // Opacity values (0.0 = fully transparent, 1.0 = fully opaque)
-    public const float GRID_LINE_OPACITY = 0.2f;        // Grid line opacity
 }

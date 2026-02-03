@@ -2,17 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// ScriptableObject that defines a single level in the game.
-/// Contains metadata, grid configuration, and the JSON-serialized level data.
-///
-/// USAGE:
-/// - Create in Unity: Right-click in Project window -> Create -> AWITP -> Level Definition
-/// - Configure in Inspector: Set levelId, levelName, worldId, orderInWorld
-/// - Paste level JSON data into levelDataJson field
-/// - Reference in WorldData to include in a world
-///
-/// RUNTIME:
-/// - Call ToLevelData() to get the deserialized LevelData for instantiation
-/// - LevelManager uses this to load and instantiate levels
+/// Contains metadata, grid configuration, and serialized LevelData.
 /// </summary>
 [CreateAssetMenu(fileName = "Level", menuName = "AWITP/Level Definition")]
 public class LevelDefinition : ScriptableObject
@@ -30,80 +20,52 @@ public class LevelDefinition : ScriptableObject
     [Tooltip("Order of this level within its world (0-based)")]
     public int orderInWorld;
 
-    [Header("Grid Configuration")]
-    [Tooltip("Number of columns in the grid")]
-    public int gridWidth = 10;
+    [Header("Grid Visuals")]
+    [Tooltip("Thickness of grid lines")]
+    public float gridLineWidth = RenderingConstants.GRID_LINE_WIDTH;
 
-    [Tooltip("Number of rows in the grid (cells are 1.0 world unit each)")]
-    public int gridHeight = 10;
+    [Tooltip("Grid line color (alpha included)")]
+    public Color gridLineColor = new Color(BlockColors.GridLine.r, BlockColors.GridLine.g, BlockColors.GridLine.b, 0.2f);
+
+    [Header("Cursor Colors")]
+    public Color cursorPlaceableColor = BlockColors.CursorPlaceable;
+    public Color cursorEditableColor = BlockColors.CursorEditable;
+    public Color cursorNonPlaceableColor = BlockColors.CursorNonPlaceable;
 
     [Header("Level Data")]
-    [Tooltip("JSON string containing the complete level data (blocks, lems, inventory, etc.)")]
-    [TextArea(5, 20)]
-    public string levelDataJson;
+    [SerializeField, HideInInspector] private LevelData levelData = new LevelData();
 
-    /// <summary>
-    /// Converts the JSON level data string to a LevelData object for runtime use.
-    /// </summary>
-    /// <returns>The deserialized LevelData, or null if parsing fails</returns>
-    public LevelData ToLevelData()
+    public LevelData GetLevelData()
     {
-        if (string.IsNullOrEmpty(levelDataJson))
+        if (levelData == null)
         {
-            Debug.LogError($"[LevelDefinition] Level '{levelId}' has no JSON data!");
-            return null;
+            levelData = new LevelData();
         }
-
-        try
-        {
-            LevelData data = JsonUtility.FromJson<LevelData>(levelDataJson);
-
-            // Apply asset defaults only when JSON is missing/invalid.
-            if (data != null)
-            {
-                if (data.gridWidth <= 0) data.gridWidth = gridWidth;
-                if (data.gridHeight <= 0) data.gridHeight = gridHeight;
-                if (string.IsNullOrEmpty(data.levelName)) data.levelName = levelName;
-            }
-
-            return data;
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LevelDefinition] Failed to parse level data for '{levelId}': {e.Message}");
-            return null;
-        }
+        if (levelData.gridWidth <= 0) levelData.gridWidth = 10;
+        if (levelData.gridHeight <= 0) levelData.gridHeight = 10;
+        return levelData;
     }
 
-    /// <summary>
-    /// Populates this LevelDefinition from a LevelData object.
-    /// Useful for saving levels from the designer to assets.
-    /// </summary>
-    /// <param name="data">The LevelData to serialize</param>
-    public void FromLevelData(LevelData data)
+    public LevelData GetRuntimeLevelData()
+    {
+        LevelData data = GetLevelData().Clone();
+        if (data.gridWidth <= 0) data.gridWidth = 10;
+        if (data.gridHeight <= 0) data.gridHeight = 10;
+        if (string.IsNullOrEmpty(data.levelName)) data.levelName = levelName;
+        return data;
+    }
+
+    public void SetLevelData(LevelData data)
     {
         if (data == null)
         {
-            Debug.LogError("[LevelDefinition] Cannot populate from null LevelData");
+            Debug.LogError("[LevelDefinition] Cannot assign null LevelData");
             return;
         }
-
-        gridWidth = data.gridWidth;
-        gridHeight = data.gridHeight;
-        levelDataJson = JsonUtility.ToJson(data, true);
-
-        if (!string.IsNullOrEmpty(data.levelName))
-        {
-            levelName = data.levelName;
-        }
+        data.levelName = levelName;
+        levelData = data;
     }
 
-    /// <summary>
-    /// Saves the provided LevelData into this asset and persists it in the Unity Editor.
-    /// In builds, this updates the in-memory asset only (designer workflow is editor-only).
-    /// </summary>
-    /// <param name="data">The LevelData to serialize</param>
-    /// <returns>True if data was applied; false if data was null</returns>
     public bool SaveFromLevelData(LevelData data)
     {
         if (data == null)
@@ -112,13 +74,13 @@ public class LevelDefinition : ScriptableObject
             return false;
         }
 
-        FromLevelData(data);
+        data.levelName = levelName;
+        levelData = data.Clone();
 
 #if UNITY_EDITOR
         UnityEditor.EditorUtility.SetDirty(this);
         UnityEditor.AssetDatabase.SaveAssets();
 
-        // Log detailed save information
         Debug.Log($"<color=green>✓ SAVED '{levelName}' ({levelId})</color>");
         Debug.Log($"  Grid: {data.gridWidth}x{data.gridHeight} (1.0 unit cells)");
         Debug.Log($"  Blocks: {data.blocks?.Count ?? 0} placed, {data.permanentBlocks?.Count ?? 0} permanent");
@@ -127,13 +89,11 @@ public class LevelDefinition : ScriptableObject
         Debug.Log($"  Placeable Spaces: {data.placeableSpaceIndices?.Count ?? 0}");
         Debug.Log($"  Key States: {data.keyStates?.Count ?? 0}");
 
-        // Log camera settings
         if (data.cameraSettings != null)
         {
             var cam = data.cameraSettings;
-            Debug.Log($"  Camera: FOV={cam.fieldOfView:F1}°, MinDist={cam.minDistance:F1}, GridMargin={cam.gridMargin:F2}");
-            Debug.Log($"  Camera Offsets: Vertical={cam.verticalOffset:F2}, Horizontal={cam.horizontalOffset:F2}");
-            Debug.Log($"  Camera Rotation: Tilt={cam.tiltAngle:F1}°, Pan={cam.panAngle:F1}°");
+            Debug.Log($"  Camera: Dist={cam.cameraDistance:F1}, Margin={cam.gridMargin:F2}");
+            Debug.Log($"  Camera Clip: Near={cam.nearClipPlane:F2}, Far={cam.farClipPlane:F0}");
         }
         else
         {
@@ -144,10 +104,6 @@ public class LevelDefinition : ScriptableObject
         return true;
     }
 
-    /// <summary>
-    /// Validates this level definition has all required data.
-    /// </summary>
-    /// <returns>True if valid, false otherwise</returns>
     public bool Validate()
     {
         bool isValid = true;
@@ -170,13 +126,13 @@ public class LevelDefinition : ScriptableObject
             isValid = false;
         }
 
-        if (string.IsNullOrEmpty(levelDataJson))
+        LevelData data = GetLevelData();
+        if (data == null)
         {
-            Debug.LogWarning($"[LevelDefinition] '{name}' has no level data JSON");
+            Debug.LogWarning($"[LevelDefinition] '{name}' has no LevelData");
             isValid = false;
         }
-
-        if (gridWidth <= 0 || gridHeight <= 0)
+        else if (data.gridWidth <= 0 || data.gridHeight <= 0)
         {
             Debug.LogWarning($"[LevelDefinition] '{name}' has invalid grid dimensions");
             isValid = false;
