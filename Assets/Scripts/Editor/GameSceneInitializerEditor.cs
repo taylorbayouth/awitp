@@ -65,7 +65,8 @@ public class GameSceneInitializerEditor : Editor
                 EditorGUI.indentLevel++;
                 EditorGUILayout.LabelField("ID:", level.levelId);
                 EditorGUILayout.LabelField("World:", level.worldId);
-                EditorGUILayout.LabelField("Grid:", $"{level.gridWidth}x{level.gridHeight}");
+                LevelData data = level.GetLevelData();
+                EditorGUILayout.LabelField("Grid:", $"{data.gridWidth}x{data.gridHeight}");
                 EditorGUI.indentLevel--;
             }
 

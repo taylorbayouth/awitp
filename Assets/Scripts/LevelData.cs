@@ -61,33 +61,21 @@ public class LevelData
     [Serializable]
     public class CameraSettings
     {
-        // Perspective settings (FOV calculated from focal length, ~1.82° for 756mm)
-        public float fieldOfView = 1.82f;
+        public float cameraDistance = 150f;
+        public float gridMargin = 1f;
         public float nearClipPlane = 0.24f;
         public float farClipPlane = 500f;
 
-        // Camera offsets
-        public float verticalOffset = 10.4f;
-        public float horizontalOffset = 0f;
-
-        // Camera rotation
-        public float tiltAngle = 3.7f;
-        public float panAngle = 0f;
-
-        // Framing settings
-        public float gridMargin = 1f;
-        public float minDistance = 5f;
-
-        // Perspective flattening (23.7x = extreme flat perspective)
-        public float distanceMultiplier = 23.7f;
-
-        // Additional fields (tiltOffset repurposed for focal length storage)
-        public float tiltOffset = 756f;  // Stores focal length in mm
-        public float rollOffset = 0f;    // Roll angle
-
-        // Auto vertical offset settings (repurposed legacy fields)
-        public float viewAngle = 1f;     // 1.0 = auto vertical offset enabled, 0.0 = disabled
-        public float orbitAngle = 2.18f; // Vertical offset multiplier
+        public CameraSettings Clone()
+        {
+            return new CameraSettings
+            {
+                cameraDistance = cameraDistance,
+                gridMargin = gridMargin,
+                nearClipPlane = nearClipPlane,
+                farClipPlane = farClipPlane
+            };
+        }
     }
 
     // Grid settings (cells are 1.0 world unit each)
@@ -122,5 +110,103 @@ public class LevelData
     public LevelData()
     {
         saveTimestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+    }
+
+    public LevelData Clone()
+    {
+        LevelData copy = new LevelData
+        {
+            gridWidth = gridWidth,
+            gridHeight = gridHeight,
+            levelName = levelName,
+            saveTimestamp = saveTimestamp
+        };
+
+        if (cameraSettings != null)
+        {
+            copy.cameraSettings = cameraSettings.Clone();
+        }
+
+        if (blocks != null)
+        {
+            copy.blocks = new List<BlockData>(blocks.Count);
+            foreach (BlockData block in blocks)
+            {
+                if (block == null) continue;
+                BlockData cloned = new BlockData(block.blockType, block.gridIndex)
+                {
+                    inventoryKey = block.inventoryKey,
+                    flavorId = block.flavorId,
+                    routeSteps = block.routeSteps != null ? (string[])block.routeSteps.Clone() : null
+                };
+                copy.blocks.Add(cloned);
+            }
+        }
+
+        if (permanentBlocks != null)
+        {
+            copy.permanentBlocks = new List<BlockData>(permanentBlocks.Count);
+            foreach (BlockData block in permanentBlocks)
+            {
+                if (block == null) continue;
+                BlockData cloned = new BlockData(block.blockType, block.gridIndex)
+                {
+                    inventoryKey = block.inventoryKey,
+                    flavorId = block.flavorId,
+                    routeSteps = block.routeSteps != null ? (string[])block.routeSteps.Clone() : null
+                };
+                copy.permanentBlocks.Add(cloned);
+            }
+        }
+
+        if (inventoryEntries != null)
+        {
+            copy.inventoryEntries = new List<BlockInventoryEntry>(inventoryEntries.Count);
+            foreach (BlockInventoryEntry entry in inventoryEntries)
+            {
+                if (entry == null) continue;
+                copy.inventoryEntries.Add(entry.Clone());
+            }
+        }
+
+        if (placeableSpaceIndices != null)
+        {
+            copy.placeableSpaceIndices = new List<int>(placeableSpaceIndices);
+        }
+
+        if (lems != null)
+        {
+            copy.lems = new List<LemData>(lems.Count);
+            foreach (LemData lem in lems)
+            {
+                if (lem == null) continue;
+                LemData cloned = new LemData(lem.gridIndex, lem.facingRight)
+                {
+                    worldPosition = lem.worldPosition,
+                    hasWorldPosition = lem.hasWorldPosition
+                };
+                copy.lems.Add(cloned);
+            }
+        }
+
+        if (keyStates != null)
+        {
+            copy.keyStates = new List<KeyStateData>(keyStates.Count);
+            foreach (KeyStateData keyState in keyStates)
+            {
+                if (keyState == null) continue;
+                KeyStateData cloned = new KeyStateData
+                {
+                    sourceKeyBlockIndex = keyState.sourceKeyBlockIndex,
+                    location = keyState.location,
+                    targetIndex = keyState.targetIndex,
+                    worldPosition = keyState.worldPosition,
+                    hasWorldPosition = keyState.hasWorldPosition
+                };
+                copy.keyStates.Add(cloned);
+            }
+        }
+
+        return copy;
     }
 }

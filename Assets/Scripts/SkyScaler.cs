@@ -19,13 +19,16 @@ public class SkyScaler : MonoBehaviour
 
     [Header("Positioning")]
     [Tooltip("Distance behind the grid (grid is at Z=0, positive values go behind)")]
-    [Range(5f, 50f)]
-    public float distanceBehindGrid = 5f;
+    [Range(0.1f, 50f)]
+    public float distanceBehindGrid = 1f;
 
     [Header("Scaling")]
     [Tooltip("Scale multiplier for full bleed coverage (1.5 = 50% overscan)")]
     [Range(1.2f, 3.0f)]
     public float overscanMultiplier = 1.5f;
+
+    [Tooltip("Preserve the sky texture's native aspect ratio (prevents squashing)")]
+    public bool preserveTextureAspect = true;
 
     [Header("Auto-Update")]
     [Tooltip("Automatically update when camera settings change")]
@@ -126,8 +129,30 @@ public class SkyScaler : MonoBehaviour
         viewHeight *= overscanMultiplier;
         viewWidth *= overscanMultiplier;
 
+        float targetWidth = viewWidth;
+        float targetHeight = viewHeight;
+
+        if (preserveTextureAspect)
+        {
+            float textureAspect = GetMainTextureAspect();
+            if (textureAspect > 0f)
+            {
+                float viewAspect = viewWidth / viewHeight;
+                if (textureAspect >= viewAspect)
+                {
+                    targetHeight = viewHeight;
+                    targetWidth = viewHeight * textureAspect;
+                }
+                else
+                {
+                    targetWidth = viewWidth;
+                    targetHeight = viewWidth / textureAspect;
+                }
+            }
+        }
+
         // Unity Quad is 1x1 units by default, so scale directly
-        transform.localScale = new Vector3(viewWidth, viewHeight, 1f);
+        transform.localScale = new Vector3(targetWidth, targetHeight, 1f);
 
         // Cache values for change detection
         lastAspect = targetCamera.aspect;
@@ -136,7 +161,19 @@ public class SkyScaler : MonoBehaviour
         lastCameraRotation = targetCamera.transform.rotation;
         lastDistanceBehindGrid = distanceBehindGrid;
 
-        DebugLog.Info($"SkyScaler: Scaled to {viewWidth:F1}x{viewHeight:F1} units at position ({skyPosition.x:F1}, {skyPosition.y:F1}, {skyPosition.z:F1}), " +
+        DebugLog.Info($"SkyScaler: Scaled to {targetWidth:F1}x{targetHeight:F1} units at position ({skyPosition.x:F1}, {skyPosition.y:F1}, {skyPosition.z:F1}), " +
                   $"distance from camera={distanceToSky:F1}, FOV={targetCamera.fieldOfView:F2}°");
+    }
+
+    private float GetMainTextureAspect()
+    {
+        Renderer renderer = GetComponent<Renderer>();
+        if (renderer == null) return 0f;
+
+        Texture texture = renderer.sharedMaterial != null ? renderer.sharedMaterial.mainTexture : null;
+        if (texture == null) return 0f;
+
+        if (texture.width <= 0 || texture.height <= 0) return 0f;
+        return (float)texture.width / texture.height;
     }
 }

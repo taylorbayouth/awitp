@@ -212,6 +212,29 @@ public class GridCursorManager : MonoBehaviour
         UpdateCursorState();
     }
 
+    public void ApplyCursorColors(Color placeable, Color editable, Color nonPlaceable)
+    {
+        if (gridCursor == null) return;
+        gridCursor.placeableColor = placeable;
+        gridCursor.editableColor = editable;
+        gridCursor.nonPlaceableColor = nonPlaceable;
+        gridCursor.SetState(gridCursor.GetState());
+    }
+
+    /// <summary>
+    /// Resets cursor to upper-left corner (top row, left column).
+    /// </summary>
+    public void ResetToUpperLeft()
+    {
+        if (coordinateSystem == null) return;
+        if (coordinateSystem.GridWidth <= 0 || coordinateSystem.GridHeight <= 0) return;
+
+        int topRow = coordinateSystem.GridHeight - 1;
+        int leftCol = 0;
+        int upperLeftIndex = coordinateSystem.CoordinatesToIndex(new Vector2Int(leftCol, topRow));
+        SetCursorIndex(upperLeftIndex);
+    }
+
     private void OnDestroy()
     {
         if (cursorHighlight != null)

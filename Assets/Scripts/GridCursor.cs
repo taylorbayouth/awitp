@@ -15,13 +15,13 @@ public class GridCursor : MonoBehaviour
 
     [Header("Cursor Colors")]
     [Tooltip("Blue - shown when hovering over empty space where you can place a new block")]
-    public Color placeableColor = BlockColors.CursorPlaceable;
+    [HideInInspector] public Color placeableColor = BlockColors.CursorPlaceable;
 
     [Tooltip("Green - shown when hovering over an existing block that can be edited/moved")]
-    public Color editableColor = BlockColors.CursorEditable;
+    [HideInInspector] public Color editableColor = BlockColors.CursorEditable;
 
     [Tooltip("Red - shown when hovering over a space that's blocked or invalid for placement")]
-    public Color nonPlaceableColor = BlockColors.CursorNonPlaceable;
+    [HideInInspector] public Color nonPlaceableColor = BlockColors.CursorNonPlaceable;
 
     private BorderRenderer borderRenderer;
     private CursorState currentState = CursorState.Placeable;
