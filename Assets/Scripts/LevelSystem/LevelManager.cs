@@ -237,13 +237,8 @@ public class LevelManager : MonoBehaviour
             Debug.LogWarning($"[LevelManager] Level '{levelDef.levelId}' has validation warnings");
         }
 
-        // Parse the level data
-        LevelData levelData = levelDef.ToLevelData();
-        if (levelData == null)
-        {
-            Debug.LogError($"[LevelManager] Failed to parse level data for '{levelDef.levelId}'");
-            return false;
-        }
+        // Get runtime copy of level data
+        LevelData levelData = levelDef.GetRuntimeLevelData();
 
         // Unload any existing level
         UnloadLevel();
@@ -260,6 +255,11 @@ public class LevelManager : MonoBehaviour
         {
             Debug.LogError($"[LevelManager] Failed to instantiate level '{levelDef.levelId}'");
             return false;
+        }
+
+        if (_gridManager != null)
+        {
+            _gridManager.ApplyLevelDefinitionSettings(levelDef);
         }
 
         // Mark level as loaded

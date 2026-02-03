@@ -7,23 +7,15 @@ using System.Collections.Generic;
 /// </summary>
 public class UpdateLevelCameraSettings : EditorWindow
 {
-    // Position
-    private float verticalOffset = 10.4f;
-    private float horizontalOffset = 0f;
-    private bool updateVerticalOffset = false;
-    private bool updateHorizontalOffset = false;
+    private float cameraDistance = 150f;
+    private float gridMargin = 1f;
+    private float nearClipPlane = 0.24f;
+    private float farClipPlane = 500f;
 
-    // Rotation
-    private float tiltAngle = 3.7f;
-    private float panAngle = 0f;
-    private bool updateTiltAngle = false;
-    private bool updatePanAngle = false;
-
-    // Perspective
-    private float focalLength = 756f;
-    private float distanceMultiplier = 23.7f;
-    private bool updateFocalLength = true;
-    private bool updateDistanceMultiplier = true;
+    private bool updateCameraDistance = true;
+    private bool updateGridMargin = false;
+    private bool updateNearClipPlane = false;
+    private bool updateFarClipPlane = false;
 
     [MenuItem("Tools/Update Level Camera Settings")]
     public static void ShowWindow()
@@ -37,68 +29,41 @@ public class UpdateLevelCameraSettings : EditorWindow
         EditorGUILayout.Space();
 
         EditorGUILayout.HelpBox(
-            "Update camera settings across all levels.\n\n" +
-            "Camera starts centered with grid. Use offsets to move it, tilt to angle it down.",
+            "Simple framing system:\n" +
+            "- Fixed camera distance (far away for flat perspective)\n" +
+            "- Auto-calculated FOV to fit any grid size\n" +
+            "- Camera always points at grid center",
             MessageType.Info);
 
         EditorGUILayout.Space();
 
-        // === POSITION ===
-        EditorGUILayout.LabelField("Position", EditorStyles.boldLabel);
-
-        updateVerticalOffset = EditorGUILayout.Toggle("Update Vertical Offset", updateVerticalOffset);
-        using (new EditorGUI.DisabledScope(!updateVerticalOffset))
+        updateCameraDistance = EditorGUILayout.Toggle("Update Camera Distance", updateCameraDistance);
+        using (new EditorGUI.DisabledScope(!updateCameraDistance))
         {
-            verticalOffset = EditorGUILayout.Slider("  Vertical Offset", verticalOffset, 0f, 28f);
+            cameraDistance = EditorGUILayout.Slider("  Camera Distance", cameraDistance, 1f, 2000f);
         }
 
-        updateHorizontalOffset = EditorGUILayout.Toggle("Update Horizontal Offset", updateHorizontalOffset);
-        using (new EditorGUI.DisabledScope(!updateHorizontalOffset))
+        updateGridMargin = EditorGUILayout.Toggle("Update Grid Margin", updateGridMargin);
+        using (new EditorGUI.DisabledScope(!updateGridMargin))
         {
-            horizontalOffset = EditorGUILayout.Slider("  Horizontal Offset", horizontalOffset, -10f, 10f);
+            gridMargin = EditorGUILayout.Slider("  Grid Margin", gridMargin, 0f, 5f);
         }
 
-        EditorGUILayout.Space();
-
-        // === ROTATION ===
-        EditorGUILayout.LabelField("Rotation", EditorStyles.boldLabel);
-
-        updateTiltAngle = EditorGUILayout.Toggle("Update Tilt Angle", updateTiltAngle);
-        using (new EditorGUI.DisabledScope(!updateTiltAngle))
+        updateNearClipPlane = EditorGUILayout.Toggle("Update Near Clip", updateNearClipPlane);
+        using (new EditorGUI.DisabledScope(!updateNearClipPlane))
         {
-            tiltAngle = EditorGUILayout.Slider("  Tilt (pitch)", tiltAngle, -5f, 20f);
-            EditorGUILayout.HelpBox("Negative = look down, Positive = look up", MessageType.None);
+            nearClipPlane = EditorGUILayout.Slider("  Near Clip", nearClipPlane, 0.01f, 10f);
         }
 
-        updatePanAngle = EditorGUILayout.Toggle("Update Pan Angle", updatePanAngle);
-        using (new EditorGUI.DisabledScope(!updatePanAngle))
+        updateFarClipPlane = EditorGUILayout.Toggle("Update Far Clip", updateFarClipPlane);
+        using (new EditorGUI.DisabledScope(!updateFarClipPlane))
         {
-            panAngle = EditorGUILayout.Slider("  Pan (yaw)", panAngle, -15f, 15f);
-        }
-
-        EditorGUILayout.Space();
-
-        // === PERSPECTIVE ===
-        EditorGUILayout.LabelField("Perspective", EditorStyles.boldLabel);
-
-        updateFocalLength = EditorGUILayout.Toggle("Update Focal Length", updateFocalLength);
-        using (new EditorGUI.DisabledScope(!updateFocalLength))
-        {
-            focalLength = EditorGUILayout.Slider("  Focal Length (mm)", focalLength, 100f, 1200f);
-            EditorGUILayout.HelpBox("756mm = default. Higher = more telephoto (flatter)", MessageType.None);
-        }
-
-        updateDistanceMultiplier = EditorGUILayout.Toggle("Update Distance Multiplier", updateDistanceMultiplier);
-        using (new EditorGUI.DisabledScope(!updateDistanceMultiplier))
-        {
-            distanceMultiplier = EditorGUILayout.Slider("  Distance Multiplier", distanceMultiplier, 5f, 40f);
-            EditorGUILayout.HelpBox("Higher = farther away = flatter perspective", MessageType.None);
+            farClipPlane = EditorGUILayout.Slider("  Far Clip", farClipPlane, 100f, 5000f);
         }
 
         EditorGUILayout.Space();
         EditorGUILayout.Space();
 
-        // === BUTTONS ===
         EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("Update Scene Camera", GUILayout.Height(35)))
         {
@@ -133,12 +98,10 @@ public class UpdateLevelCameraSettings : EditorWindow
         }
 
         string changes = "";
-        if (updateVerticalOffset) changes += $"• Vertical Offset → {verticalOffset:F1}\n";
-        if (updateHorizontalOffset) changes += $"• Horizontal Offset → {horizontalOffset:F1}\n";
-        if (updateTiltAngle) changes += $"• Tilt Angle → {tiltAngle:F1}°\n";
-        if (updatePanAngle) changes += $"• Pan Angle → {panAngle:F1}°\n";
-        if (updateFocalLength) changes += $"• Focal Length → {focalLength:F0}mm\n";
-        if (updateDistanceMultiplier) changes += $"• Distance Multiplier → {distanceMultiplier:F1}x\n";
+        if (updateCameraDistance) changes += $"• Camera Distance → {cameraDistance:F1}\n";
+        if (updateGridMargin) changes += $"• Grid Margin → {gridMargin:F2}\n";
+        if (updateNearClipPlane) changes += $"• Near Clip → {nearClipPlane:F2}\n";
+        if (updateFarClipPlane) changes += $"• Far Clip → {farClipPlane:F0}\n";
 
         if (string.IsNullOrEmpty(changes))
         {
@@ -171,27 +134,16 @@ public class UpdateLevelCameraSettings : EditorWindow
     {
         try
         {
-            LevelData levelData = level.ToLevelData();
-            if (levelData == null) return false;
-
+            LevelData levelData = level.GetLevelData();
             if (levelData.cameraSettings == null)
                 levelData.cameraSettings = new LevelData.CameraSettings();
 
-            if (updateVerticalOffset) levelData.cameraSettings.verticalOffset = verticalOffset;
-            if (updateHorizontalOffset) levelData.cameraSettings.horizontalOffset = horizontalOffset;
-            if (updateTiltAngle) levelData.cameraSettings.tiltAngle = tiltAngle;
-            if (updatePanAngle) levelData.cameraSettings.panAngle = panAngle;
-            if (updateFocalLength)
-            {
-                // Convert focal length to FOV and store both
-                const float sensorHeight = 24f;
-                float fov = 2f * Mathf.Atan(sensorHeight / (2f * focalLength)) * Mathf.Rad2Deg;
-                levelData.cameraSettings.fieldOfView = fov;
-                levelData.cameraSettings.tiltOffset = focalLength;  // Store focal length here
-            }
-            if (updateDistanceMultiplier) levelData.cameraSettings.distanceMultiplier = distanceMultiplier;
+            if (updateCameraDistance) levelData.cameraSettings.cameraDistance = cameraDistance;
+            if (updateGridMargin) levelData.cameraSettings.gridMargin = gridMargin;
+            if (updateNearClipPlane) levelData.cameraSettings.nearClipPlane = nearClipPlane;
+            if (updateFarClipPlane) levelData.cameraSettings.farClipPlane = farClipPlane;
 
-            level.FromLevelData(levelData);
+            level.SetLevelData(levelData);
             EditorUtility.SetDirty(level);
             return true;
         }
@@ -213,16 +165,14 @@ public class UpdateLevelCameraSettings : EditorWindow
 
         Undo.RecordObject(cameraSetup, "Update Camera Settings");
 
-        if (updateVerticalOffset) cameraSetup.verticalOffset = verticalOffset;
-        if (updateHorizontalOffset) cameraSetup.horizontalOffset = horizontalOffset;
-        if (updateTiltAngle) cameraSetup.tiltAngle = tiltAngle;
-        if (updatePanAngle) cameraSetup.panAngle = panAngle;
-        if (updateFocalLength) cameraSetup.focalLength = focalLength;
-        if (updateDistanceMultiplier) cameraSetup.distanceMultiplier = distanceMultiplier;
+        if (updateCameraDistance) cameraSetup.cameraDistance = cameraDistance;
+        if (updateGridMargin) cameraSetup.gridMargin = gridMargin;
+        if (updateNearClipPlane) cameraSetup.nearClipPlane = nearClipPlane;
+        if (updateFarClipPlane) cameraSetup.farClipPlane = farClipPlane;
 
         cameraSetup.RefreshCamera();
         EditorUtility.SetDirty(cameraSetup);
 
-        Debug.Log($"Updated scene camera: V={cameraSetup.verticalOffset}, Tilt={cameraSetup.tiltAngle}°, Focal={cameraSetup.focalLength}mm");
+        Debug.Log($"Updated scene camera: Dist={cameraSetup.cameraDistance:F1}, Margin={cameraSetup.gridMargin:F2}");
     }
 }

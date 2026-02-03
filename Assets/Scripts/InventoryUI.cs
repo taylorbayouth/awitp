@@ -16,12 +16,12 @@ public class InventoryUI : MonoBehaviour
 
     [Header("UI Settings")]
     public float boxSize = 110f;
-    public float spacing = 20f;
-    public float itemPadding = 6f;
+    [Tooltip("Space between icon blocks")]
+    [Range(0f, 60f)]
+    public float blockSpacing = 20f;
+    public float iconMargin = 5f;
     public float topMargin = 24f;
     public float leftMargin = 24f;
-    public float keyHintHeight = 20f;
-    public float keyHintSpacing = 4f;
 
     [Header("UGUI Settings")]
     public Font font;
@@ -29,24 +29,49 @@ public class InventoryUI : MonoBehaviour
     [Range(0f, 1f)]
     public float matchWidthOrHeight = 1f;
 
-    [Header("Text Sizes")]
-    public int labelFontSize = 16;
-    public int subLabelFontSize = 13;
-    public int countFontSize = 20;
-    public int teleporterFontSize = 56;
+    [Header("Text")]
+    [Range(8, 48)]
+    public int textSize = 20;
+    [Range(-20f, 60f)]
+    public float textTopMargin = 0f;
+    public Color textColor = Color.white;
+
+    [Header("Corner Text")]
     public int cornerFontSize = 18;
 
-    [Header("Colors")]
-    public Color normalBackground = new Color(0.2f, 0.2f, 0.2f, 0.8f);
-    public Color selectedBackground = new Color(0f, 0f, 0f, 0.9f);
-    public Color subLabelColor = new Color(1f, 1f, 1f, 0.75f);
+    [Header("Icons")]
+    [Tooltip("Optional sprite override for the Walk block inventory preview")]
+    public Sprite walkBlockSprite;
+
+    [Tooltip("Resources path fallback for the Walk icon (without extension)")]
+    public string walkBlockSpriteResourcePath = "Sprites/inventoryUi/hedgeIcon";
+
+    [Tooltip("Editor-only asset path fallback for the Walk icon")]
+    public string walkBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/hedgeIcon.png";
+
+    [Tooltip("Optional texture override for the Transporter inventory preview")]
+    public Texture2D transporterIconTexture;
+
+    [Tooltip("Resources path fallback for the Transporter icon (without extension)")]
+    public string transporterIconTextureResourcePath = "Sprites/inventoryUi/cloudIcon";
+
+    [Tooltip("Editor-only asset path fallback for the Transporter icon")]
+    public string transporterIconTextureAssetPath = "Assets/Sprites/inventoryUi/cloudIcon.png";
+
+    [Header("Font")]
+    [Tooltip("Editor-only asset path for the UI font")]
+    public string uiFontAssetPath = "Assets/Fonts/Koulen-Regular.ttf";
+
+    [Tooltip("Resources path fallback for the UI font (without extension)")]
+    public string uiFontResourcePath = "Fonts/Koulen-Regular";
 
     private Canvas _canvas;
     private RectTransform _root;
+    private GameObject _frameContainer;
+    private InventoryPanelFrame _frameComponent;
     private RectTransform _panel;
     private VerticalLayoutGroup _layout;
     private ContentSizeFitter _fitter;
-    private Text _statusText;
     private Text _lockStatusText;
     private Text _winText;
 
@@ -56,14 +81,9 @@ public class InventoryUI : MonoBehaviour
     private class SlotUI
     {
         public GameObject root;
-        public Image background;
         public Image previewImage;
         public RawImage previewRaw;
-        public Text label;
-        public Text subLabel;
         public Text count;
-        public Text teleporterLabel;
-        public Text keyHint;
         public BlockInventoryEntry entry;
         public int index;
     }
@@ -95,21 +115,19 @@ public class InventoryUI : MonoBehaviour
             builderController = ServiceRegistry.Get<BuilderController>();
         }
 
-        if (font == null)
-        {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
+        LoadUIFont();
 
+        LoadWalkBlockSprite();
+        LoadTransporterIconTexture();
         EnsureCanvas();
         BuildStaticUI();
     }
 
     private void OnEnable()
     {
-        if (font == null)
-        {
-            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        }
+        LoadUIFont();
+        LoadWalkBlockSprite();
+        LoadTransporterIconTexture();
         EnsureCanvas();
         BuildStaticUI();
     }
@@ -162,16 +180,29 @@ public class InventoryUI : MonoBehaviour
     {
         if (_panel != null) return;
 
+        // Create frame container with border slices
+        _frameContainer = new GameObject("InventoryFrame", typeof(RectTransform), typeof(InventoryPanelFrame));
+        _frameContainer.transform.SetParent(_root, false);
+        RectTransform frameRect = _frameContainer.GetComponent<RectTransform>();
+        frameRect.anchorMin = new Vector2(0f, 1f);
+        frameRect.anchorMax = new Vector2(0f, 1f);
+        frameRect.pivot = new Vector2(0f, 1f);
+        frameRect.anchoredPosition = new Vector2(leftMargin, -topMargin);
+
+        _frameComponent = _frameContainer.GetComponent<InventoryPanelFrame>();
+        _frameComponent.backgroundColor = new Color(0.38f, 0.36f, 0.34f, 1f); // #615C57
+
+        // Create inventory panel inside the frame's content area
         GameObject panelObj = new GameObject("InventoryPanel", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        panelObj.transform.SetParent(_root, false);
+        panelObj.transform.SetParent(_frameComponent.GetContentArea(), false);
         _panel = panelObj.GetComponent<RectTransform>();
         _panel.anchorMin = new Vector2(0f, 1f);
         _panel.anchorMax = new Vector2(0f, 1f);
         _panel.pivot = new Vector2(0f, 1f);
-        _panel.anchoredPosition = new Vector2(leftMargin, -topMargin);
+        _panel.anchoredPosition = Vector2.zero;
 
         _layout = panelObj.GetComponent<VerticalLayoutGroup>();
-        _layout.spacing = spacing;
+        _layout.spacing = blockSpacing;
         _layout.childAlignment = TextAnchor.UpperLeft;
         _layout.childControlWidth = false;
         _layout.childControlHeight = false;
@@ -181,14 +212,6 @@ public class InventoryUI : MonoBehaviour
         _fitter = panelObj.GetComponent<ContentSizeFitter>();
         _fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
         _fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-
-        _statusText = CreateText("Status", _root, labelFontSize, TextAnchor.UpperLeft, Color.yellow);
-        RectTransform statusRect = _statusText.GetComponent<RectTransform>();
-        statusRect.anchorMin = new Vector2(0f, 1f);
-        statusRect.anchorMax = new Vector2(0f, 1f);
-        statusRect.pivot = new Vector2(0f, 1f);
-        statusRect.anchoredPosition = new Vector2(leftMargin, -topMargin);
-        _statusText.gameObject.SetActive(false);
 
         _lockStatusText = CreateText("LockStatus", _root, cornerFontSize, TextAnchor.UpperRight, Color.white);
         RectTransform lockRect = _lockStatusText.GetComponent<RectTransform>();
@@ -212,21 +235,31 @@ public class InventoryUI : MonoBehaviour
 
         GameMode mode = builderController != null ? builderController.currentMode : GameMode.Builder;
         bool showInventory = !Application.isPlaying || mode != GameMode.Play;
-        _panel.gameObject.SetActive(showInventory);
+
+        if (_layout != null)
+        {
+            _layout.spacing = blockSpacing;
+        }
+
+        // Show/hide the frame container instead of just the panel
+        if (_frameContainer != null)
+        {
+            _frameContainer.SetActive(showInventory);
+        }
+        else
+        {
+            _panel.gameObject.SetActive(showInventory);
+        }
 
         if (inventory == null)
         {
-            ShowStatus("InventoryUI: No BlockInventory found");
             return;
         }
 
         if (Application.isPlaying && builderController == null)
         {
-            ShowStatus("InventoryUI: No BuilderController found");
             return;
         }
-
-        HideStatus();
 
         if (Application.isPlaying)
         {
@@ -257,10 +290,7 @@ public class InventoryUI : MonoBehaviour
 
         TrimSlots(drawIndex);
 
-        if (drawIndex == 0)
-        {
-            ShowStatus("InventoryUI: No visible inventory entries");
-        }
+        if (drawIndex == 0) { }
     }
 
     private SlotUI EnsureSlot(int drawIndex)
@@ -291,12 +321,12 @@ public class InventoryUI : MonoBehaviour
 
         LayoutElement layout = root.GetComponent<LayoutElement>();
         layout.preferredWidth = boxSize;
-        layout.preferredHeight = boxSize + keyHintSpacing + keyHintHeight;
+        layout.preferredHeight = boxSize + textTopMargin + textSize + 6f;
 
         RectTransform rootRect = root.GetComponent<RectTransform>();
         rootRect.sizeDelta = new Vector2(boxSize, layout.preferredHeight);
 
-        GameObject bgObj = new GameObject("Background", typeof(RectTransform), typeof(Image));
+        GameObject bgObj = new GameObject("Background", typeof(RectTransform));
         bgObj.transform.SetParent(root.transform, false);
         RectTransform bgRect = bgObj.GetComponent<RectTransform>();
         bgRect.anchorMin = new Vector2(0f, 1f);
@@ -304,35 +334,18 @@ public class InventoryUI : MonoBehaviour
         bgRect.pivot = new Vector2(0f, 1f);
         bgRect.anchoredPosition = Vector2.zero;
         bgRect.sizeDelta = new Vector2(boxSize, boxSize);
-        Image bgImage = bgObj.GetComponent<Image>();
-        bgImage.color = normalBackground;
-
-        Text label = CreateText("Label", bgRect, labelFontSize, TextAnchor.UpperCenter, Color.white);
-        RectTransform labelRect = label.GetComponent<RectTransform>();
-        labelRect.anchorMin = new Vector2(0f, 1f);
-        labelRect.anchorMax = new Vector2(1f, 1f);
-        labelRect.pivot = new Vector2(0.5f, 1f);
-        labelRect.anchoredPosition = new Vector2(0f, -itemPadding);
-        labelRect.sizeDelta = new Vector2(0f, 18f);
-
-        Text subLabel = CreateText("SubLabel", bgRect, subLabelFontSize, TextAnchor.UpperCenter, subLabelColor);
-        RectTransform subRect = subLabel.GetComponent<RectTransform>();
-        subRect.anchorMin = new Vector2(0f, 1f);
-        subRect.anchorMax = new Vector2(1f, 1f);
-        subRect.pivot = new Vector2(0.5f, 1f);
-        subRect.anchoredPosition = new Vector2(0f, -(itemPadding + 18f));
-        subRect.sizeDelta = new Vector2(0f, 16f);
 
         GameObject previewObj = new GameObject("Preview", typeof(RectTransform), typeof(Image));
         previewObj.transform.SetParent(bgRect, false);
         RectTransform previewRect = previewObj.GetComponent<RectTransform>();
-        float previewSize = boxSize * 0.4f;
         previewRect.anchorMin = new Vector2(0.5f, 0.5f);
         previewRect.anchorMax = new Vector2(0.5f, 0.5f);
         previewRect.pivot = new Vector2(0.5f, 0.5f);
-        previewRect.anchoredPosition = new Vector2(0f, -4f);
+        previewRect.anchoredPosition = Vector2.zero;
+        float previewSize = Mathf.Max(0f, boxSize - (iconMargin * 2f));
         previewRect.sizeDelta = new Vector2(previewSize, previewSize);
         Image previewImage = previewObj.GetComponent<Image>();
+        previewImage.preserveAspect = true;
 
         GameObject previewRawObj = new GameObject("PreviewRaw", typeof(RectTransform), typeof(RawImage));
         previewRawObj.transform.SetParent(previewRect, false);
@@ -344,35 +357,20 @@ public class InventoryUI : MonoBehaviour
         RawImage previewRaw = previewRawObj.GetComponent<RawImage>();
         previewRaw.gameObject.SetActive(false);
 
-        Text teleporterLabel = CreateText("TeleporterLabel", previewRect, teleporterFontSize, TextAnchor.MiddleCenter, Color.white);
-
-        Text count = CreateText("Count", bgRect, countFontSize, TextAnchor.LowerCenter, Color.white);
+        Text count = CreateText("Count", rootRect, textSize, TextAnchor.UpperCenter, textColor);
         RectTransform countRect = count.GetComponent<RectTransform>();
-        countRect.anchorMin = new Vector2(0f, 0f);
-        countRect.anchorMax = new Vector2(1f, 0f);
-        countRect.pivot = new Vector2(0.5f, 0f);
-        countRect.anchoredPosition = new Vector2(0f, itemPadding);
-        countRect.sizeDelta = new Vector2(0f, 18f);
-
-        Text keyHint = CreateText("KeyHint", rootRect, labelFontSize, TextAnchor.UpperCenter, Color.white);
-        RectTransform keyRect = keyHint.GetComponent<RectTransform>();
-        keyRect.anchorMin = new Vector2(0f, 0f);
-        keyRect.anchorMax = new Vector2(1f, 0f);
-        keyRect.pivot = new Vector2(0.5f, 0f);
-        keyRect.anchoredPosition = new Vector2(0f, 0f);
-        keyRect.sizeDelta = new Vector2(0f, keyHintHeight);
+        countRect.anchorMin = new Vector2(0f, 1f);
+        countRect.anchorMax = new Vector2(1f, 1f);
+        countRect.pivot = new Vector2(0.5f, 1f);
+        countRect.anchoredPosition = new Vector2(0f, -boxSize - textTopMargin);
+        countRect.sizeDelta = new Vector2(0f, textSize + 6f);
 
         return new SlotUI
         {
             root = root,
-            background = bgImage,
             previewImage = previewImage,
             previewRaw = previewRaw,
-            label = label,
-            subLabel = subLabel,
-            count = count,
-            teleporterLabel = teleporterLabel,
-            keyHint = keyHint
+            count = count
         };
     }
 
@@ -381,20 +379,37 @@ public class InventoryUI : MonoBehaviour
         BlockInventoryEntry entry = slot.entry;
         if (entry == null) return;
 
-        bool isSelected = builderController != null && builderController.CurrentInventoryIndex == slot.index;
-        slot.background.color = isSelected ? selectedBackground : normalBackground;
+        RectTransform rootRect = slot.root.GetComponent<RectTransform>();
+        LayoutElement layout = slot.root.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.preferredWidth = boxSize;
+            layout.preferredHeight = boxSize + textTopMargin + textSize + 6f;
+        }
+        if (rootRect != null)
+        {
+            rootRect.sizeDelta = new Vector2(boxSize, boxSize + textTopMargin + textSize + 6f);
+        }
 
-        string blockName = entry.GetDisplayName();
-        slot.label.text = blockName;
-
-        slot.subLabel.text = entry.isPairInventory ? "(pairs)" : string.Empty;
+        RectTransform previewRect = slot.previewImage != null ? slot.previewImage.rectTransform : null;
+        if (previewRect != null)
+        {
+            RectTransform bgRect = previewRect.parent as RectTransform;
+            if (bgRect != null)
+            {
+                bgRect.sizeDelta = new Vector2(boxSize, boxSize);
+            }
+            float previewSize = Mathf.Max(0f, boxSize - (iconMargin * 2f));
+            previewRect.sizeDelta = new Vector2(previewSize, previewSize);
+        }
 
         int available = inventory.GetDisplayAvailableCount(entry);
         int total = inventory.GetDisplayTotalCount(entry);
-        slot.count.text = showInfinite ? "INF" : $"{available}/{total}";
-
-        string keyHint = slot.index < 9 ? $"[{slot.index + 1}]" : string.Empty;
-        slot.keyHint.text = keyHint;
+        slot.count.text = showInfinite ? "INF" : $"{available} OF {total}";
+        slot.count.fontSize = textSize;
+        slot.count.color = textColor;
+        RectTransform countRect = slot.count.rectTransform;
+        countRect.anchoredPosition = new Vector2(0f, -boxSize - textTopMargin);
 
         Color blockColor = GetColorForBlockType(entry.blockType);
         if (!showInfinite && available == 0)
@@ -402,7 +417,14 @@ public class InventoryUI : MonoBehaviour
             blockColor.a = 0.3f;
         }
 
-        if (entry.blockType == BlockType.Transporter)
+        if (entry.blockType == BlockType.Walk && walkBlockSprite != null)
+        {
+            slot.previewImage.enabled = true;
+            slot.previewImage.sprite = walkBlockSprite;
+            slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+            slot.previewRaw.gameObject.SetActive(false);
+        }
+        else if (entry.blockType == BlockType.Transporter)
         {
             if (TrySetTransporterPreview(entry, slot.previewRaw, blockColor, slot.previewImage.rectTransform.rect.size))
             {
@@ -411,6 +433,7 @@ public class InventoryUI : MonoBehaviour
             else
             {
                 slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
                 slot.previewImage.color = blockColor;
                 slot.previewRaw.gameObject.SetActive(false);
             }
@@ -418,17 +441,14 @@ public class InventoryUI : MonoBehaviour
         else
         {
             slot.previewImage.enabled = true;
+            slot.previewImage.sprite = null;
             slot.previewImage.color = blockColor;
             slot.previewRaw.gameObject.SetActive(false);
         }
 
-        if (entry.blockType == BlockType.Teleporter)
+        if (slot.previewImage != null)
         {
-            slot.teleporterLabel.text = ExtractTeleporterLabel(entry);
-        }
-        else
-        {
-            slot.teleporterLabel.text = string.Empty;
+            slot.previewImage.preserveAspect = true;
         }
     }
 
@@ -440,11 +460,17 @@ public class InventoryUI : MonoBehaviour
         int textureSize = Mathf.RoundToInt(Mathf.Min(size.x, size.y));
         if (textureSize <= 0) return false;
 
-        Texture2D icon = GetTransporterRouteTexture(steps, textureSize);
+        LoadTransporterIconTexture();
+        Color overlayColor = blockColor;
+        if (overlayColor.r >= 0.95f && overlayColor.g >= 0.95f && overlayColor.b >= 0.95f)
+        {
+            overlayColor = new Color(0.15f, 0.55f, 1f, 1f);
+        }
+        Texture2D icon = GetTransporterRouteTexture(steps, textureSize, overlayColor);
         if (icon == null) return false;
 
         rawImage.texture = icon;
-        rawImage.color = blockColor;
+        rawImage.color = Color.white;
         rawImage.gameObject.SetActive(true);
         return true;
     }
@@ -474,19 +500,6 @@ public class InventoryUI : MonoBehaviour
         }
     }
 
-    private void ShowStatus(string text)
-    {
-        if (_statusText == null) return;
-        _statusText.text = text;
-        _statusText.gameObject.SetActive(true);
-    }
-
-    private void HideStatus()
-    {
-        if (_statusText == null) return;
-        _statusText.gameObject.SetActive(false);
-    }
-
     private Text CreateText(string name, Transform parent, int fontSize, TextAnchor anchor, Color color)
     {
         GameObject obj = new GameObject(name, typeof(RectTransform), typeof(Text));
@@ -501,6 +514,84 @@ public class InventoryUI : MonoBehaviour
         return text;
     }
 
+    private void LoadUIFont()
+    {
+        Font loadedFont = null;
+
+#if UNITY_EDITOR
+        if (!string.IsNullOrEmpty(uiFontAssetPath))
+        {
+            loadedFont = UnityEditor.AssetDatabase.LoadAssetAtPath<Font>(uiFontAssetPath);
+        }
+#endif
+
+        if (loadedFont == null)
+        {
+            loadedFont = Resources.Load<Font>(uiFontResourcePath);
+        }
+
+        if (loadedFont == null)
+        {
+            loadedFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
+        font = loadedFont;
+    }
+
+    private void LoadWalkBlockSprite()
+    {
+        if (walkBlockSprite != null) return;
+
+        Sprite sprite = Resources.Load<Sprite>(walkBlockSpriteResourcePath);
+        if (sprite == null)
+        {
+            Texture2D texture = Resources.Load<Texture2D>(walkBlockSpriteResourcePath);
+            if (texture != null)
+            {
+                sprite = CreateSprite(texture);
+            }
+        }
+
+#if UNITY_EDITOR
+        if (sprite == null && !string.IsNullOrEmpty(walkBlockSpriteAssetPath))
+        {
+            sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(walkBlockSpriteAssetPath);
+            if (sprite == null)
+            {
+                Texture2D texture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(walkBlockSpriteAssetPath);
+                if (texture != null)
+                {
+                    sprite = CreateSprite(texture);
+                }
+            }
+        }
+#endif
+
+        walkBlockSprite = sprite;
+    }
+
+    private void LoadTransporterIconTexture()
+    {
+        if (transporterIconTexture != null) return;
+
+        Texture2D texture = Resources.Load<Texture2D>(transporterIconTextureResourcePath);
+
+#if UNITY_EDITOR
+        if (texture == null && !string.IsNullOrEmpty(transporterIconTextureAssetPath))
+        {
+            texture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(transporterIconTextureAssetPath);
+        }
+#endif
+
+        transporterIconTexture = texture;
+    }
+
+    private Sprite CreateSprite(Texture2D texture)
+    {
+        if (texture == null) return null;
+        return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
+    }
+
     private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
     {
         if (entry == null) return true;
@@ -513,34 +604,20 @@ public class InventoryUI : MonoBehaviour
         return BlockColors.GetColorForBlockType(blockType);
     }
 
-    private static string ExtractTeleporterLabel(BlockInventoryEntry entry)
-    {
-        string labelSource = entry.GetResolvedFlavorId();
-        if (string.IsNullOrWhiteSpace(labelSource))
-        {
-            labelSource = entry.displayName;
-        }
-        if (string.IsNullOrWhiteSpace(labelSource))
-        {
-            labelSource = entry.GetDisplayName();
-        }
-        if (string.IsNullOrWhiteSpace(labelSource)) return string.Empty;
-        string trimmed = labelSource.Trim();
-        string[] parts = trimmed.Split(new[] { ' ', '-', '_' }, System.StringSplitOptions.RemoveEmptyEntries);
-        string token = parts.Length > 0 ? parts[parts.Length - 1] : trimmed;
-        if (string.IsNullOrWhiteSpace(token)) return string.Empty;
-        return token.Length > 1 ? token.Substring(0, 1) : token;
-    }
-
-    private Texture2D GetTransporterRouteTexture(string[] routeSteps, int size)
+    private Texture2D GetTransporterRouteTexture(string[] routeSteps, int size, Color overlayColor)
     {
         string cacheKey = BuildRouteCacheKey(routeSteps, size);
+        cacheKey = $"{cacheKey}_{overlayColor.r:F3}_{overlayColor.g:F3}_{overlayColor.b:F3}";
+        if (transporterIconTexture != null)
+        {
+            cacheKey = $"{cacheKey}_{transporterIconTexture.GetInstanceID()}";
+        }
         if (_transporterIconCache.TryGetValue(cacheKey, out Texture2D cached) && cached != null)
         {
             return cached;
         }
 
-        Texture2D texture = BuildTransporterRouteTexture(routeSteps, size);
+        Texture2D texture = BuildTransporterRouteTexture(routeSteps, size, transporterIconTexture, overlayColor);
         if (texture != null)
         {
             _transporterIconCache[cacheKey] = texture;
@@ -558,7 +635,7 @@ public class InventoryUI : MonoBehaviour
         return $"{key}_{size}";
     }
 
-    private static Texture2D BuildTransporterRouteTexture(string[] routeSteps, int size)
+    private static Texture2D BuildTransporterRouteTexture(string[] routeSteps, int size, Texture2D baseTexture, Color overlayColor)
     {
         List<Vector2Int> positions = BuildRoutePositions(routeSteps);
         if (positions.Count == 0) return null;
@@ -589,17 +666,28 @@ public class InventoryUI : MonoBehaviour
         int offsetY = Mathf.Max(0, (size - usedHeight) / 2);
 
         Texture2D texture = new Texture2D(size, size, TextureFormat.ARGB32, false);
-        texture.filterMode = FilterMode.Point;
+        texture.filterMode = FilterMode.Bilinear;
         texture.wrapMode = TextureWrapMode.Clamp;
         texture.hideFlags = HideFlags.HideAndDontSave;
 
         Color clear = new Color(1f, 1f, 1f, 0f);
-        Color originalBlock = Color.white;              // Full opacity for original block
-        Color previewPath = new Color(1f, 1f, 1f, 0.2f); // 20% opacity for preview path
+        Color originalBlock = new Color(overlayColor.r, overlayColor.g, overlayColor.b, 0.9f);
+        Color previewPath = new Color(overlayColor.r, overlayColor.g, overlayColor.b, 0.6f);
         Color[] pixels = new Color[size * size];
-        for (int i = 0; i < pixels.Length; i++)
+        for (int i = 0; i < pixels.Length; i++) { pixels[i] = clear; }
+
+        if (baseTexture != null && baseTexture.width > 0 && baseTexture.height > 0)
         {
-            pixels[i] = clear;
+            for (int y = 0; y < size; y++)
+            {
+                float v = (y + 0.5f) / size;
+                int row = y * size;
+                for (int x = 0; x < size; x++)
+                {
+                    float u = (x + 0.5f) / size;
+                    pixels[row + x] = baseTexture.GetPixelBilinear(u, v);
+                }
+            }
         }
 
         for (int i = 0; i < positions.Count; i++)
@@ -622,7 +710,14 @@ public class InventoryUI : MonoBehaviour
                 {
                     int px = pixelX + x;
                     if (px < 0 || px >= size) continue;
-                    pixels[row + px] = fill;
+                    Color baseColor = pixels[row + px];
+                    float a = fill.a;
+                    pixels[row + px] = new Color(
+                        baseColor.r + (fill.r - baseColor.r) * a,
+                        baseColor.g + (fill.g - baseColor.g) * a,
+                        baseColor.b + (fill.b - baseColor.b) * a,
+                        Mathf.Clamp01(baseColor.a + a)
+                    );
                 }
             }
         }

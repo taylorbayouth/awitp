@@ -287,9 +287,7 @@ public class LevelSystemSetup : EditorWindow
             levels[i].levelName = GetTutorialLevelName(i);
             levels[i].worldId = "world_tutorial";
             levels[i].orderInWorld = i;
-            levels[i].gridWidth = 10;
-            levels[i].gridHeight = 10;
-            levels[i].levelDataJson = CreateBasicLevelJson(i);
+            levels[i].SetLevelData(CreateBasicLevelData(i));
 
             string levelPath = $"Assets/Resources/Levels/LevelDefinitions/{levels[i].levelId}.asset";
             AssetDatabase.CreateAsset(levels[i], levelPath);
@@ -318,7 +316,7 @@ public class LevelSystemSetup : EditorWindow
         return index < names.Length ? names[index] : $"Level {index + 1}";
     }
 
-    private static string CreateBasicLevelJson(int levelIndex)
+    private static LevelData CreateBasicLevelData(int levelIndex)
     {
         // Create a basic level structure
         LevelData data = new LevelData
@@ -360,7 +358,7 @@ public class LevelSystemSetup : EditorWindow
             currentCount = 5
         });
 
-        return JsonUtility.ToJson(data, true);
+        return data;
     }
 
     [MenuItem("Window/AWITP/Create Level Definition Template")]
@@ -373,8 +371,6 @@ public class LevelSystemSetup : EditorWindow
         template.levelName = "New Level";
         template.worldId = "world_tutorial";
         template.orderInWorld = 0;
-        template.gridWidth = 10;
-        template.gridHeight = 10;
 
         // Create basic level data
         LevelData data = new LevelData
@@ -383,7 +379,7 @@ public class LevelSystemSetup : EditorWindow
             gridHeight = 10,
             levelName = "New Level"
         };
-        template.levelDataJson = JsonUtility.ToJson(data, true);
+        template.SetLevelData(data);
 
         string path = "Assets/Resources/Levels/LevelDefinitions/NewLevel_Template.asset";
         AssetDatabase.CreateAsset(template, path);
