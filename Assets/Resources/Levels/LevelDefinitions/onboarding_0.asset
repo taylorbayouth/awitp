@@ -66,6 +66,11 @@ MonoBehaviour:
       inventoryKey: Walk
       flavorId: 
       routeSteps: []
+    - blockType: 2
+      gridIndex: 34
+      inventoryKey: Crumbler
+      flavorId: 
+      routeSteps: []
     inventoryEntries:
     - entryId: Walk
       blockType: 0
@@ -109,8 +114,8 @@ MonoBehaviour:
       isPairInventory: 0
       pairSize: 2
       maxCount: 2
-      currentCount: 1
-    placeableSpaceIndices: 040000001600000022000000
+      currentCount: 2
+    placeableSpaceIndices: 0400000016000000
     lems:
     - gridIndex: 40
       facingRight: 1
@@ -118,4 +123,4 @@ MonoBehaviour:
       hasWorldPosition: 1
     keyStates: []
     levelName: Onboarding 0
-    saveTimestamp: 2026-02-05 01:46:09
+    saveTimestamp: 2026-02-05 02:23:27
