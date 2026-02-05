@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 #if UNITY_EDITOR
@@ -42,6 +44,94 @@ public class InventoryPanelFrame : MonoBehaviour
     private RectTransform _contentArea;
     private bool _isBuilt = false;
 
+    private static GameObject FindOrCreateChild(Transform parent, string name, params Type[] requiredComponents)
+    {
+        Transform existing = parent.Find(name);
+        GameObject obj;
+        if (existing != null)
+        {
+            obj = existing.gameObject;
+            for (int i = 0; i < requiredComponents.Length; i++)
+            {
+                Type componentType = requiredComponents[i];
+                if (componentType == null) continue;
+                if (obj.GetComponent(componentType) == null)
+                {
+                    obj.AddComponent(componentType);
+                }
+            }
+            return obj;
+        }
+
+        obj = new GameObject(name, requiredComponents);
+        obj.transform.SetParent(parent, false);
+        return obj;
+    }
+
+    private static Transform ChoosePreferred(Transform[] candidates)
+    {
+        if (candidates == null || candidates.Length == 0) return null;
+
+        Transform preferred = candidates[0];
+        int preferredChildren = preferred != null ? preferred.childCount : -1;
+        for (int i = 1; i < candidates.Length; i++)
+        {
+            Transform candidate = candidates[i];
+            if (candidate == null) continue;
+            int childCount = candidate.childCount;
+            if (childCount > preferredChildren)
+            {
+                preferred = candidate;
+                preferredChildren = childCount;
+            }
+        }
+        return preferred;
+    }
+
+    private void CleanupDuplicateNamedChildren()
+    {
+        if (Application.isPlaying) return;
+
+        string[] names =
+        {
+            "Background",
+            "ContentArea",
+            "TopLeft",
+            "Top",
+            "TopRight",
+            "Right",
+            "BottomRight",
+            "Bottom",
+            "BottomLeft",
+            "Left"
+        };
+
+        for (int nameIndex = 0; nameIndex < names.Length; nameIndex++)
+        {
+            string target = names[nameIndex];
+            List<Transform> matches = null;
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                Transform child = transform.GetChild(i);
+                if (child != null && child.name == target)
+                {
+                    matches ??= new List<Transform>();
+                    matches.Add(child);
+                }
+            }
+
+            if (matches == null || matches.Count <= 1) continue;
+
+            Transform keeper = ChoosePreferred(matches.ToArray());
+            for (int i = 0; i < matches.Count; i++)
+            {
+                Transform candidate = matches[i];
+                if (candidate == null || candidate == keeper) continue;
+                DestroyImmediate(candidate.gameObject);
+            }
+        }
+    }
+
     private void Awake()
     {
         BuildFrame();
@@ -67,8 +157,6 @@ public class InventoryPanelFrame : MonoBehaviour
 
     private void BuildFrame()
     {
-        if (_containerRect != null) return;
-
         _containerRect = GetComponent<RectTransform>();
         if (_containerRect == null)
         {
@@ -76,9 +164,10 @@ public class InventoryPanelFrame : MonoBehaviour
             return;
         }
 
-        // Create background
-        GameObject bgObj = new GameObject("Background", typeof(RectTransform), typeof(Image));
-        bgObj.transform.SetParent(transform, false);
+        CleanupDuplicateNamedChildren();
+
+        // Create/bind background
+        GameObject bgObj = FindOrCreateChild(transform, "Background", typeof(RectTransform), typeof(Image));
         _backgroundImage = bgObj.GetComponent<Image>();
         _backgroundImage.color = backgroundColor;
         RectTransform bgRect = bgObj.GetComponent<RectTransform>();
@@ -87,9 +176,8 @@ public class InventoryPanelFrame : MonoBehaviour
         bgRect.offsetMin = new Vector2(borderThickness, borderThickness);
         bgRect.offsetMax = new Vector2(-borderThickness, -borderThickness);
 
-        // Create content area (this is where the inventory panel goes)
-        GameObject contentObj = new GameObject("ContentArea", typeof(RectTransform), typeof(LayoutElement));
-        contentObj.transform.SetParent(transform, false);
+        // Create/bind content area (this is where the inventory panel goes)
+        GameObject contentObj = FindOrCreateChild(transform, "ContentArea", typeof(RectTransform), typeof(LayoutElement));
         _contentArea = contentObj.GetComponent<RectTransform>();
         _contentArea.anchorMin = Vector2.zero;
         _contentArea.anchorMax = Vector2.one;
@@ -119,8 +207,7 @@ public class InventoryPanelFrame : MonoBehaviour
 
     private Image CreateBorderImage(string name, Sprite sprite)
     {
-        GameObject obj = new GameObject(name, typeof(RectTransform), typeof(Image));
-        obj.transform.SetParent(transform, false);
+        GameObject obj = FindOrCreateChild(transform, name, typeof(RectTransform), typeof(Image));
         Image img = obj.GetComponent<Image>();
         img.sprite = sprite;
         img.type = Image.Type.Simple;
@@ -352,8 +439,8 @@ public class InventoryPanelFrame : MonoBehaviour
                 if (texture != null)
                 {
                     string foundPath = AssetDatabase.GetAssetPath(texture);
-                    Object[] assets = AssetDatabase.LoadAllAssetsAtPath(foundPath);
-                    foreach (Object asset in assets)
+                    UnityEngine.Object[] assets = AssetDatabase.LoadAllAssetsAtPath(foundPath);
+                    foreach (UnityEngine.Object asset in assets)
                     {
                         if (asset is Sprite s)
                         {
