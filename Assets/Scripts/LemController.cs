@@ -44,6 +44,22 @@ public class LemController : MonoBehaviour
     [Tooltip("Layer mask for solid objects (blocks). Default: everything")]
     [SerializeField] private LayerMask solidLayerMask = ~0;
 
+    [Header("Fall Arc")]
+    [Tooltip("How far forward (X) to move during the fall (0.5 = center of next cell)")]
+    [SerializeField] private float fallArcForwardDistance = 0.5f;
+
+    [Tooltip("Horizontal speed during the fall arc (units per second)")]
+    [SerializeField] private float fallArcHorizontalSpeed = 2.0f;
+
+    [Tooltip("Time to smoothly ramp up to full speed at start (seconds)")]
+    [SerializeField] private float fallArcEaseInTime = 0.08f;
+
+    [Tooltip("Time to smoothly ramp down to zero at handoff (seconds)")]
+    [SerializeField] private float fallArcEaseOutTime = 0.08f;
+
+    [Tooltip("Cooldown after landing before another fall arc can trigger")]
+    [SerializeField] private float fallArcCooldown = 0.2f;
+
     [Header("State")]
     [Tooltip("True if facing right, false if facing left")]
     [SerializeField] private bool facingRight = true;
@@ -57,6 +73,9 @@ public class LemController : MonoBehaviour
     [Tooltip("True = no movement (Designer mode), False = active walking (play mode)")]
     [SerializeField] private bool isFrozen = true;
 
+    [Tooltip("True when Lem is in the controlled fall arc")]
+    [SerializeField] private bool isFallingArc = false;
+
     // Cached component references
     private Rigidbody rb;
     private CapsuleCollider capsuleCollider;
@@ -67,6 +86,17 @@ public class LemController : MonoBehaviour
     private bool hasSpeedParam;
     private bool hasIsWalkingParam;
     private bool hasHasKeyParam;
+    private bool hasIsFallingParam;
+
+    // Fall arc tracking
+    private bool wasGroundedLastFrame = true;
+    private float fallArcTargetX;
+    private float fallArcDirectionX;
+    private float fallArcElapsed = 0f;
+    private bool fallArcHandoffStarted = false;
+    private float fallArcHandoffElapsed = 0f;
+    private float fallArcCooldownTimer = 0f;
+
     private Transform glitchVisual;
     private Transform glitchPivot;
     private Vector3 lastGlitchRotationOffset;
@@ -127,12 +157,38 @@ public class LemController : MonoBehaviour
         if (!isAlive) return;
         if (isFrozen) return;
 
+        // Update cooldown timer
+        if (fallArcCooldownTimer > 0f)
+        {
+            fallArcCooldownTimer -= Time.fixedDeltaTime;
+        }
+
+        // Store previous grounded state before checking
+        bool wasGrounded = isGrounded;
         CheckGround();
+
+        // During fall arc, control horizontal movement toward target X
+        if (isFallingArc)
+        {
+            UpdateFallArc();
+            wasGroundedLastFrame = isGrounded;
+            return;
+        }
+
+        // Detect grounded → airborne transition (stepped off an edge)
+        // Only trigger if cooldown has expired
+        if (wasGrounded && !isGrounded && wasGroundedLastFrame && fallArcCooldownTimer <= 0f)
+        {
+            StartFallArc();
+            wasGroundedLastFrame = false;
+            return;
+        }
+
+        wasGroundedLastFrame = isGrounded;
 
         if (isGrounded)
         {
             CheckWallAhead();
-            // Don't check for cliffs - let Lem walk off edges and fall like in Lemmings!
             Walk();
         }
     }
@@ -237,6 +293,106 @@ public class LemController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Starts the controlled fall arc when Lem steps off a ledge.
+    /// Physics stays active - we only control horizontal velocity.
+    /// </summary>
+    private void StartFallArc()
+    {
+        if (isFallingArc) return;
+
+        isFallingArc = true;
+        fallArcDirectionX = facingRight ? 1f : -1f;
+        fallArcTargetX = transform.position.x + (fallArcForwardDistance * fallArcDirectionX);
+        fallArcElapsed = 0f;
+        fallArcHandoffStarted = false;
+        fallArcHandoffElapsed = 0f;
+
+        // Start with zero horizontal velocity (will ease in)
+        rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+    }
+
+    /// <summary>
+    /// Updates the fall arc each FixedUpdate.
+    /// Eases in at start, maintains speed, then eases out at handoff.
+    /// </summary>
+    private void UpdateFallArc()
+    {
+        fallArcElapsed += Time.fixedDeltaTime;
+
+        float currentX = transform.position.x;
+        bool reachedTarget = (fallArcDirectionX > 0 && currentX >= fallArcTargetX) ||
+                             (fallArcDirectionX < 0 && currentX <= fallArcTargetX);
+
+        // Start handoff when reached target
+        if (reachedTarget && !fallArcHandoffStarted)
+        {
+            fallArcHandoffStarted = true;
+            fallArcHandoffElapsed = 0f;
+        }
+
+        // During handoff, ease out velocity
+        if (fallArcHandoffStarted)
+        {
+            fallArcHandoffElapsed += Time.fixedDeltaTime;
+
+            if (fallArcHandoffElapsed >= fallArcEaseOutTime)
+            {
+                // Handoff complete
+                EndFallArc();
+                return;
+            }
+
+            // Ease out: velocity goes from full → 0
+            float t = fallArcHandoffElapsed / fallArcEaseOutTime;
+            float speed = fallArcHorizontalSpeed * (1f - t) * fallArcDirectionX;
+            rb.linearVelocity = new Vector3(speed, rb.linearVelocity.y, 0f);
+            return;
+        }
+
+        // End immediately if landed before handoff complete
+        if (isGrounded)
+        {
+            EndFallArc();
+            return;
+        }
+
+        // Calculate horizontal velocity with ease-in at start
+        float horizontalSpeed;
+        if (fallArcElapsed < fallArcEaseInTime)
+        {
+            // Ease in: velocity goes from 0 → full
+            float t = fallArcElapsed / fallArcEaseInTime;
+            horizontalSpeed = fallArcHorizontalSpeed * t;
+        }
+        else
+        {
+            // Full speed
+            horizontalSpeed = fallArcHorizontalSpeed;
+        }
+
+        rb.linearVelocity = new Vector3(
+            horizontalSpeed * fallArcDirectionX,
+            rb.linearVelocity.y,
+            0f
+        );
+    }
+
+    /// <summary>
+    /// Ends the fall arc and zeros horizontal velocity.
+    /// </summary>
+    private void EndFallArc()
+    {
+        isFallingArc = false;
+        fallArcHandoffStarted = false;
+
+        // Zero horizontal velocity - Lem falls straight down from here
+        rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+
+        // Start cooldown to prevent immediate re-trigger
+        fallArcCooldownTimer = fallArcCooldown;
+    }
+
     public void TurnAround()
     {
         facingRight = !facingRight;
@@ -261,6 +417,12 @@ public class LemController : MonoBehaviour
 
         if (frozen)
         {
+            // Cancel any active fall arc
+            isFallingArc = false;
+            fallArcHandoffStarted = false;
+            wasGroundedLastFrame = true;
+            fallArcCooldownTimer = 0f;
+
             if (!rb.isKinematic)
             {
                 rb.linearVelocity = Vector3.zero; // Stop movement when frozen
@@ -616,6 +778,12 @@ public class LemController : MonoBehaviour
         Gizmos.color = Color.cyan;
         Vector3 cliffStart = foot + Vector3.right * direction * 0.3f + Vector3.up * 0.1f;
         Gizmos.DrawLine(cliffStart, cliffStart + Vector3.down * groundCheckDistance);
+
+        // Fall arc target X - where Lem will be horizontally centered after stepping off
+        Gizmos.color = Color.magenta;
+        Vector3 arcTargetX = foot + new Vector3(fallArcForwardDistance * direction, 0f, 0f);
+        Gizmos.DrawLine(foot, arcTargetX);
+        Gizmos.DrawWireSphere(arcTargetX, 0.08f);
     }
 
     #endregion
@@ -633,12 +801,14 @@ public class LemController : MonoBehaviour
         hasSpeedParam = false;
         hasIsWalkingParam = false;
         hasHasKeyParam = false;
+        hasIsFallingParam = false;
 
         foreach (AnimatorControllerParameter param in glitchAnimator.parameters)
         {
             if (param.name == "Speed") hasSpeedParam = true;
             if (param.name == "IsWalking") hasIsWalkingParam = true;
             if (param.name == "HasKey") hasHasKeyParam = true;
+            if (param.name == "IsFalling") hasIsFallingParam = true;
         }
     }
 
@@ -669,5 +839,11 @@ public class LemController : MonoBehaviour
             glitchAnimator.SetBool("HasKey", hasKey);
         }
 
+        if (hasIsFallingParam)
+        {
+            // True during fall arc OR when airborne (not grounded and moving)
+            bool falling = isFallingArc || (!isGrounded && !isFrozen);
+            glitchAnimator.SetBool("IsFalling", falling);
+        }
     }
 }

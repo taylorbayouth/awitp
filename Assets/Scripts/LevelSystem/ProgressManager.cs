@@ -27,6 +27,7 @@ public class ProgressManager : MonoBehaviour
     #region Singleton
 
     private static ProgressManager _instance;
+    private static bool _loggedCorruptProgress;
 
     /// <summary>
     /// Singleton instance. Persists across scene loads.
@@ -37,7 +38,7 @@ public class ProgressManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = ServiceRegistry.Get<ProgressManager>();
+                _instance = ServiceRegistry.TryGet<ProgressManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("ProgressManager");
@@ -412,14 +413,31 @@ public class ProgressManager : MonoBehaviour
             if (File.Exists(_savePath))
             {
                 string json = File.ReadAllText(_savePath);
-                _progressData = JsonUtility.FromJson<GameProgressData>(json);
+                if (string.IsNullOrWhiteSpace(json))
+                {
+                    _progressData = new GameProgressData();
+                    _progressData.UnlockWorld(GetDefaultWorldId());
+                    if (!_loggedCorruptProgress)
+                    {
+                        Debug.Log("[ProgressManager] Progress file empty, creating fresh data");
+                        _loggedCorruptProgress = true;
+                    }
+                }
+                else
+                {
+                    _progressData = JsonUtility.FromJson<GameProgressData>(json);
+                }
 
                 // Validate deserialization succeeded
                 if (_progressData == null || string.IsNullOrEmpty(_progressData.currentWorldId))
                 {
-                    Debug.LogWarning("[ProgressManager] Corrupted progress file, creating fresh data");
                     _progressData = new GameProgressData();
                     _progressData.UnlockWorld(GetDefaultWorldId());
+                    if (!_loggedCorruptProgress)
+                    {
+                        Debug.Log("[ProgressManager] Corrupted progress file, creating fresh data");
+                        _loggedCorruptProgress = true;
+                    }
                 }
                 else
                 {
