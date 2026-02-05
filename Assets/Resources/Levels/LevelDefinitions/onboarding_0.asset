@@ -22,17 +22,52 @@ MonoBehaviour:
   cursorEditableColor: {r: 0, g: 1, b: 0, a: 0.3882353}
   cursorNonPlaceableColor: {r: 0, g: 0.08500188, b: 0.18867922, a: 1}
   levelData:
-    gridWidth: 6
-    gridHeight: 4
+    gridWidth: 8
+    gridHeight: 6
     cameraSettings:
       cameraDistance: 150
       gridMargin: 1
       nearClipPlane: 0.24
       farClipPlane: 500
     blocks: []
-    permanentBlocks: []
+    permanentBlocks:
+    - blockType: 0
+      gridIndex: 32
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 33
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 2
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 3
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 35
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 36
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 44
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
     inventoryEntries:
-    - entryId: 
+    - entryId: Walk
       blockType: 0
       displayName: 
       inventoryGroupId: 
@@ -41,8 +76,8 @@ MonoBehaviour:
       isPairInventory: 0
       pairSize: 2
       maxCount: 4
-      currentCount: 10
-    - entryId: 
+      currentCount: 4
+    - entryId: Teleporter_A
       blockType: 1
       displayName: 
       inventoryGroupId: 
@@ -51,8 +86,8 @@ MonoBehaviour:
       isPairInventory: 1
       pairSize: 2
       maxCount: 1
-      currentCount: 10
-    - entryId: 
+      currentCount: 1
+    - entryId: Transporter_U1,R1,U1
       blockType: 3
       displayName: 
       inventoryGroupId: 
@@ -65,8 +100,22 @@ MonoBehaviour:
       pairSize: 2
       maxCount: 10
       currentCount: 10
-    placeableSpaceIndices: 
-    lems: []
+    - entryId: Crumbler
+      blockType: 2
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps: []
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 2
+      currentCount: 1
+    placeableSpaceIndices: 040000001600000022000000
+    lems:
+    - gridIndex: 40
+      facingRight: 1
+      worldPosition: {x: -3.5, y: 2, z: 0.5}
+      hasWorldPosition: 1
     keyStates: []
-    levelName: 
-    saveTimestamp: 2026-02-02 19:18:46
+    levelName: Onboarding 0
+    saveTimestamp: 2026-02-05 01:46:09

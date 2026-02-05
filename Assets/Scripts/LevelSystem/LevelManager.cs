@@ -38,7 +38,7 @@ public class LevelManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = ServiceRegistry.Get<LevelManager>();
+                _instance = ServiceRegistry.TryGet<LevelManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("LevelManager");
