@@ -356,12 +356,16 @@ public class GridManager : MonoBehaviour
 
     public void CapturePlayModeSnapshot()
     {
+        // Clear any runtime-only debris/support cubes from previous Play sessions.
+        CrumblerBlock.CleanupRuntime();
         LevelData snapshot = CaptureLevelData();
         lemPlacementManager.CapturePlayModeSnapshot(snapshot);
     }
 
     public void RestorePlayModeSnapshot()
     {
+        // Clear any runtime-only debris/support cubes from Play mode before restoring snapshot.
+        CrumblerBlock.CleanupRuntime();
         LevelData snapshot = lemPlacementManager.GetPlayModeSnapshot();
         if (snapshot == null)
         {
