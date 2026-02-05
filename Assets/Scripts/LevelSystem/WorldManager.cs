@@ -34,7 +34,7 @@ public class WorldManager : MonoBehaviour
         {
             if (_instance == null)
             {
-                _instance = ServiceRegistry.Get<WorldManager>();
+                _instance = ServiceRegistry.TryGet<WorldManager>();
                 if (_instance == null)
                 {
                     GameObject go = new GameObject("WorldManager");
