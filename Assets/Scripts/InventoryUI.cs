@@ -105,22 +105,12 @@ public class InventoryUI : MonoBehaviour
 
         _instance = this;
 
-        if (inventory == null)
-        {
-            inventory = ServiceRegistry.Get<BlockInventory>();
-        }
-
-        if (builderController == null)
-        {
-            builderController = ServiceRegistry.Get<BuilderController>();
-        }
-
         LoadUIFont();
-
         LoadWalkBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
-        BuildStaticUI();
+        BindOrCreateStaticUI();
+        RebuildSlotCache();
     }
 
     private void OnEnable()
@@ -129,19 +119,23 @@ public class InventoryUI : MonoBehaviour
         LoadWalkBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
-        BuildStaticUI();
+        BindOrCreateStaticUI();
+        RebuildSlotCache();
     }
 
     private void Update()
     {
-        if (inventory == null)
+        if (Application.isPlaying)
         {
-            inventory = ServiceRegistry.Get<BlockInventory>();
-        }
+            if (inventory == null)
+            {
+                inventory = ServiceRegistry.Get<BlockInventory>();
+            }
 
-        if (Application.isPlaying && builderController == null)
-        {
-            builderController = ServiceRegistry.Get<BuilderController>();
+            if (builderController == null)
+            {
+                builderController = ServiceRegistry.Get<BuilderController>();
+            }
         }
 
         UpdateUI();
@@ -176,13 +170,36 @@ public class InventoryUI : MonoBehaviour
         _root = _canvas.GetComponent<RectTransform>();
     }
 
-    private void BuildStaticUI()
+    private void BindOrCreateStaticUI()
     {
-        if (_panel != null) return;
+        if (_root == null)
+        {
+            EnsureCanvas();
+        }
 
-        // Create frame container with border slices
-        _frameContainer = new GameObject("InventoryFrame", typeof(RectTransform), typeof(InventoryPanelFrame));
-        _frameContainer.transform.SetParent(_root, false);
+        CleanupLegacyOrDuplicateUI();
+
+        if (_frameContainer != null && _frameComponent != null && _panel != null && _lockStatusText != null && _winText != null)
+        {
+            return;
+        }
+
+        // Frame container with border slices
+        if (_frameContainer == null)
+        {
+            Transform existingFrame = _root != null ? _root.Find("InventoryFrame") : null;
+            if (existingFrame != null)
+            {
+                _frameContainer = existingFrame.gameObject;
+            }
+        }
+
+        if (_frameContainer == null)
+        {
+            _frameContainer = new GameObject("InventoryFrame", typeof(RectTransform), typeof(InventoryPanelFrame));
+            _frameContainer.transform.SetParent(_root, false);
+        }
+
         RectTransform frameRect = _frameContainer.GetComponent<RectTransform>();
         frameRect.anchorMin = new Vector2(0f, 1f);
         frameRect.anchorMax = new Vector2(0f, 1f);
@@ -190,18 +207,40 @@ public class InventoryUI : MonoBehaviour
         frameRect.anchoredPosition = new Vector2(leftMargin, -topMargin);
 
         _frameComponent = _frameContainer.GetComponent<InventoryPanelFrame>();
+        if (_frameComponent == null)
+        {
+            _frameComponent = _frameContainer.AddComponent<InventoryPanelFrame>();
+        }
         _frameComponent.backgroundColor = new Color(0.38f, 0.36f, 0.34f, 1f); // #615C57
 
-        // Create inventory panel inside the frame's content area
-        GameObject panelObj = new GameObject("InventoryPanel", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        panelObj.transform.SetParent(_frameComponent.GetContentArea(), false);
-        _panel = panelObj.GetComponent<RectTransform>();
+        // Inventory panel inside the frame's content area
+        RectTransform contentArea = _frameComponent.GetContentArea();
+        if (_panel == null && contentArea != null)
+        {
+            Transform existingPanel = contentArea.Find("InventoryPanel");
+            if (existingPanel != null)
+            {
+                _panel = existingPanel.GetComponent<RectTransform>();
+            }
+        }
+
+        if (_panel == null)
+        {
+            GameObject panelObj = new GameObject("InventoryPanel", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            panelObj.transform.SetParent(contentArea != null ? contentArea : _root, false);
+            _panel = panelObj.GetComponent<RectTransform>();
+        }
+
         _panel.anchorMin = new Vector2(0f, 1f);
         _panel.anchorMax = new Vector2(0f, 1f);
         _panel.pivot = new Vector2(0f, 1f);
         _panel.anchoredPosition = Vector2.zero;
 
-        _layout = panelObj.GetComponent<VerticalLayoutGroup>();
+        _layout = _panel.GetComponent<VerticalLayoutGroup>();
+        if (_layout == null)
+        {
+            _layout = _panel.gameObject.AddComponent<VerticalLayoutGroup>();
+        }
         _layout.spacing = blockSpacing;
         _layout.childAlignment = TextAnchor.UpperLeft;
         _layout.childControlWidth = false;
@@ -209,24 +248,167 @@ public class InventoryUI : MonoBehaviour
         _layout.childForceExpandWidth = false;
         _layout.childForceExpandHeight = false;
 
-        _fitter = panelObj.GetComponent<ContentSizeFitter>();
+        _fitter = _panel.GetComponent<ContentSizeFitter>();
+        if (_fitter == null)
+        {
+            _fitter = _panel.gameObject.AddComponent<ContentSizeFitter>();
+        }
         _fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
         _fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-        _lockStatusText = CreateText("LockStatus", _root, cornerFontSize, TextAnchor.UpperRight, Color.white);
-        RectTransform lockRect = _lockStatusText.GetComponent<RectTransform>();
+        _lockStatusText = FindOrCreateText("LockStatus", _root, cornerFontSize, TextAnchor.UpperRight, Color.white);
+        RectTransform lockRect = _lockStatusText != null ? _lockStatusText.GetComponent<RectTransform>() : null;
         lockRect.anchorMin = new Vector2(1f, 1f);
         lockRect.anchorMax = new Vector2(1f, 1f);
         lockRect.pivot = new Vector2(1f, 1f);
         lockRect.anchoredPosition = new Vector2(-24f, -20f);
 
-        _winText = CreateText("WinText", _root, cornerFontSize, TextAnchor.UpperRight, new Color(0.8f, 1f, 0.8f));
-        RectTransform winRect = _winText.GetComponent<RectTransform>();
+        _winText = FindOrCreateText("WinText", _root, cornerFontSize, TextAnchor.UpperRight, new Color(0.8f, 1f, 0.8f));
+        RectTransform winRect = _winText != null ? _winText.GetComponent<RectTransform>() : null;
         winRect.anchorMin = new Vector2(1f, 1f);
         winRect.anchorMax = new Vector2(1f, 1f);
         winRect.pivot = new Vector2(1f, 1f);
         winRect.anchoredPosition = new Vector2(-24f, -46f);
         _winText.text = string.Empty;
+    }
+
+    private void CleanupLegacyOrDuplicateUI()
+    {
+        if (_root == null) return;
+
+        // InventoryUI previously generated many UI children in edit mode on script reload.
+        // Clean up obvious duplicates/legacy names under this UI root.
+        string[] keepOneNames = { "InventoryFrame", "LockStatus", "WinText" };
+        for (int n = 0; n < keepOneNames.Length; n++)
+        {
+            string targetName = keepOneNames[n];
+            List<Transform> matches = null;
+            for (int i = 0; i < _root.childCount; i++)
+            {
+                Transform child = _root.GetChild(i);
+                if (child != null && child.name == targetName)
+                {
+                    matches ??= new List<Transform>();
+                    matches.Add(child);
+                }
+            }
+
+            if (matches == null || matches.Count <= 1) continue;
+
+            Transform keeper = matches[0];
+            if (targetName == "InventoryFrame")
+            {
+                // Prefer the frame that already contains content (slots, etc.).
+                int bestChildren = keeper != null ? keeper.childCount : -1;
+                for (int i = 1; i < matches.Count; i++)
+                {
+                    Transform candidate = matches[i];
+                    if (candidate == null) continue;
+                    int candidateChildren = candidate.childCount;
+                    if (candidateChildren > bestChildren)
+                    {
+                        keeper = candidate;
+                        bestChildren = candidateChildren;
+                    }
+                }
+            }
+
+            for (int i = 0; i < matches.Count; i++)
+            {
+                Transform duplicate = matches[i];
+                if (duplicate == null || duplicate == keeper) continue;
+                if (Application.isPlaying)
+                {
+                    Destroy(duplicate.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(duplicate.gameObject);
+                }
+            }
+        }
+
+        // Legacy name from older UI versions.
+        for (int i = _root.childCount - 1; i >= 0; i--)
+        {
+            Transform child = _root.GetChild(i);
+            if (child != null && child.name == "Status")
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(child.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(child.gameObject);
+                }
+            }
+        }
+    }
+
+    private Text FindOrCreateText(string name, Transform parent, int fontSize, TextAnchor anchor, Color color)
+    {
+        if (parent == null) return null;
+
+        Transform existing = parent.Find(name);
+        Text text = existing != null ? existing.GetComponent<Text>() : null;
+        if (text == null)
+        {
+            text = CreateText(name, parent, fontSize, anchor, color);
+        }
+        else
+        {
+            text.font = font;
+            text.fontSize = fontSize;
+            text.alignment = anchor;
+            text.color = color;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+        }
+        return text;
+    }
+
+    private void RebuildSlotCache()
+    {
+        if (_panel == null) return;
+
+        _slots.Clear();
+
+        for (int i = 0; i < _panel.childCount; i++)
+        {
+            Transform child = _panel.GetChild(i);
+            if (child == null || child.name != "InventorySlot") continue;
+
+            GameObject root = child.gameObject;
+            Image previewImage = null;
+            RawImage previewRaw = null;
+            Text count = null;
+
+            Transform previewTransform = child.Find("Background/Preview");
+            if (previewTransform != null)
+            {
+                previewImage = previewTransform.GetComponent<Image>();
+                Transform rawTransform = previewTransform.Find("PreviewRaw");
+                if (rawTransform != null)
+                {
+                    previewRaw = rawTransform.GetComponent<RawImage>();
+                }
+            }
+
+            Transform countTransform = child.Find("Count");
+            if (countTransform != null)
+            {
+                count = countTransform.GetComponent<Text>();
+            }
+
+            _slots.Add(new SlotUI
+            {
+                root = root,
+                previewImage = previewImage,
+                previewRaw = previewRaw,
+                count = count
+            });
+        }
     }
 
     private void UpdateUI()

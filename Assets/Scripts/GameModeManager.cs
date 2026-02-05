@@ -28,7 +28,7 @@ public class GameModeManager : MonoBehaviour
             if (mainCamera == null)
             {
                 Debug.LogError("GameModeManager: Camera.main returned null! Looking for any camera...");
-                mainCamera = ServiceRegistry.Get<Camera>();
+                mainCamera = ServiceRegistry.TryGet<Camera>();
             }
         }
 
@@ -41,7 +41,7 @@ public class GameModeManager : MonoBehaviour
         // If still not found, search scene
         if (builderController == null)
         {
-            builderController = ServiceRegistry.Get<BuilderController>();
+            builderController = ServiceRegistry.TryGet<BuilderController>();
         }
 
         // builderController may be assigned later in Update if not found here.
@@ -73,7 +73,7 @@ public class GameModeManager : MonoBehaviour
         if (builderController == null)
         {
             // Try to find it if not found
-            builderController = ServiceRegistry.Get<BuilderController>();
+            builderController = ServiceRegistry.TryGet<BuilderController>();
             return;
         }
 

@@ -2102,10 +2102,16 @@ MonoBehaviour:
   solidLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
+  fallArcForwardDistance: 0.5
+  fallArcHorizontalSpeed: 0.5
+  fallArcEaseInTime: 0.08
+  fallArcEaseOutTime: 0.01
+  fallArcCooldown: 1
   facingRight: 1
   isGrounded: 0
   isAlive: 1
   isFrozen: 1
+  isFallingArc: 0
 --- !u!54 &8779439179383067650
 Rigidbody:
   m_ObjectHideFlags: 0
