@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 
 /// <summary>
 /// Crumbler block: emits dust/debris FX and drops a visual rubble pile, while spawning a deterministic
@@ -13,6 +16,7 @@ public class CrumblerBlock : BaseBlock
     [Header("Crumble Visuals")]
     [SerializeField] private string crumbleRootName = "CrumbleBlocks";
     [SerializeField] private string particleSystemName = "FallingStoneFragments";
+    [SerializeField] private string centerParticleSystemName = "FallingStoneFragments-2";
     [SerializeField] private string impactParticleSystemName = "PuffOfDust";
 
     [Header("Crumble Timing")]
@@ -38,7 +42,18 @@ public class CrumblerBlock : BaseBlock
     [Header("Debug")]
     [SerializeField] private bool debugCrumbleLogs = true;
 
+    [Header("Crumble SFX")]
+    [SerializeField] private AudioClip entrySfx;
+    [SerializeField] private AudioClip centerSfx;
+    [SerializeField] private AudioClip collapseSfx;
+    [SerializeField] private AudioClip impactSfx;
+    [SerializeField] private string entrySfxAssetPath = "Assets/SFX/smallRocksFalling2.mp3";
+    [SerializeField] private string centerSfxAssetPath = "Assets/SFX/smallRocksFalling.mp3";
+    [SerializeField] private string collapseSfxAssetPath = "Assets/SFX/bigRocksFalling.mp3";
+    [SerializeField] private string impactSfxAssetPath = "Assets/SFX/bigRocksFallToGround.mp3";
+
     private ParticleSystem fallingStoneFragments;
+    private ParticleSystem fallingStoneFragmentsCenter;
     private ParticleSystem puffOfDustTemplate;
     private Transform crumbleRoot;
     private readonly List<GameObject> looseBricks = new List<GameObject>(256);
@@ -49,15 +64,24 @@ public class CrumblerBlock : BaseBlock
     private static Material supportCubeMaterial;
     private static readonly List<Collider> playerColliders = new List<Collider>(4);
     private static Transform runtimeRoot;
+    private static Transform sfxRoot;
 
     private bool hasTriggeredCenter;
     private bool collapseStarted;
+    private bool hasPlayedImpactSfx;
 
     protected override void Awake()
     {
         base.Awake();
         CacheSceneReferences();
+        LoadSfxClipsIfNeeded();
         StopParticlesAtStartup();
+    }
+
+    protected override void OnPlayerEnter()
+    {
+        PlayEntryParticles();
+        PlaySfx(entrySfx);
     }
 
     protected override void OnPlayerReachCenter()
@@ -66,12 +90,14 @@ public class CrumblerBlock : BaseBlock
         hasTriggeredCenter = true;
 
         PlayCenterParticles();
+        PlaySfx(centerSfx);
     }
 
     protected override void OnPlayerExit()
     {
         if (collapseStarted) return;
         collapseStarted = true;
+        hasPlayedImpactSfx = false;
 
         LogCrumble($"[Crumbler] Block {gridIndex}: player exited, collapse in {fallDelaySeconds:0.00}s.");
         StartCoroutine(CrumbleSequence());
@@ -83,6 +109,8 @@ public class CrumblerBlock : BaseBlock
         {
             yield return new WaitForSeconds(fallDelaySeconds);
         }
+
+        PlaySfx(collapseSfx);
 
         // Stop gameplay interaction immediately; visuals continue as debris.
         DisableBlockInteraction();
@@ -102,6 +130,69 @@ public class CrumblerBlock : BaseBlock
 
         yield return WaitForSupportCubeOrTimeout();
         DestroyBlock();
+    }
+
+    private void LoadSfxClipsIfNeeded()
+    {
+#if UNITY_EDITOR
+        if (entrySfx == null)
+        {
+            entrySfx = AssetDatabase.LoadAssetAtPath<AudioClip>(entrySfxAssetPath);
+        }
+        if (centerSfx == null)
+        {
+            centerSfx = AssetDatabase.LoadAssetAtPath<AudioClip>(centerSfxAssetPath);
+        }
+        if (collapseSfx == null)
+        {
+            collapseSfx = AssetDatabase.LoadAssetAtPath<AudioClip>(collapseSfxAssetPath);
+        }
+        if (impactSfx == null)
+        {
+            impactSfx = AssetDatabase.LoadAssetAtPath<AudioClip>(impactSfxAssetPath);
+        }
+#endif
+    }
+
+    private void PlaySfx(AudioClip clip)
+    {
+        if (clip == null) return;
+        PlayOneShotAtPosition(clip, transform.position);
+    }
+
+    private static void PlayOneShotAtPosition(AudioClip clip, Vector3 position)
+    {
+        if (clip == null) return;
+
+        var root = GetOrCreateSfxRoot();
+        var go = new GameObject("CrumbleSFX");
+        if (root != null)
+        {
+            go.transform.SetParent(root, false);
+        }
+        go.transform.position = position;
+
+        var source = go.AddComponent<AudioSource>();
+        source.playOnAwake = false;
+        source.loop = false;
+        source.spatialBlend = 0f;
+        source.clip = clip;
+        source.Play();
+
+        Object.Destroy(go, clip.length + 0.1f);
+    }
+
+    private static Transform GetOrCreateSfxRoot()
+    {
+        if (sfxRoot != null) return sfxRoot;
+
+        var root = GameObject.Find("__CrumbleSfxRuntime");
+        if (root == null)
+        {
+            root = new GameObject("__CrumbleSfxRuntime");
+        }
+        sfxRoot = root.transform;
+        return sfxRoot;
     }
 
     private void TrySpawnSupportCubeViaRaycast()
@@ -157,7 +248,7 @@ public class CrumblerBlock : BaseBlock
         }
     }
 
-    private void PlayCenterParticles()
+    private void PlayEntryParticles()
     {
         if (fallingStoneFragments == null)
         {
@@ -173,7 +264,26 @@ public class CrumblerBlock : BaseBlock
         var emission = fallingStoneFragments.emission;
         emission.enabled = true;
         fallingStoneFragments.Play(true);
-        LogCrumble($"[Crumbler] Block {gridIndex}: started particle effect '{particleSystemName}'.");
+        LogCrumble($"[Crumbler] Block {gridIndex}: started entry particle effect '{particleSystemName}'.");
+    }
+
+    private void PlayCenterParticles()
+    {
+        if (fallingStoneFragmentsCenter == null)
+        {
+            CacheSceneReferences();
+        }
+
+        if (fallingStoneFragmentsCenter == null)
+        {
+            LogCrumble($"[Crumbler] Block {gridIndex}: center particle system '{centerParticleSystemName}' not found.");
+            return;
+        }
+
+        var emission = fallingStoneFragmentsCenter.emission;
+        emission.enabled = true;
+        fallingStoneFragmentsCenter.Play(true);
+        LogCrumble($"[Crumbler] Block {gridIndex}: started center particle effect '{centerParticleSystemName}'.");
     }
 
     private void StopParticlesAtStartup()
@@ -181,6 +291,11 @@ public class CrumblerBlock : BaseBlock
         if (fallingStoneFragments != null)
         {
             fallingStoneFragments.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        }
+
+        if (fallingStoneFragmentsCenter != null)
+        {
+            fallingStoneFragmentsCenter.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         }
 
         if (puffOfDustTemplate != null)
@@ -318,6 +433,12 @@ public class CrumblerBlock : BaseBlock
             {
                 fallingStoneFragments = particleRoot.GetComponent<ParticleSystem>();
             }
+
+            var centerParticleRoot = FindChildRecursive(crumbleRoot, centerParticleSystemName);
+            if (centerParticleRoot != null)
+            {
+                fallingStoneFragmentsCenter = centerParticleRoot.GetComponent<ParticleSystem>();
+            }
         }
 
         if (fallingStoneFragments == null)
@@ -326,6 +447,15 @@ public class CrumblerBlock : BaseBlock
             if (directParticle != null)
             {
                 fallingStoneFragments = directParticle.GetComponent<ParticleSystem>();
+            }
+        }
+
+        if (fallingStoneFragmentsCenter == null)
+        {
+            var directCenterParticle = FindChildRecursive(transform, centerParticleSystemName);
+            if (directCenterParticle != null)
+            {
+                fallingStoneFragmentsCenter = directCenterParticle.GetComponent<ParticleSystem>();
             }
         }
 
@@ -381,10 +511,25 @@ public class CrumblerBlock : BaseBlock
         if (collision == null) return;
         if (collision.contactCount <= 0) return;
 
-        if (puffOfDustTemplate == null) return;
-
         var contact = collision.GetContact(0);
+        if (!hasPlayedImpactSfx)
+        {
+            hasPlayedImpactSfx = true;
+            PlaySfx(impactSfx);
+        }
+
+        if (puffOfDustTemplate == null) return;
         SpawnImpactParticles(contact.point);
+    }
+
+    private void HandleDebrisContact(Collision collision)
+    {
+        if (collision == null) return;
+        if (collision.contactCount <= 0) return;
+        if (hasPlayedImpactSfx) return;
+
+        hasPlayedImpactSfx = true;
+        PlaySfx(impactSfx);
     }
 
     private void TrySpawnSupportCube(Collision collision)
@@ -693,15 +838,18 @@ public class CrumblerBlock : BaseBlock
         {
             if (owner == null || collision == null) return;
 
+            // SFX should fire on the first contact, regardless of impact strength.
+            owner.HandleDebrisContact(collision);
+
             // Support cube should spawn immediately on first valid hit with the block below.
             owner.TrySpawnSupportCube(collision);
 
             // Dust puff is once-per-brick and filtered for meaningful impacts.
             if (hasFired) return;
-            if (collision.relativeVelocity.magnitude < minSpeed) return;
             if (collision.contactCount <= 0) return;
 
             var contact = collision.GetContact(0);
+            if (collision.relativeVelocity.magnitude < minSpeed) return;
             if (contact.normal.y < minUpNormal) return;
 
             hasFired = true;
