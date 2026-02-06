@@ -13,14 +13,10 @@ public class InventoryUiSpriteSetup : EditorWindow
         string spritePath = "Assets/Sprites/inventoryUi";
         string[] spriteNames = new string[]
         {
-            "ui-ul.png",
-            "ui-t.png",
-            "ui-ur.png",
-            "ui-r.png",
-            "ui-br.png",
-            "ui-b.png",
-            "ui-bl.png",
-            "ui-l.png"
+            "hedgeIcon.png",
+            "rocksIcon.png",
+            "cloudIcon.png",
+            "teleporterIcon.png"
         };
 
         int count = 0;
@@ -57,6 +53,13 @@ public class InventoryUiSpriteSetup : EditorWindow
         importer.mipmapEnabled = false;
         importer.alphaIsTransparency = true;
         importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.isReadable = assetPath.EndsWith("cloudIcon.png", System.StringComparison.OrdinalIgnoreCase);
+
+        TextureImporterSettings importSettings = new TextureImporterSettings();
+        importer.ReadTextureSettings(importSettings);
+        importSettings.spriteMeshType = SpriteMeshType.FullRect;
+        importer.SetTextureSettings(importSettings);
 
         // Set max texture size
         TextureImporterPlatformSettings settings = importer.GetDefaultPlatformTextureSettings();

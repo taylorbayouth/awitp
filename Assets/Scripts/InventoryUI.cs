@@ -32,8 +32,6 @@ public class InventoryUI : MonoBehaviour
     [Header("Text")]
     [Range(8, 48)]
     public int textSize = 20;
-    [Range(-20f, 60f)]
-    public float textTopMargin = 0f;
     public Color textColor = Color.white;
 
     [Header("Corner Text")]
@@ -49,6 +47,24 @@ public class InventoryUI : MonoBehaviour
     [Tooltip("Editor-only asset path fallback for the Walk icon")]
     public string walkBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/hedgeIcon.png";
 
+    [Tooltip("Optional sprite override for the Crumbler block inventory preview")]
+    public Sprite crumblerBlockSprite;
+
+    [Tooltip("Resources path fallback for the Crumbler icon (without extension)")]
+    public string crumblerBlockSpriteResourcePath = "Sprites/inventoryUi/rocksIcon";
+
+    [Tooltip("Editor-only asset path fallback for the Crumbler icon")]
+    public string crumblerBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/rocksIcon.png";
+
+    [Tooltip("Optional sprite override for the Teleporter block inventory preview")]
+    public Sprite teleporterBlockSprite;
+
+    [Tooltip("Resources path fallback for the Teleporter icon (without extension)")]
+    public string teleporterBlockSpriteResourcePath = "Sprites/inventoryUi/teleporterIcon";
+
+    [Tooltip("Editor-only asset path fallback for the Teleporter icon")]
+    public string teleporterBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/teleporterIcon.png";
+
     [Tooltip("Optional texture override for the Transporter inventory preview")]
     public Texture2D transporterIconTexture;
 
@@ -57,6 +73,18 @@ public class InventoryUI : MonoBehaviour
 
     [Tooltip("Editor-only asset path fallback for the Transporter icon")]
     public string transporterIconTextureAssetPath = "Assets/Sprites/inventoryUi/cloudIcon.png";
+
+    [Header("Icon Shadow")]
+    [Range(0f, 1f)]
+    public float iconShadowOpacity = 0.07f;
+    public Color iconShadowColor = new Color(0.192f, 0.290f, 0.306f, 1f);
+    [Range(0f, 12f)]
+    public float iconShadowBlur = 2f;
+
+    [Header("Selection Border")]
+    [Range(0f, 8f)]
+    public float selectionBorderThickness = 3f;
+    public Color selectionBorderColor = new Color(0.192f, 0.290f, 0.306f, 1f);
 
     [Header("Font")]
     [Tooltip("Editor-only asset path for the UI font")]
@@ -67,8 +95,6 @@ public class InventoryUI : MonoBehaviour
 
     private Canvas _canvas;
     private RectTransform _root;
-    private GameObject _frameContainer;
-    private InventoryPanelFrame _frameComponent;
     private RectTransform _panel;
     private VerticalLayoutGroup _layout;
     private ContentSizeFitter _fitter;
@@ -83,6 +109,11 @@ public class InventoryUI : MonoBehaviour
         public GameObject root;
         public Image previewImage;
         public RawImage previewRaw;
+        public Shadow previewShadow;
+        public Shadow previewRawShadow;
+        public Outline previewOutline;
+        public Outline previewRawOutline;
+        public Image countBadge;
         public Text count;
         public BlockInventoryEntry entry;
         public int index;
@@ -107,6 +138,8 @@ public class InventoryUI : MonoBehaviour
 
         LoadUIFont();
         LoadWalkBlockSprite();
+        LoadCrumblerBlockSprite();
+        LoadTeleporterBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
         BindOrCreateStaticUI();
@@ -117,6 +150,8 @@ public class InventoryUI : MonoBehaviour
     {
         LoadUIFont();
         LoadWalkBlockSprite();
+        LoadCrumblerBlockSprite();
+        LoadTeleporterBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
         BindOrCreateStaticUI();
@@ -179,45 +214,14 @@ public class InventoryUI : MonoBehaviour
 
         CleanupLegacyOrDuplicateUI();
 
-        if (_frameContainer != null && _frameComponent != null && _panel != null && _lockStatusText != null && _winText != null)
+        if (_panel != null && _lockStatusText != null && _winText != null)
         {
             return;
         }
 
-        // Frame container with border slices
-        if (_frameContainer == null)
+        if (_panel == null)
         {
-            Transform existingFrame = _root != null ? _root.Find("InventoryFrame") : null;
-            if (existingFrame != null)
-            {
-                _frameContainer = existingFrame.gameObject;
-            }
-        }
-
-        if (_frameContainer == null)
-        {
-            _frameContainer = new GameObject("InventoryFrame", typeof(RectTransform), typeof(InventoryPanelFrame));
-            _frameContainer.transform.SetParent(_root, false);
-        }
-
-        RectTransform frameRect = _frameContainer.GetComponent<RectTransform>();
-        frameRect.anchorMin = new Vector2(0f, 1f);
-        frameRect.anchorMax = new Vector2(0f, 1f);
-        frameRect.pivot = new Vector2(0f, 1f);
-        frameRect.anchoredPosition = new Vector2(leftMargin, -topMargin);
-
-        _frameComponent = _frameContainer.GetComponent<InventoryPanelFrame>();
-        if (_frameComponent == null)
-        {
-            _frameComponent = _frameContainer.AddComponent<InventoryPanelFrame>();
-        }
-        _frameComponent.backgroundColor = new Color(0.38f, 0.36f, 0.34f, 1f); // #615C57
-
-        // Inventory panel inside the frame's content area
-        RectTransform contentArea = _frameComponent.GetContentArea();
-        if (_panel == null && contentArea != null)
-        {
-            Transform existingPanel = contentArea.Find("InventoryPanel");
+            Transform existingPanel = _root != null ? _root.Find("InventoryPanel") : null;
             if (existingPanel != null)
             {
                 _panel = existingPanel.GetComponent<RectTransform>();
@@ -227,14 +231,14 @@ public class InventoryUI : MonoBehaviour
         if (_panel == null)
         {
             GameObject panelObj = new GameObject("InventoryPanel", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-            panelObj.transform.SetParent(contentArea != null ? contentArea : _root, false);
+            panelObj.transform.SetParent(_root, false);
             _panel = panelObj.GetComponent<RectTransform>();
         }
 
         _panel.anchorMin = new Vector2(0f, 1f);
         _panel.anchorMax = new Vector2(0f, 1f);
         _panel.pivot = new Vector2(0f, 1f);
-        _panel.anchoredPosition = Vector2.zero;
+        _panel.anchoredPosition = new Vector2(leftMargin, -topMargin);
 
         _layout = _panel.GetComponent<VerticalLayoutGroup>();
         if (_layout == null)
@@ -278,7 +282,7 @@ public class InventoryUI : MonoBehaviour
 
         // InventoryUI previously generated many UI children in edit mode on script reload.
         // Clean up obvious duplicates/legacy names under this UI root.
-        string[] keepOneNames = { "InventoryFrame", "LockStatus", "WinText" };
+        string[] keepOneNames = { "InventoryPanel", "LockStatus", "WinText" };
         for (int n = 0; n < keepOneNames.Length; n++)
         {
             string targetName = keepOneNames[n];
@@ -296,22 +300,6 @@ public class InventoryUI : MonoBehaviour
             if (matches == null || matches.Count <= 1) continue;
 
             Transform keeper = matches[0];
-            if (targetName == "InventoryFrame")
-            {
-                // Prefer the frame that already contains content (slots, etc.).
-                int bestChildren = keeper != null ? keeper.childCount : -1;
-                for (int i = 1; i < matches.Count; i++)
-                {
-                    Transform candidate = matches[i];
-                    if (candidate == null) continue;
-                    int candidateChildren = candidate.childCount;
-                    if (candidateChildren > bestChildren)
-                    {
-                        keeper = candidate;
-                        bestChildren = candidateChildren;
-                    }
-                }
-            }
 
             for (int i = 0; i < matches.Count; i++)
             {
@@ -332,7 +320,7 @@ public class InventoryUI : MonoBehaviour
         for (int i = _root.childCount - 1; i >= 0; i--)
         {
             Transform child = _root.GetChild(i);
-            if (child != null && child.name == "Status")
+            if (child != null && (child.name == "Status" || child.name == "InventoryFrame"))
             {
                 if (Application.isPlaying)
                 {
@@ -406,6 +394,10 @@ public class InventoryUI : MonoBehaviour
                 root = root,
                 previewImage = previewImage,
                 previewRaw = previewRaw,
+                previewShadow = EnsureShadow(previewImage),
+                previewRawShadow = EnsureShadow(previewRaw),
+                previewOutline = EnsureOutline(previewImage),
+                previewRawOutline = EnsureOutline(previewRaw),
                 count = count
             });
         }
@@ -423,15 +415,7 @@ public class InventoryUI : MonoBehaviour
             _layout.spacing = blockSpacing;
         }
 
-        // Show/hide the frame container instead of just the panel
-        if (_frameContainer != null)
-        {
-            _frameContainer.SetActive(showInventory);
-        }
-        else
-        {
-            _panel.gameObject.SetActive(showInventory);
-        }
+        _panel.gameObject.SetActive(showInventory);
 
         if (inventory == null)
         {
@@ -456,15 +440,16 @@ public class InventoryUI : MonoBehaviour
         if (!showInventory) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
+        List<BlockInventoryEntry> orderedEntries = OrderEntriesForInventory(entries, mode);
         bool showInfinite = mode == GameMode.Designer;
 
         int drawIndex = 0;
-        for (int i = 0; i < entries.Count; i++)
+        for (int i = 0; i < orderedEntries.Count; i++)
         {
-            if (ShouldHideFromInventory(entries[i], mode)) continue;
+            if (ShouldHideFromInventory(orderedEntries[i], mode)) continue;
 
             SlotUI slot = EnsureSlot(drawIndex);
-            slot.entry = entries[i];
+            slot.entry = orderedEntries[i];
             slot.index = i;
             UpdateSlot(slot, showInfinite);
             drawIndex++;
@@ -473,6 +458,44 @@ public class InventoryUI : MonoBehaviour
         TrimSlots(drawIndex);
 
         if (drawIndex == 0) { }
+    }
+
+    private List<BlockInventoryEntry> OrderEntriesForInventory(IReadOnlyList<BlockInventoryEntry> entries, GameMode mode)
+    {
+        if (entries == null || entries.Count == 0)
+        {
+            return new List<BlockInventoryEntry>();
+        }
+
+        // Preserve inspector order, but group identical block types together (e.g. Teleporter A/B).
+        Dictionary<BlockType, List<BlockInventoryEntry>> grouped = new Dictionary<BlockType, List<BlockInventoryEntry>>();
+        List<BlockType> order = new List<BlockType>();
+
+        for (int i = 0; i < entries.Count; i++)
+        {
+            BlockInventoryEntry entry = entries[i];
+            if (entry == null) continue;
+            if (ShouldHideFromInventory(entry, mode)) continue;
+
+            if (!grouped.TryGetValue(entry.blockType, out List<BlockInventoryEntry> list))
+            {
+                list = new List<BlockInventoryEntry>();
+                grouped[entry.blockType] = list;
+                order.Add(entry.blockType);
+            }
+            list.Add(entry);
+        }
+
+        List<BlockInventoryEntry> result = new List<BlockInventoryEntry>(entries.Count);
+        for (int i = 0; i < order.Count; i++)
+        {
+            BlockType type = order[i];
+            if (grouped.TryGetValue(type, out List<BlockInventoryEntry> list))
+            {
+                result.AddRange(list);
+            }
+        }
+        return result;
     }
 
     private SlotUI EnsureSlot(int drawIndex)
@@ -503,7 +526,7 @@ public class InventoryUI : MonoBehaviour
 
         LayoutElement layout = root.GetComponent<LayoutElement>();
         layout.preferredWidth = boxSize;
-        layout.preferredHeight = boxSize + textTopMargin + textSize + 6f;
+        layout.preferredHeight = boxSize;
 
         RectTransform rootRect = root.GetComponent<RectTransform>();
         rootRect.sizeDelta = new Vector2(boxSize, layout.preferredHeight);
@@ -528,6 +551,18 @@ public class InventoryUI : MonoBehaviour
         previewRect.sizeDelta = new Vector2(previewSize, previewSize);
         Image previewImage = previewObj.GetComponent<Image>();
         previewImage.preserveAspect = true;
+        Shadow previewShadow = EnsureShadow(previewImage);
+        Outline previewOutline = EnsureOutline(previewImage);
+
+        GameObject badgeObj = new GameObject("CountBadge", typeof(RectTransform), typeof(Image));
+        badgeObj.transform.SetParent(previewRect, false);
+        RectTransform badgeRect = badgeObj.GetComponent<RectTransform>();
+        badgeRect.anchorMin = new Vector2(0f, 1f);
+        badgeRect.anchorMax = new Vector2(0f, 1f);
+        badgeRect.pivot = new Vector2(0f, 1f);
+        badgeRect.anchoredPosition = new Vector2(2f, -2f);
+        Image badgeImage = badgeObj.GetComponent<Image>();
+        badgeImage.color = Color.black;
 
         GameObject previewRawObj = new GameObject("PreviewRaw", typeof(RectTransform), typeof(RawImage));
         previewRawObj.transform.SetParent(previewRect, false);
@@ -538,20 +573,26 @@ public class InventoryUI : MonoBehaviour
         rawRect.offsetMax = Vector2.zero;
         RawImage previewRaw = previewRawObj.GetComponent<RawImage>();
         previewRaw.gameObject.SetActive(false);
+        Shadow previewRawShadow = EnsureShadow(previewRaw);
+        Outline previewRawOutline = EnsureOutline(previewRaw);
 
-        Text count = CreateText("Count", rootRect, textSize, TextAnchor.UpperCenter, textColor);
+        Text count = CreateText("Count", badgeRect, textSize * 3, TextAnchor.MiddleCenter, Color.white);
         RectTransform countRect = count.GetComponent<RectTransform>();
-        countRect.anchorMin = new Vector2(0f, 1f);
-        countRect.anchorMax = new Vector2(1f, 1f);
-        countRect.pivot = new Vector2(0.5f, 1f);
-        countRect.anchoredPosition = new Vector2(0f, -boxSize - textTopMargin);
-        countRect.sizeDelta = new Vector2(0f, textSize + 6f);
+        countRect.anchorMin = new Vector2(0.5f, 0.5f);
+        countRect.anchorMax = new Vector2(0.5f, 0.5f);
+        countRect.pivot = new Vector2(0.5f, 0.5f);
+        countRect.anchoredPosition = Vector2.zero;
 
         return new SlotUI
         {
             root = root,
             previewImage = previewImage,
             previewRaw = previewRaw,
+            previewShadow = previewShadow,
+            previewRawShadow = previewRawShadow,
+            previewOutline = previewOutline,
+            previewRawOutline = previewRawOutline,
+            countBadge = badgeImage,
             count = count
         };
     }
@@ -561,16 +602,17 @@ public class InventoryUI : MonoBehaviour
         BlockInventoryEntry entry = slot.entry;
         if (entry == null) return;
 
+        float previewSize = Mathf.Max(0f, boxSize - (iconMargin * 2f));
         RectTransform rootRect = slot.root.GetComponent<RectTransform>();
         LayoutElement layout = slot.root.GetComponent<LayoutElement>();
         if (layout != null)
         {
             layout.preferredWidth = boxSize;
-            layout.preferredHeight = boxSize + textTopMargin + textSize + 6f;
+            layout.preferredHeight = boxSize;
         }
         if (rootRect != null)
         {
-            rootRect.sizeDelta = new Vector2(boxSize, boxSize + textTopMargin + textSize + 6f);
+            rootRect.sizeDelta = new Vector2(boxSize, boxSize);
         }
 
         RectTransform previewRect = slot.previewImage != null ? slot.previewImage.rectTransform : null;
@@ -581,17 +623,12 @@ public class InventoryUI : MonoBehaviour
             {
                 bgRect.sizeDelta = new Vector2(boxSize, boxSize);
             }
-            float previewSize = Mathf.Max(0f, boxSize - (iconMargin * 2f));
             previewRect.sizeDelta = new Vector2(previewSize, previewSize);
         }
 
         int available = inventory.GetDisplayAvailableCount(entry);
         int total = inventory.GetDisplayTotalCount(entry);
-        slot.count.text = showInfinite ? "INF" : $"{available} OF {total}";
-        slot.count.fontSize = textSize;
-        slot.count.color = textColor;
-        RectTransform countRect = slot.count.rectTransform;
-        countRect.anchoredPosition = new Vector2(0f, -boxSize - textTopMargin);
+        UpdateCountBadge(slot, available, showInfinite, previewSize);
 
         Color blockColor = GetColorForBlockType(entry.blockType);
         if (!showInfinite && available == 0)
@@ -599,12 +636,69 @@ public class InventoryUI : MonoBehaviour
             blockColor.a = 0.3f;
         }
 
-        if (entry.blockType == BlockType.Walk && walkBlockSprite != null)
+        if (entry.blockType == BlockType.Walk)
         {
+            if (walkBlockSprite == null)
+            {
+                LoadWalkBlockSprite();
+            }
+
+            if (walkBlockSprite == null)
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
+                return;
+            }
+
             slot.previewImage.enabled = true;
             slot.previewImage.sprite = walkBlockSprite;
             slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
             slot.previewRaw.gameObject.SetActive(false);
+        }
+        else if (entry.blockType == BlockType.Crumbler)
+        {
+            if (crumblerBlockSprite == null)
+            {
+                LoadCrumblerBlockSprite();
+            }
+
+            if (crumblerBlockSprite == null)
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
+                return;
+            }
+
+            slot.previewImage.enabled = true;
+            slot.previewImage.sprite = crumblerBlockSprite;
+            slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+            slot.previewRaw.gameObject.SetActive(false);
+        }
+        else if (entry.blockType == BlockType.Teleporter)
+        {
+            if (teleporterBlockSprite == null)
+            {
+                LoadTeleporterBlockSprite();
+            }
+
+            if (teleporterBlockSprite != null)
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = teleporterBlockSprite;
+                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+                slot.previewRaw.gameObject.SetActive(false);
+            }
+            else
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
+            }
         }
         else if (entry.blockType == BlockType.Transporter)
         {
@@ -632,6 +726,92 @@ public class InventoryUI : MonoBehaviour
         {
             slot.previewImage.preserveAspect = true;
         }
+
+        ApplyIconShadow(slot.previewShadow);
+        ApplyIconShadow(slot.previewRawShadow);
+        bool isSelected = builderController != null && builderController.currentInventoryEntry == entry;
+        ApplySelectionOutline(slot.previewOutline, isSelected);
+        ApplySelectionOutline(slot.previewRawOutline, isSelected);
+    }
+
+    private Shadow EnsureShadow(Graphic graphic)
+    {
+        if (graphic == null) return null;
+        Shadow shadow = graphic.GetComponent<Shadow>();
+        if (shadow == null)
+        {
+            shadow = graphic.gameObject.AddComponent<Shadow>();
+        }
+        shadow.useGraphicAlpha = false;
+        return shadow;
+    }
+
+    private Outline EnsureOutline(Graphic graphic)
+    {
+        if (graphic == null) return null;
+        Outline outline = graphic.GetComponent<Outline>();
+        if (outline == null)
+        {
+            outline = graphic.gameObject.AddComponent<Outline>();
+        }
+        outline.useGraphicAlpha = false;
+        outline.enabled = false;
+        return outline;
+    }
+
+    private void ApplyIconShadow(Shadow shadow)
+    {
+        if (shadow == null) return;
+
+        if (iconShadowOpacity <= 0f)
+        {
+            shadow.enabled = false;
+            return;
+        }
+
+        Color shadowColor = iconShadowColor;
+        shadowColor.a = iconShadowOpacity;
+        shadow.effectColor = shadowColor;
+        float blur = Mathf.Max(0f, iconShadowBlur);
+        shadow.effectDistance = new Vector2(blur, -blur);
+        shadow.enabled = true;
+    }
+
+    private void ApplySelectionOutline(Outline outline, bool enabled)
+    {
+        if (outline == null) return;
+
+        if (!enabled || selectionBorderThickness <= 0f)
+        {
+            outline.enabled = false;
+            return;
+        }
+
+        outline.effectColor = selectionBorderColor;
+        outline.effectDistance = new Vector2(selectionBorderThickness, selectionBorderThickness);
+        outline.enabled = true;
+    }
+
+    private void UpdateCountBadge(SlotUI slot, int available, bool showInfinite, float previewSize)
+    {
+        if (slot.count == null) return;
+
+        slot.count.text = showInfinite ? "INF" : $"{available}";
+        slot.count.color = Color.white;
+
+        if (slot.countBadge == null) return;
+
+        float badgeHeight = Mathf.Max(0f, previewSize * 0.25f);
+        float padding = Mathf.Clamp(badgeHeight * 0.1f, 1f, 3f);
+        int fontSize = Mathf.Max(1, Mathf.RoundToInt(badgeHeight * 0.7f));
+        slot.count.fontSize = fontSize;
+
+        RectTransform badgeRect = slot.countBadge.rectTransform;
+        RectTransform countRect = slot.count.rectTransform;
+        float width = Mathf.Ceil(slot.count.preferredWidth) + (padding * 2f);
+        if (width < badgeHeight) width = badgeHeight;
+        badgeRect.sizeDelta = new Vector2(width, badgeHeight);
+        countRect.sizeDelta = new Vector2(width - (padding * 2f), badgeHeight - (padding * 2f));
     }
 
     private bool TrySetTransporterPreview(BlockInventoryEntry entry, RawImage rawImage, Color blockColor, Vector2 size)
@@ -722,20 +902,10 @@ public class InventoryUI : MonoBehaviour
 
     private void LoadWalkBlockSprite()
     {
-        if (walkBlockSprite != null) return;
-
-        Sprite sprite = Resources.Load<Sprite>(walkBlockSpriteResourcePath);
-        if (sprite == null)
-        {
-            Texture2D texture = Resources.Load<Texture2D>(walkBlockSpriteResourcePath);
-            if (texture != null)
-            {
-                sprite = CreateSprite(texture);
-            }
-        }
+        Sprite sprite = null;
 
 #if UNITY_EDITOR
-        if (sprite == null && !string.IsNullOrEmpty(walkBlockSpriteAssetPath))
+        if (!string.IsNullOrEmpty(walkBlockSpriteAssetPath))
         {
             sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(walkBlockSpriteAssetPath);
             if (sprite == null)
@@ -749,12 +919,126 @@ public class InventoryUI : MonoBehaviour
         }
 #endif
 
+        if (sprite == null)
+        {
+            sprite = Resources.Load<Sprite>(walkBlockSpriteResourcePath);
+        }
+        if (sprite == null)
+        {
+            Texture2D texture = Resources.Load<Texture2D>(walkBlockSpriteResourcePath);
+            if (texture != null)
+            {
+                sprite = CreateSprite(texture);
+            }
+        }
+
+        if (sprite != null && sprite.texture != null &&
+            (Mathf.Abs(sprite.rect.width - sprite.texture.width) > 0.01f ||
+             Mathf.Abs(sprite.rect.height - sprite.texture.height) > 0.01f))
+        {
+            sprite = CreateSprite(sprite.texture);
+        }
+
         walkBlockSprite = sprite;
+    }
+
+    private void LoadCrumblerBlockSprite()
+    {
+        Sprite sprite = null;
+
+#if UNITY_EDITOR
+        if (!string.IsNullOrEmpty(crumblerBlockSpriteAssetPath))
+        {
+            sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(crumblerBlockSpriteAssetPath);
+            if (sprite == null)
+            {
+                Texture2D texture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(crumblerBlockSpriteAssetPath);
+                if (texture != null)
+                {
+                    sprite = CreateSprite(texture);
+                }
+            }
+        }
+#endif
+
+        if (sprite == null)
+        {
+            sprite = Resources.Load<Sprite>(crumblerBlockSpriteResourcePath);
+        }
+        if (sprite == null)
+        {
+            Texture2D texture = Resources.Load<Texture2D>(crumblerBlockSpriteResourcePath);
+            if (texture != null)
+            {
+                sprite = CreateSprite(texture);
+            }
+        }
+
+        if (sprite != null && sprite.texture != null &&
+            (Mathf.Abs(sprite.rect.width - sprite.texture.width) > 0.01f ||
+             Mathf.Abs(sprite.rect.height - sprite.texture.height) > 0.01f))
+        {
+            sprite = CreateSprite(sprite.texture);
+        }
+
+        crumblerBlockSprite = sprite;
+    }
+
+    private void LoadTeleporterBlockSprite()
+    {
+        Sprite sprite = null;
+
+#if UNITY_EDITOR
+        if (!string.IsNullOrEmpty(teleporterBlockSpriteAssetPath))
+        {
+            sprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(teleporterBlockSpriteAssetPath);
+            if (sprite == null)
+            {
+                Texture2D texture = UnityEditor.AssetDatabase.LoadAssetAtPath<Texture2D>(teleporterBlockSpriteAssetPath);
+                if (texture != null)
+                {
+                    sprite = CreateSprite(texture);
+                }
+            }
+        }
+#endif
+
+        if (sprite == null)
+        {
+            sprite = Resources.Load<Sprite>(teleporterBlockSpriteResourcePath);
+        }
+        if (sprite == null)
+        {
+            Texture2D texture = Resources.Load<Texture2D>(teleporterBlockSpriteResourcePath);
+            if (texture != null)
+            {
+                sprite = CreateSprite(texture);
+            }
+        }
+
+        if (sprite != null && sprite.texture != null &&
+            (Mathf.Abs(sprite.rect.width - sprite.texture.width) > 0.01f ||
+             Mathf.Abs(sprite.rect.height - sprite.texture.height) > 0.01f))
+        {
+            sprite = CreateSprite(sprite.texture);
+        }
+
+        teleporterBlockSprite = sprite;
     }
 
     private void LoadTransporterIconTexture()
     {
-        if (transporterIconTexture != null) return;
+        if (transporterIconTexture != null)
+        {
+#if UNITY_EDITOR
+            EnsureReadableTextureAtPath(transporterIconTextureAssetPath);
+#endif
+            return;
+        }
+
+#if UNITY_EDITOR
+        EnsureReadableTextureAtPath(transporterIconTextureAssetPath);
+#endif
 
         Texture2D texture = Resources.Load<Texture2D>(transporterIconTextureResourcePath);
 
@@ -767,6 +1051,18 @@ public class InventoryUI : MonoBehaviour
 
         transporterIconTexture = texture;
     }
+
+#if UNITY_EDITOR
+    private static void EnsureReadableTextureAtPath(string assetPath)
+    {
+        if (string.IsNullOrEmpty(assetPath)) return;
+        UnityEditor.TextureImporter importer = UnityEditor.AssetImporter.GetAtPath(assetPath) as UnityEditor.TextureImporter;
+        if (importer == null) return;
+        if (importer.isReadable) return;
+        importer.isReadable = true;
+        importer.SaveAndReimport();
+    }
+#endif
 
     private Sprite CreateSprite(Texture2D texture)
     {
@@ -858,7 +1154,7 @@ public class InventoryUI : MonoBehaviour
         Color[] pixels = new Color[size * size];
         for (int i = 0; i < pixels.Length; i++) { pixels[i] = clear; }
 
-        if (baseTexture != null && baseTexture.width > 0 && baseTexture.height > 0)
+        if (baseTexture != null && baseTexture.width > 0 && baseTexture.height > 0 && baseTexture.isReadable)
         {
             for (int y = 0; y < size; y++)
             {

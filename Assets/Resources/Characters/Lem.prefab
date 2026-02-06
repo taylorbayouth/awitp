@@ -2096,7 +2096,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LemController
   glitchRotationOffset: {x: 0, y: 90, z: 0}
-  walkSpeed: 1
+  walkSpeed: 0.8
   wallCheckDistance: 0.3
   groundCheckDistance: 1
   solidLayerMask:
