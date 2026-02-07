@@ -155,6 +155,7 @@ public class BuilderController : MonoBehaviour
         if (currentMode != GameMode.Play)
         {
             HandleCursorMovement();
+            HandlePointerCursorMovement();
             HandleBlockRemoval();
             HandleInventorySelection();
 
@@ -201,6 +202,39 @@ public class BuilderController : MonoBehaviour
         }
     }
 
+    private void HandlePointerCursorMovement()
+    {
+        if (GridManager.Instance == null) return;
+
+        if (!PointerInput.TryGetPrimaryPointerDown(out Vector2 screenPosition, out int pointerId))
+        {
+            return;
+        }
+
+        if (PointerInput.IsPointerOverUI(screenPosition, pointerId))
+        {
+            return;
+        }
+
+        if (!TryGetGridIndexFromScreen(screenPosition, out int index)) return;
+
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
+
+        int currentIndex = grid.GetCurrentCursorIndex();
+        if (index == currentIndex)
+        {
+            if (currentMode == GameMode.Builder && grid.IsSpacePlaceable(index))
+            {
+                TryPlaceBlockAt(index);
+            }
+        }
+        else
+        {
+            grid.SetCursorIndex(index);
+        }
+    }
+
     private void HandleBlockPlacement()
     {
         if (GridManager.Instance == null) return;
@@ -209,14 +243,21 @@ public class BuilderController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
             int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
-            if (currentInventoryEntry != null)
-            {
-                GridManager.Instance.PlaceBlock(currentInventoryEntry, cursorIndex);
-            }
-            else
-            {
-                GridManager.Instance.PlaceBlock(currentBlockType, cursorIndex);
-            }
+            TryPlaceBlockAt(cursorIndex);
+        }
+    }
+
+    private void TryPlaceBlockAt(int index)
+    {
+        if (GridManager.Instance == null) return;
+
+        if (currentInventoryEntry != null)
+        {
+            GridManager.Instance.PlaceBlock(currentInventoryEntry, index);
+        }
+        else
+        {
+            GridManager.Instance.PlaceBlock(currentBlockType, index);
         }
     }
 
@@ -345,8 +386,11 @@ public class BuilderController : MonoBehaviour
         currentBlockType = entry.blockType;
 
         // Check if cursor is on an existing block
-        int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
-        BaseBlock existingBlock = GridManager.Instance.GetBlockAtIndex(cursorIndex);
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
+
+        int cursorIndex = grid.GetCurrentCursorIndex();
+        BaseBlock existingBlock = grid.GetBlockAtIndex(cursorIndex);
 
         if (existingBlock != null)
         {
@@ -358,6 +402,80 @@ public class BuilderController : MonoBehaviour
 
             ChangeBlockType(existingBlock, entry);
         }
+    }
+
+    public void SelectInventoryEntry(BlockInventoryEntry entry)
+    {
+        if (entry == null) return;
+        if (currentMode == GameMode.Play) return;
+
+        EnsureInventoryReference();
+        if (blockInventory == null) return;
+
+        IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
+        if (entries == null || entries.Count == 0) return;
+
+        int index = -1;
+        for (int i = 0; i < entries.Count; i++)
+        {
+            if (entries[i] == entry)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index < 0)
+        {
+            string entryId = entry.GetEntryId();
+            for (int i = 0; i < entries.Count; i++)
+            {
+                if (entries[i] != null && entries[i].GetEntryId() == entryId)
+                {
+                    index = i;
+                    break;
+                }
+            }
+        }
+
+        if (index >= 0)
+        {
+            SelectInventoryIndex(index, entries);
+        }
+    }
+
+    private bool TryGetGridIndexFromScreen(Vector2 screenPosition, out int index)
+    {
+        index = -1;
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return false;
+
+        Camera cam = Camera.main;
+        if (cam == null)
+        {
+            cam = ServiceRegistry.Get<Camera>();
+        }
+        if (cam == null) return false;
+
+        Ray ray = cam.ScreenPointToRay(screenPosition);
+        Plane gridPlane = new Plane(Vector3.forward, Vector3.zero);
+        if (!gridPlane.Raycast(ray, out float enter))
+        {
+            return false;
+        }
+
+        Vector3 worldPos = ray.GetPoint(enter);
+        Vector3 localPos = worldPos - grid.gridOrigin;
+        int x = Mathf.FloorToInt(localPos.x);
+        int y = Mathf.FloorToInt(localPos.y);
+
+        if (x < 0 || x >= grid.gridWidth || y < 0 || y >= grid.gridHeight)
+        {
+            return false;
+        }
+
+        index = grid.CoordinatesToIndex(x, y);
+        return true;
     }
 
     private void ChangeBlockType(BaseBlock block, BlockInventoryEntry entry)

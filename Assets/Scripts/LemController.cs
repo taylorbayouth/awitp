@@ -24,6 +24,17 @@ using System;
 /// </summary>
 public class LemController : MonoBehaviour
 {
+    [System.Serializable]
+    public class FootstepSurface
+    {
+        public BlockType blockType = BlockType.Walk;
+        public AudioClip clip;
+        [Tooltip("Volume range for slight variation (min..max).")]
+        public Vector2 volumeRange = new Vector2(0.9f, 1f);
+        [Tooltip("Pitch range for slight variation (min..max).")]
+        public Vector2 pitchRange = new Vector2(0.95f, 1.05f);
+    }
+
     [Header("Glitch Visuals")]
     [Tooltip("Local rotation offset (degrees) to align Glitch with +X movement")]
     [SerializeField] private Vector3 glitchRotationOffset = new Vector3(0f, 90f, 0f);
@@ -76,6 +87,13 @@ public class LemController : MonoBehaviour
     [Tooltip("True when Lem is in the controlled fall arc")]
     [SerializeField] private bool isFallingArc = false;
 
+    [Header("Footsteps")]
+    [SerializeField] private AudioSource footstepSource;
+    [SerializeField] private FootstepSurface[] footstepSurfaces = System.Array.Empty<FootstepSurface>();
+    [SerializeField] private AudioClip footstepFallbackClip;
+    [SerializeField] private Vector2 footstepFallbackVolumeRange = new Vector2(0.9f, 1f);
+    [SerializeField] private Vector2 footstepFallbackPitchRange = new Vector2(0.95f, 1.05f);
+
     // Cached component references
     private Rigidbody rb;
     private CapsuleCollider capsuleCollider;
@@ -102,6 +120,9 @@ public class LemController : MonoBehaviour
     private Vector3 lastGlitchRotationOffset;
     private bool defaultUseGravity;
     private bool defaultIsKinematic;
+    private BaseBlock currentBlock;
+    private BlockType currentBlockType = BlockType.Walk;
+    private bool hasCurrentBlock;
 
     #endregion
 
@@ -150,6 +171,18 @@ public class LemController : MonoBehaviour
         glitchVisual = transform.Find("Glitch");
         CacheAnimator();
         ApplyGlitchVisualRotation();
+
+        if (footstepSource == null)
+        {
+            footstepSource = GetComponent<AudioSource>();
+            if (footstepSource == null)
+            {
+                footstepSource = gameObject.AddComponent<AudioSource>();
+            }
+        }
+        footstepSource.playOnAwake = false;
+        footstepSource.loop = false;
+        footstepSource.spatialBlend = 0f;
     }
 
     void FixedUpdate()
@@ -507,6 +540,78 @@ public class LemController : MonoBehaviour
         }
 
         return 1f;
+    }
+
+    public void NotifyEnteredBlock(BaseBlock block)
+    {
+        if (block == null) return;
+        currentBlock = block;
+        currentBlockType = block.blockType;
+        hasCurrentBlock = true;
+    }
+
+    public void NotifyExitedBlock(BaseBlock block)
+    {
+        if (block == null) return;
+        if (currentBlock == block)
+        {
+            currentBlock = null;
+            hasCurrentBlock = false;
+        }
+    }
+
+    // Animation events (call these from the walk animation)
+    public void FootstepLeft()
+    {
+        PlayFootstep();
+    }
+
+    public void FootstepRight()
+    {
+        PlayFootstep();
+    }
+
+    private void PlayFootstep()
+    {
+        if (!isGrounded) return;
+
+        BlockType type = hasCurrentBlock ? currentBlockType : BlockType.Walk;
+        AudioClip clip = null;
+        Vector2 volumeRange = footstepFallbackVolumeRange;
+        Vector2 pitchRange = footstepFallbackPitchRange;
+
+        if (TryGetFootstepSurface(type, out FootstepSurface surface))
+        {
+            clip = surface.clip;
+            volumeRange = surface.volumeRange;
+            pitchRange = surface.pitchRange;
+        }
+        else
+        {
+            clip = footstepFallbackClip;
+        }
+
+        if (clip == null) return;
+
+        footstepSource.pitch = UnityEngine.Random.Range(pitchRange.x, pitchRange.y);
+        float volume = UnityEngine.Random.Range(volumeRange.x, volumeRange.y);
+        footstepSource.PlayOneShot(clip, volume);
+    }
+
+    private bool TryGetFootstepSurface(BlockType type, out FootstepSurface surface)
+    {
+        for (int i = 0; i < footstepSurfaces.Length; i++)
+        {
+            FootstepSurface entry = footstepSurfaces[i];
+            if (entry != null && entry.blockType == type)
+            {
+                surface = entry;
+                return true;
+            }
+        }
+
+        surface = null;
+        return false;
     }
 
 

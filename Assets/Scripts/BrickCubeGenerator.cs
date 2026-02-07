@@ -68,10 +68,19 @@ public sealed class BrickCubeGenerator : MonoBehaviour
 
     private const string ContainerName = "Bricks";
 
+    // Temporary 3D grid of brick instances used by post-generation compaction/side-snap.
+    // Only allocated when RelaxedGrid mode needs post-processing.
+    private GameObject[,,] instances;
+
+    /// <summary>
+    /// Generates the brick cube using the selected packing mode.
+    /// Clears any previous bricks before generating.
+    /// </summary>
     public void Generate()
     {
         if (brickPrefab == null)
         {
+            Debug.LogWarning("[BrickCubeGenerator] Cannot generate: brickPrefab is not assigned.");
             return;
         }
 
@@ -882,6 +891,9 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Destroys all generated bricks in the container.
+    /// </summary>
     public void Clear()
     {
         var container = GetContainer();
@@ -1013,8 +1025,6 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         if (size.y >= size.z) return 1;
         return 2;
     }
-
-    private GameObject[,,] instances;
 
     private static void Compact(GameObject[,,] bricks, Transform container, int iterations, float margin, float strength)
     {

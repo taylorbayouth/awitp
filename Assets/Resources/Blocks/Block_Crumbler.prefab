@@ -9851,7 +9851,7 @@ ParticleSystem:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7921235933008305008}
   serializedVersion: 8
-  lengthInSec: 0.1
+  lengthInSec: 1
   simulationSpeed: 1
   stopAction: 0
   cullingMode: 0
@@ -10033,7 +10033,7 @@ ParticleSystem:
       serializedVersion: 2
       minMaxState: 0
       minColor: {r: 1, g: 1, b: 1, a: 1}
-      maxColor: {r: 0.8584906, g: 0.8584906, b: 0.8584906, a: 0.6392157}
+      maxColor: {r: 1, g: 1, b: 1, a: 1}
       maxGradient:
         serializedVersion: 2
         key0: {r: 1, g: 1, b: 1, a: 1}
@@ -10097,7 +10097,7 @@ ParticleSystem:
     startSize:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 2
+      scalar: 3
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -10150,7 +10150,7 @@ ParticleSystem:
     startSizeY:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 2
+      scalar: 3
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -10203,7 +10203,7 @@ ParticleSystem:
     startSizeZ:
       serializedVersion: 2
       minMaxState: 0
-      scalar: 2
+      scalar: 3
       minScalar: 1
       maxCurve:
         serializedVersion: 2
@@ -10474,7 +10474,7 @@ ParticleSystem:
   ShapeModule:
     serializedVersion: 6
     enabled: 1
-    type: 4
+    type: 0
     angle: 25
     length: 5
     boxThickness: {x: 0, y: 0, z: 0}
@@ -11143,7 +11143,7 @@ ParticleSystem:
         atime6: 0
         atime7: 0
         m_Mode: 0
-        m_ColorSpace: -1
+        m_ColorSpace: 0
         m_NumColorKeys: 2
         m_NumAlphaKeys: 2
       minGradient:
@@ -16845,15 +16845,23 @@ MonoBehaviour:
   debrisMass: 0.3
   debrisKick: 0.05
   addBoxColliderIfMissing: 1
-  impactMinSpeed: 0.8
-  impactMinUpNormal: 0.35
-  impactParticleLifetime: 3
+  impactMinSpeed: 0
+  impactMinUpNormal: 0
+  impactParticleLifetime: 7
   spawnSupportCubeOnFirstBelowImpact: 1
   supportCubeSize: {x: 1, y: 1, z: 1}
   supportCubeCenterOffset: {x: 0, y: 0, z: 0}
   showSupportCubeVisual: 0
   supportCubeTint: {r: 0.2, g: 0.9, b: 1, a: 0.35}
   debugCrumbleLogs: 1
+  entrySfx: {fileID: 0}
+  centerSfx: {fileID: 0}
+  collapseSfx: {fileID: 0}
+  impactSfx: {fileID: 0}
+  entrySfxAssetPath: Assets/SFX/smallRocksFalling2.mp3
+  centerSfxAssetPath: Assets/SFX/smallRocksFalling.mp3
+  collapseSfxAssetPath: Assets/SFX/bigRocksFalling.mp3
+  impactSfxAssetPath: Assets/SFX/bigRocksFallToGround.mp3
 --- !u!1001 &8213109590871613000
 PrefabInstance:
   m_ObjectHideFlags: 0

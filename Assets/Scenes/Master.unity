@@ -332,11 +332,11 @@ MonoBehaviour:
   transporterIconTexture: {fileID: 2800000, guid: 7fd397a3f185b41698cfaa54be15ff24, type: 3}
   transporterIconTextureResourcePath: Sprites/inventoryUi/cloudIcon
   transporterIconTextureAssetPath: Assets/Sprites/inventoryUi/cloudIcon.png
-  iconShadowOpacity: 0.181
+  iconShadowOpacity: 1
   iconShadowColor: {r: 0.192, g: 0.29, b: 0.306, a: 1}
-  iconShadowBlur: 4
-  selectionBorderThickness: 4
-  selectionBorderColor: {r: 0.192, g: 0.29, b: 0.306, a: 1}
+  iconShadowBlur: 0
+  selectionBorderThickness: 5
+  selectionBorderColor: {r: 0.192, g: 0.29, b: 0.306, a: 0.7176471}
   uiFontAssetPath: Assets/Fonts/Koulen-Regular.ttf
   uiFontResourcePath: Fonts/Koulen-Regular
 --- !u!224 &323621400
@@ -580,7 +580,7 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: ccfa53ec735f7435faa76d4a1fe3261f, type: 3}
-    m_FontSize: 18
+    m_FontSize: 20
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
@@ -835,7 +835,7 @@ MonoBehaviour:
       m_Calls: []
   m_FontData:
     m_Font: {fileID: 12800000, guid: ccfa53ec735f7435faa76d4a1fe3261f, type: 3}
-    m_FontSize: 18
+    m_FontSize: 20
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
