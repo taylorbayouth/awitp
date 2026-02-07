@@ -2110,8 +2110,21 @@ MonoBehaviour:
   facingRight: 1
   isGrounded: 0
   isAlive: 1
-  isFrozen: 1
+  isFrozen: 0
   isFallingArc: 0
+  footstepSource: {fileID: 0}
+  footstepSurfaces:
+  - blockType: 0
+    clip: {fileID: 8300000, guid: fc06879d4b7c741509ae08765496d7f8, type: 3}
+    volumeRange: {x: 2, y: 2.5}
+    pitchRange: {x: 0.95, y: 1.05}
+  - blockType: 2
+    clip: {fileID: 8300000, guid: 28f7d5dbc6d71418697f966c96dd70b0, type: 3}
+    volumeRange: {x: 2, y: 2.5}
+    pitchRange: {x: 0.95, y: 1.05}
+  footstepFallbackClip: {fileID: 8300000, guid: 28f7d5dbc6d71418697f966c96dd70b0, type: 3}
+  footstepFallbackVolumeRange: {x: 2, y: 2.5}
+  footstepFallbackPitchRange: {x: 0.95, y: 1.05}
 --- !u!54 &8779439179383067650
 Rigidbody:
   m_ObjectHideFlags: 0

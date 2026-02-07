@@ -5,6 +5,11 @@ using UnityEngine;
 /// </summary>
 public class LockBlock : BaseBlock
 {
+    /// <summary>
+    /// Fired when any lock's filled state changes or locks are added/removed from the scene.
+    /// </summary>
+    public static event System.Action OnLockStateChanged;
+
     [Header("Lock Visuals")]
     [Tooltip("Statue scale relative to grid cell size (0.8 = 80% of cell, same as Lem)")]
     [SerializeField] private float statueScale = 0.8f;
@@ -16,6 +21,16 @@ public class LockBlock : BaseBlock
     [SerializeField] private float keyLockYOffset = 0.75f;
 
     private Transform lockTransform;
+
+    private void OnEnable()
+    {
+        OnLockStateChanged?.Invoke();
+    }
+
+    private void OnDisable()
+    {
+        OnLockStateChanged?.Invoke();
+    }
 
     public bool HasKeyLocked()
     {
@@ -40,6 +55,7 @@ public class LockBlock : BaseBlock
         float keyWorldScale = cellSize * 0.2f;
         float keyLocalOffset = cellSize * keyLockYOffset;
         key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
+        OnLockStateChanged?.Invoke();
     }
 
     protected override void Start()
@@ -60,6 +76,7 @@ public class LockBlock : BaseBlock
         float keyWorldScale = cellSize * 0.2f;
         float keyLocalOffset = cellSize * keyLockYOffset;
         key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
+        OnLockStateChanged?.Invoke();
     }
 
     private void EnsureLockVisual()
