@@ -60,6 +60,9 @@ public class CrumblerBlock : BaseBlock
     private GameObject supportCube;
     private BoxCollider supportCubeCollider;
     private bool supportCubeSpawned;
+    private Vector3 predictedImpactPosition;
+    private bool hasPredictedImpactPosition;
+    private Transform impactTargetTransform;
     private static Mesh supportCubeMesh;
     private static Material supportCubeMaterial;
     private static readonly List<Collider> playerColliders = new List<Collider>(4);
@@ -68,7 +71,17 @@ public class CrumblerBlock : BaseBlock
 
     private bool hasTriggeredCenter;
     private bool collapseStarted;
-    private bool hasPlayedImpactSfx;
+    private bool hasFirstImpactFired;
+    private event System.Action<FirstImpactData> OnFirstImpact;
+
+    public struct FirstImpactData
+    {
+        public Vector3 position;
+        public float time;
+        public Collider hitCollider;
+        public Vector3 contactNormal;
+        public float impactSpeed;
+    }
 
     protected override void Awake()
     {
@@ -97,7 +110,11 @@ public class CrumblerBlock : BaseBlock
     {
         if (collapseStarted) return;
         collapseStarted = true;
-        hasPlayedImpactSfx = false;
+
+        hasFirstImpactFired = false;
+        OnFirstImpact = null;
+        OnFirstImpact += OnFirstImpact_PlaySfx;
+        OnFirstImpact += OnFirstImpact_SpawnDust;
 
         LogCrumble($"[Crumbler] Block {gridIndex}: player exited, collapse in {fallDelaySeconds:0.00}s.");
         StartCoroutine(CrumbleSequence());
@@ -128,7 +145,7 @@ public class CrumblerBlock : BaseBlock
             crumbleRoot = null;
         }
 
-        yield return WaitForSupportCubeOrTimeout();
+        yield return WaitForFirstImpactOrTimeout();
         DestroyBlock();
     }
 
@@ -229,22 +246,31 @@ public class CrumblerBlock : BaseBlock
             : hit.collider.bounds.center + Vector3.up;
         worldPos += supportCubeCenterOffset;
 
+        // Store the target block and grid-aligned position for dust/effects.
+        // This is deterministic — doesn't depend on where bricks physically bounce.
+        impactTargetTransform = hitBlock != null ? hitBlock.transform : hit.collider.transform;
+        predictedImpactPosition = worldPos;
+        hasPredictedImpactPosition = true;
+
+        LogCrumble($"[Crumbler] Block {gridIndex}: predicted impact position {predictedImpactPosition}" +
+                   $" (below block: {(hitBlock != null ? hitBlock.name : hit.collider.name)})");
+
         supportCubeSpawned = true;
         SpawnSupportCube(worldPos, layer);
     }
 
-    private IEnumerator WaitForSupportCubeOrTimeout()
+    private IEnumerator WaitForFirstImpactOrTimeout()
     {
-        if (supportCubeSpawned)
-        {
-            yield break;
-        }
-
-        var remaining = Mathf.Max(0f, supportCubeMaxWaitSeconds);
-        while (!supportCubeSpawned && remaining > 0f)
+        var remaining = Mathf.Max(0.5f, supportCubeMaxWaitSeconds);
+        while (!hasFirstImpactFired && remaining > 0f)
         {
             remaining -= Time.deltaTime;
             yield return null;
+        }
+
+        if (!hasFirstImpactFired)
+        {
+            LogCrumble($"[Crumbler] Block {gridIndex}: timed out waiting for first impact after {supportCubeMaxWaitSeconds:F1}s.");
         }
     }
 
@@ -506,79 +532,23 @@ public class CrumblerBlock : BaseBlock
         DebugLog.Crumbler(message, this);
     }
 
-    private void HandleDebrisImpact(Collision collision)
+    private void ReportDebrisImpact(FirstImpactData data)
     {
-        if (collision == null) return;
-        if (collision.contactCount <= 0) return;
+        if (hasFirstImpactFired) return;
+        hasFirstImpactFired = true;
 
-        var contact = collision.GetContact(0);
-        if (!hasPlayedImpactSfx)
-        {
-            hasPlayedImpactSfx = true;
-            PlaySfx(impactSfx);
-        }
+        LogCrumble($"[Crumbler] Block {gridIndex}: first impact at {data.position} on " +
+                   $"{(data.hitCollider != null ? data.hitCollider.name : "None")} v={data.impactSpeed:F2}");
 
-        if (puffOfDustTemplate == null) return;
-        SpawnImpactParticles(contact.point);
+        OnFirstImpact?.Invoke(data);
     }
 
-    private void HandleDebrisContact(Collision collision)
+    private void OnFirstImpact_PlaySfx(FirstImpactData data) => PlaySfx(impactSfx);
+
+    private void OnFirstImpact_SpawnDust(FirstImpactData data)
     {
-        if (collision == null) return;
-        if (collision.contactCount <= 0) return;
-        if (hasPlayedImpactSfx) return;
-
-        hasPlayedImpactSfx = true;
-        PlaySfx(impactSfx);
-    }
-
-    private void TrySpawnSupportCube(Collision collision)
-    {
-        if (!spawnSupportCubeOnFirstBelowImpact || supportCubeSpawned) return;
-        if (!TryGetSupportCubeWorldPosition(collision, out var worldPos, out var layer)) return;
-
-        supportCubeSpawned = true;
-        SpawnSupportCube(worldPos, layer);
-    }
-
-    private bool TryGetSupportCubeWorldPosition(Collision collision, out Vector3 worldPos, out int layer)
-    {
-        worldPos = transform.position;
-        layer = gameObject.layer;
-
-        if (collision == null || collision.contactCount <= 0) return false;
-
-        var contact = collision.GetContact(0);
-        if (contact.normal.y < impactMinUpNormal) return false;
-
-        if (collision.collider != null)
-        {
-            layer = collision.collider.gameObject.layer;
-        }
-
-        // Preferred path: use the grid-aligned block transform (handles Z offset correctly).
-        var hitBlock = collision.collider != null ? collision.collider.GetComponentInParent<BaseBlock>() : null;
-        if (hitBlock != null)
-        {
-            worldPos = hitBlock.transform.position + Vector3.up + supportCubeCenterOffset;
-            return true;
-        }
-
-        // Fallback: compute from contact point using grid math.
-        var grid = GridManager.Instance;
-        if (grid == null) return false;
-
-        var sample = contact.point - contact.normal * 0.02f;
-        var hitIndex = grid.WorldToGridIndex(sample);
-        if (!grid.IsValidIndex(hitIndex)) return false;
-
-        var aboveIndex = hitIndex + grid.gridWidth;
-        if (!grid.IsValidIndex(aboveIndex)) return false;
-
-        worldPos = grid.IndexToWorldPosition(aboveIndex);
-        worldPos.z = collision.collider != null ? collision.collider.transform.position.z : 0.5f;
-        worldPos += supportCubeCenterOffset;
-        return true;
+        var dustPos = hasPredictedImpactPosition ? predictedImpactPosition : data.position;
+        SpawnImpactParticles(dustPos);
     }
 
     private void SpawnSupportCube(Vector3 worldPos, int layer)
@@ -748,9 +718,25 @@ public class CrumblerBlock : BaseBlock
 
         var dust = Instantiate(puffOfDustTemplate, worldPosition, puffOfDustTemplate.transform.rotation, GetOrCreateRuntimeRoot());
         dust.gameObject.SetActive(true);
+
+        // Grow over lifetime: start small, expand to full size.
+        var sizeOverLifetime = dust.sizeOverLifetime;
+        sizeOverLifetime.enabled = true;
+        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.3f, 1f, 1f));
+
+        // Fade: 50% opacity at birth → fully transparent at death.
+        var colorOverLifetime = dust.colorOverLifetime;
+        colorOverLifetime.enabled = true;
+        var alphaGradient = new Gradient();
+        alphaGradient.SetKeys(
+            new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+            new[] { new GradientAlphaKey(0.5f, 0f), new GradientAlphaKey(0f, 1f) }
+        );
+        colorOverLifetime.color = new ParticleSystem.MinMaxGradient(alphaGradient);
+
         dust.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         dust.Play(true);
-        Destroy(dust.gameObject, Mathf.Max(0.2f, impactParticleLifetime));
+        Destroy(dust.gameObject, Mathf.Max(0.5f, impactParticleLifetime));
     }
 
     public static void CleanupRuntime()
@@ -824,38 +810,100 @@ public class CrumblerBlock : BaseBlock
         private CrumblerBlock owner;
         private float minSpeed;
         private float minUpNormal;
-        private bool hasFired;
+        private bool hasReported;
+        private Rigidbody rb;
 
         public void Initialize(CrumblerBlock block, float minimumSpeed, float minimumUpNormal)
         {
             owner = block;
             minSpeed = Mathf.Max(0f, minimumSpeed);
             minUpNormal = Mathf.Clamp01(minimumUpNormal);
-            hasFired = false;
+            hasReported = false;
+            rb = GetComponent<Rigidbody>();
+        }
+
+        private bool ShouldIgnoreCollider(Collider col)
+        {
+            if (col == null) return true;
+            if (col.GetComponentInParent<DebrisImpactRelay>() != null) return true;
+            if (col.GetComponent<SupportCubeMarker>() != null) return true;
+            // Only accept hits on the specific block below the crumbler.
+            // If no target was identified (crumbler over void), accept any valid hit.
+            if (owner.impactTargetTransform != null && !col.transform.IsChildOf(owner.impactTargetTransform)) return true;
+            return false;
+        }
+
+        private void Report(Vector3 position, Collider hitCollider, Vector3 normal, float speed)
+        {
+            if (hasReported) return;
+            hasReported = true;
+
+            owner.ReportDebrisImpact(new FirstImpactData
+            {
+                position = position,
+                time = Time.time,
+                hitCollider = hitCollider,
+                contactNormal = normal,
+                impactSpeed = speed
+            });
+        }
+
+        private void FixedUpdate()
+        {
+            if (owner == null || owner.hasFirstImpactFired || hasReported) return;
+            if (rb == null || rb.linearVelocity.y > 0f) return;
+
+            var origin = transform.position;
+            if (!Physics.Raycast(origin, Vector3.down, out var hit, 0.15f, ~0, QueryTriggerInteraction.Ignore)) return;
+            if (ShouldIgnoreCollider(hit.collider)) return;
+
+            Report(hit.point, hit.collider, hit.normal, rb.linearVelocity.magnitude);
         }
 
         private void OnCollisionEnter(Collision collision)
         {
-            if (owner == null || collision == null) return;
+            if (owner == null || owner.hasFirstImpactFired || hasReported) return;
+            if (collision == null || collision.contactCount <= 0) return;
 
-            // SFX should fire on the first contact, regardless of impact strength.
-            owner.HandleDebrisContact(collision);
-
-            // Support cube should spawn immediately on first valid hit with the block below.
-            owner.TrySpawnSupportCube(collision);
-
-            // Dust puff is once-per-brick and filtered for meaningful impacts.
-            if (hasFired) return;
-            if (collision.contactCount <= 0) return;
+            if (ShouldIgnoreCollider(collision.collider)) return;
 
             var contact = collision.GetContact(0);
-            if (collision.relativeVelocity.magnitude < minSpeed) return;
-            if (contact.normal.y < minUpNormal) return;
-
-            hasFired = true;
-            owner.HandleDebrisImpact(collision);
+            Report(contact.point, collision.collider, contact.normal, collision.relativeVelocity.magnitude);
         }
     }
 
     private sealed class SupportCubeMarker : MonoBehaviour { }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmos()
+    {
+        if (!hasPredictedImpactPosition) return;
+
+        // Predicted impact position (where dust will spawn).
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(predictedImpactPosition, 0.25f);
+        Gizmos.DrawLine(transform.position, predictedImpactPosition);
+
+        // Target block below.
+        if (impactTargetTransform != null)
+        {
+            Gizmos.color = new Color(0f, 1f, 0f, 0.3f);
+            Gizmos.DrawWireCube(impactTargetTransform.position, Vector3.one);
+
+            // Label via Handles.
+            UnityEditor.Handles.color = Color.white;
+            var label = $"Target: {impactTargetTransform.name}";
+            var belowBlock = impactTargetTransform.GetComponent<BaseBlock>();
+            if (belowBlock != null)
+            {
+                label += $"\nID: {belowBlock.gridIndex} Type: {belowBlock.blockType}";
+            }
+            UnityEditor.Handles.Label(impactTargetTransform.position + Vector3.up * 0.6f, label);
+        }
+
+        // Impact state.
+        Gizmos.color = hasFirstImpactFired ? Color.green : Color.red;
+        Gizmos.DrawWireSphere(predictedImpactPosition, 0.15f);
+    }
+#endif
 }

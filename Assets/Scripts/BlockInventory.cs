@@ -109,6 +109,11 @@ public class BlockInventory : MonoBehaviour
     private readonly Dictionary<string, int> pairCredits = new Dictionary<string, int>();
     private List<BlockInventoryEntry> designerEntries;
 
+    /// <summary>
+    /// Fired whenever inventory counts change (use, return, reset, or load).
+    /// </summary>
+    public event System.Action OnInventoryChanged;
+
     private void OnEnable()
     {
         if (!Application.isPlaying)
@@ -133,11 +138,17 @@ public class BlockInventory : MonoBehaviour
         designerEntries = null;
     }
 
+    /// <summary>
+    /// Returns the current runtime inventory entries (read-only).
+    /// </summary>
     public IReadOnlyList<BlockInventoryEntry> GetEntries()
     {
         return entries;
     }
 
+    /// <summary>
+    /// Returns entries appropriate for the given game mode. Designer mode gets unlimited entries.
+    /// </summary>
     public IReadOnlyList<BlockInventoryEntry> GetEntriesForMode(GameMode mode)
     {
         if (mode == GameMode.Designer)
@@ -148,12 +159,18 @@ public class BlockInventory : MonoBehaviour
         return entries;
     }
 
+    /// <summary>
+    /// Gets an entry by its list index. Returns null if out of range.
+    /// </summary>
     public BlockInventoryEntry GetEntryByIndex(int index)
     {
         if (index < 0 || index >= entries.Count) return null;
         return entries[index];
     }
 
+    /// <summary>
+    /// Finds an entry by its unique entry ID string. Returns null if not found.
+    /// </summary>
     public BlockInventoryEntry GetEntryById(string entryId)
     {
         if (string.IsNullOrEmpty(entryId)) return null;
@@ -168,6 +185,9 @@ public class BlockInventory : MonoBehaviour
         return null;
     }
 
+    /// <summary>
+    /// Returns the first unflavored entry for a block type, or any entry of that type as fallback.
+    /// </summary>
     public BlockInventoryEntry GetDefaultEntryForBlockType(BlockType blockType)
     {
         BlockInventoryEntry fallback = null;
@@ -188,6 +208,10 @@ public class BlockInventory : MonoBehaviour
         return fallback;
     }
 
+    /// <summary>
+    /// Finds an entry matching the given block type, flavor, route, and inventory key.
+    /// Falls back to any matching transporter entry if exact key match fails.
+    /// </summary>
     public BlockInventoryEntry FindEntry(BlockType blockType, string flavorId, string[] routeSteps, string inventoryKey)
     {
         string resolvedFlavor = !string.IsNullOrEmpty(flavorId)
@@ -224,6 +248,9 @@ public class BlockInventory : MonoBehaviour
         return fallback;
     }
 
+    /// <summary>
+    /// Returns the inventory pool key for an entry (accounts for transporter routes and shared groups).
+    /// </summary>
     public string GetInventoryKey(BlockInventoryEntry entry)
     {
         if (entry == null) return string.Empty;
@@ -235,6 +262,9 @@ public class BlockInventory : MonoBehaviour
         return entry.GetEntryId();
     }
 
+    /// <summary>
+    /// Returns true if the entry (or its shared group) has remaining stock for placement.
+    /// </summary>
     public bool CanPlaceEntry(BlockInventoryEntry entry)
     {
         BlockInventoryEntry groupEntry = GetEntryForInventoryKey(GetInventoryKey(entry));
@@ -249,6 +279,10 @@ public class BlockInventory : MonoBehaviour
         return groupEntry.currentCount > 0;
     }
 
+    /// <summary>
+    /// Consumes one unit from inventory. For pair entries, consumes a credit first,
+    /// then a full pair unit when credits are exhausted. Returns false if empty.
+    /// </summary>
     public bool UseBlock(BlockInventoryEntry entry)
     {
         string key = GetInventoryKey(entry);
@@ -295,11 +329,17 @@ public class BlockInventory : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// Returns one unit to inventory for the given entry.
+    /// </summary>
     public void ReturnBlock(BlockInventoryEntry entry)
     {
         ReturnBlockByKey(GetInventoryKey(entry), entry != null ? entry.blockType : BlockType.Walk);
     }
 
+    /// <summary>
+    /// Returns one unit to inventory by key, with a fallback block type for lookup.
+    /// </summary>
     public void ReturnBlock(string inventoryKey, BlockType fallbackType)
     {
         ReturnBlockByKey(inventoryKey, fallbackType);
@@ -377,7 +417,14 @@ public class BlockInventory : MonoBehaviour
 
         if (groupEntry.isPairInventory)
         {
-            return Mathf.Max(0, groupEntry.currentCount);
+            int count = Mathf.Max(0, groupEntry.currentCount);
+            int credits = GetPairCredits(GetInventoryKey(groupEntry));
+            // Keep the visible count steady until the pair is completed.
+            if (credits > 0)
+            {
+                count += 1;
+            }
+            return count;
         }
 
         return groupEntry.currentCount;
@@ -396,48 +443,56 @@ public class BlockInventory : MonoBehaviour
         return groupEntry.maxCount;
     }
 
-    // --- Backward-compatible methods (block type only) ---
+    // --- BlockType convenience overloads (resolve to default entry) ---
 
+    /// <summary>
+    /// Checks if a block of the given type can be placed (uses the default entry).
+    /// </summary>
     public bool CanPlaceBlock(BlockType blockType)
     {
         BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
         return CanPlaceEntry(entry);
     }
 
+    /// <summary>
+    /// Consumes one block of the given type from inventory (uses the default entry).
+    /// </summary>
     public bool UseBlock(BlockType blockType)
     {
         BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
         return UseBlock(entry);
     }
 
+    /// <summary>
+    /// Returns one block of the given type to inventory (uses the default entry).
+    /// </summary>
     public void ReturnBlock(BlockType blockType)
     {
         BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
         ReturnBlock(entry);
     }
 
-    public int GetRemainingCount(BlockType blockType)
+    /// <summary>
+    /// Returns the available count for the default entry of the given block type.
+    /// </summary>
+    public int GetAvailableCount(BlockType blockType)
     {
         BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
         return GetAvailableCount(entry);
     }
 
-    public int GetMaxCount(BlockType blockType)
+    /// <summary>
+    /// Returns the total (max) count for the default entry of the given block type.
+    /// </summary>
+    public int GetTotalCount(BlockType blockType)
     {
         BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
         return GetTotalCount(entry);
     }
 
-    public int GetAvailableCount(BlockType blockType)
-    {
-        return GetRemainingCount(blockType);
-    }
-
-    public int GetTotalCount(BlockType blockType)
-    {
-        return GetMaxCount(blockType);
-    }
-
+    /// <summary>
+    /// Resets all entries to their max counts and clears pair credits.
+    /// </summary>
     public void ResetInventory()
     {
         pairCredits.Clear();
@@ -480,7 +535,8 @@ public class BlockInventory : MonoBehaviour
         ResetInventory();
         designerEntries = null;
 
-        Debug.Log($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
+        DebugLog.Info($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
+        OnInventoryChanged?.Invoke();
     }
 
     private IReadOnlyList<BlockInventoryEntry> GetDesignerEntries()
@@ -606,6 +662,7 @@ public class BlockInventory : MonoBehaviour
                 entry.currentCount = newCount;
             }
         }
+        OnInventoryChanged?.Invoke();
     }
 
     private int GetPairCredits(string key)
@@ -618,6 +675,7 @@ public class BlockInventory : MonoBehaviour
     {
         if (string.IsNullOrEmpty(key)) return;
         pairCredits[key] = Mathf.Max(0, credits);
+        OnInventoryChanged?.Invoke();
     }
 
     private static bool IsTransporterEntry(BlockInventoryEntry entry)
