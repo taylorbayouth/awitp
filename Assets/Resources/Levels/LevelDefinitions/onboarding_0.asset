@@ -110,7 +110,7 @@ MonoBehaviour:
       routeSteps:
       - U1
       - R1
-      - U1
+      - R1
       isPairInventory: 0
       pairSize: 2
       maxCount: 10
@@ -134,16 +134,6 @@ MonoBehaviour:
       isPairInventory: 1
       pairSize: 2
       maxCount: 1
-      currentCount: 10
-    - entryId: 
-      blockType: 0
-      displayName: 
-      inventoryGroupId: 
-      flavorId: 
-      routeSteps: []
-      isPairInventory: 0
-      pairSize: 2
-      maxCount: 10
       currentCount: 10
     placeableSpaceIndices: 0400000016000000
     lems:

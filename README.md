@@ -33,6 +33,10 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 ### Block Types
 - **Walk**: Solid platforms
 - **Crumbler**: Breaks after Lem exits - one-time use
+  - **Entry**: Small debris particles and rumbling sound as Lem steps on
+  - **Center**: Increased rumbling and brick jiggling when Lem reaches center
+  - **Exit**: Block collapses into tumbling debris with impact sounds
+  - **Support Cube**: Invisible solid surface spawns below for Lem to walk on
 - **Transporter**: Moving platforms following predefined routes
 - **Teleporter**: Paired instant transport
 - **Key**: Collectible items that attach to Lems
@@ -102,10 +106,19 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 
 ## Controls
 
+### Input Methods
+
+The game supports **both mouse and touch input** seamlessly:
+- **Desktop**: Click to select grid cells, click inventory to select blocks
+- **Mobile/Tablet**: Tap to select grid cells, tap inventory to select blocks
+- **Unified Experience**: Same behavior across all platforms
+- **UI Protection**: Clicking/tapping UI elements won't affect the grid
+
 ### Player Controls (Build Mode + Play Mode)
 
 #### Navigation (All Modes)
 - **Arrow Keys / WASD**: Move cursor around grid
+- **Mouse/Touch**: Click or tap to select grid cell
 
 #### Build Mode (Player-Facing - Default)
 - **Space / Enter**: Place selected block type
@@ -228,6 +241,12 @@ Assets/
 - **Sorting Orders**: LineRenderer sorting for reliable 2D layering
 - **Alpha Blending**: Legacy Shaders/Particles/Alpha Blended for smooth lines
 - **Configurable Visuals**: All constants centralized in RenderingConstants.cs
+
+### Music System
+- **Synchronized Dual-Track**: Both Build and Play soundtracks play continuously from start
+- **Volume Crossfading**: Smooth transitions between modes without audio restarts
+- **Perfect Synchronization**: Tracks remain in sync throughout entire session
+- **Seamless Mode Switching**: No jarring cuts when toggling between modes
 
 ### Save System
 - **JSON Serialization**: Unity's JsonUtility for native support
