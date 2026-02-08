@@ -32,6 +32,13 @@ public class LevelDefinition : ScriptableObject
     public Color cursorEditableColor = BlockColors.CursorEditable;
     public Color cursorNonPlaceableColor = BlockColors.CursorNonPlaceable;
 
+    [Header("Visual & Audio Themes (Optional)")]
+    [Tooltip("Optional visual theme (lighting, sky, fog, background). Leave null for default.")]
+    public LevelVisualTheme visualTheme;
+
+    [Tooltip("Optional audio theme (music, ambient sounds). Leave null for default.")]
+    public LevelAudioTheme audioTheme;
+
     [Header("Level Data")]
     [SerializeField, HideInInspector] private LevelData levelData = new LevelData();
 

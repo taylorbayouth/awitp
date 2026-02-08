@@ -71,6 +71,14 @@ A Unity 3D puzzle game where players guide "Lems" (lemming-like characters) by s
 - **Player Progress**: `ProgressManager` saves progress to `progress.json`
 - **JSON Format**: Human-readable, debuggable, version-control friendly
 
+### Level Theming System (Visual & Audio Variety)
+- **LevelVisualTheme**: Lighting, sky, fog, background elements (optional)
+- **LevelAudioTheme**: Music overrides, ambient sounds (optional)
+- **ThemePresets**: Quick-start themes (Day, Sunset, Night, Overcast, Industrial)
+- **Modular & Reusable**: One theme → many levels
+- **Git-Friendly**: ScriptableObjects (text-based YAML)
+- **See**: [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md) for complete documentation
+
 ### Visual System
 - **Depth-Based Layering**: Cursor > Borders > Blocks >= Grid
 - **Sorting Orders**: LineRenderer sorting for reliable 2D rendering
@@ -155,10 +163,13 @@ The game supports **both mouse and touch input** seamlessly:
 ### For Designers
 - **[HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md)** - Complete guide to designing puzzle levels
 - **[DESIGNER-GUIDE.md](DESIGNER-GUIDE.md)** - Level Designer mode controls and workflow
+- **[LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md)** - Visual & audio theme system guide
 - **[LEVEL-SYSTEM-DESIGN.md](LEVEL-SYSTEM-DESIGN.md)** - Architecture for multi-level progression system
 
 ### For Developers
 - **[PROJECT.md](PROJECT.md)** - Complete project architecture and technical overview
+- **[SAVE_SYSTEM.md](SAVE_SYSTEM.md)** - Save system technical documentation (includes theming)
+- **[SAVE_SYSTEM_ENHANCEMENTS.md](SAVE_SYSTEM_ENHANCEMENTS.md)** - Summary of recent enhancements
 - **[IMPLEMENTATION-TASKS.md](IMPLEMENTATION-TASKS.md)** - Roadmap for level system implementation
 - **[FEATURES-TO-BUILD.md](FEATURES-TO-BUILD.md)** - Future features and improvements
 

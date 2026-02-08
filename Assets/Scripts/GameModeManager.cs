@@ -44,7 +44,6 @@ public class GameModeManager : MonoBehaviour
             mainCamera = Camera.main;
             if (mainCamera == null)
             {
-                Debug.LogError("GameModeManager: Camera.main returned null! Looking for any camera...");
                 mainCamera = ServiceRegistry.TryGet<Camera>();
             }
         }
@@ -187,7 +186,6 @@ public class GameModeManager : MonoBehaviour
 
         if (builderClip == null || playClip == null)
         {
-            Debug.LogWarning("GameModeManager: Failed to load one or both music clips");
             return;
         }
 
@@ -206,8 +204,6 @@ public class GameModeManager : MonoBehaviour
 
         _activeMusic = isPlayMode ? _musicB : _musicA;
         _musicInitialized = true;
-
-        DebugLog.Info($"[GameModeManager] Both music tracks started in sync. Mode: {builderController.currentMode}");
     }
 
     private void UpdateMusic()
@@ -282,10 +278,6 @@ public class GameModeManager : MonoBehaviour
             }
             mainCamera.clearFlags = CameraClearFlags.Skybox;
         }
-        else
-        {
-            Debug.LogError("SetNormalMode: Camera is null!");
-        }
     }
 
     public void SetEditorMode()
@@ -294,10 +286,6 @@ public class GameModeManager : MonoBehaviour
         {
             mainCamera.clearFlags = CameraClearFlags.SolidColor;
             mainCamera.backgroundColor = designerModeColor;
-        }
-        else
-        {
-            Debug.LogError("SetEditorMode: Camera is null!");
         }
     }
 
@@ -325,4 +313,86 @@ public class GameModeManager : MonoBehaviour
             skyObject.SetActive(visible);
         }
     }
+
+    #region Music Track Override API (for LevelAudioTheme)
+
+    /// <summary>
+    /// Overrides the Builder/Designer mode music track.
+    /// Used by LevelAudioTheme to apply level-specific music.
+    /// </summary>
+    /// <param name="track">The new music track to use</param>
+    public void SetBuilderModeTrack(AudioClip track)
+    {
+        if (track == null) return;
+
+        EnsureMusicSources();
+
+        // Update track and restart if currently playing
+        bool wasPlaying = _musicA.isPlaying;
+        float currentTime = _musicA.time;
+
+        _musicA.clip = track;
+
+        if (wasPlaying)
+        {
+            _musicA.time = Mathf.Min(currentTime, track.length);
+            _musicA.Play();
+        }
+
+        Debug.Log($"[GameModeManager] Builder mode track set to: {track.name}");
+    }
+
+    /// <summary>
+    /// Overrides the Play mode music track.
+    /// Used by LevelAudioTheme to apply level-specific music.
+    /// </summary>
+    /// <param name="track">The new music track to use</param>
+    public void SetPlayModeTrack(AudioClip track)
+    {
+        if (track == null) return;
+
+        EnsureMusicSources();
+
+        // Update track and restart if currently playing
+        bool wasPlaying = _musicB.isPlaying;
+        float currentTime = _musicB.time;
+
+        _musicB.clip = track;
+
+        if (wasPlaying)
+        {
+            _musicB.time = Mathf.Min(currentTime, track.length);
+            _musicB.Play();
+        }
+
+        Debug.Log($"[GameModeManager] Play mode track set to: {track.name}");
+    }
+
+    /// <summary>
+    /// Sets the music volume multiplier.
+    /// Used by LevelAudioTheme to adjust volume per level.
+    /// </summary>
+    /// <param name="volume">Volume multiplier (0-1)</param>
+    public void SetMusicVolume(float volume)
+    {
+        musicVolume = Mathf.Clamp01(volume);
+
+        // Apply immediately to active track
+        if (_activeMusic != null)
+        {
+            _activeMusic.volume = musicVolume;
+        }
+    }
+
+    /// <summary>
+    /// Resets music tracks to their original resource paths.
+    /// Used when unloading a level with custom audio theme.
+    /// </summary>
+    public void ResetMusicTracks()
+    {
+        _musicInitialized = false;
+        UpdateMusicImmediate();
+    }
+
+    #endregion
 }
