@@ -99,6 +99,10 @@ public class LevelManager : MonoBehaviour
     // Cache for loaded level definitions
     private Dictionary<string, LevelDefinition> _levelDefCache = new Dictionary<string, LevelDefinition>();
 
+    // Theme management
+    private GameObject _currentVisualThemeBackground;
+    private AudioThemeController _currentAudioThemeController;
+
     #endregion
 
     #region Properties
@@ -262,6 +266,9 @@ public class LevelManager : MonoBehaviour
             _gridManager.ApplyLevelDefinitionSettings(levelDef);
         }
 
+        // Apply visual and audio themes if present
+        ApplyLevelThemes(levelDef);
+
         // Mark level as loaded
         _levelLoaded = true;
         _levelCompletedThisSession = false;
@@ -325,6 +332,9 @@ public class LevelManager : MonoBehaviour
 
         try
         {
+            // Clean up themes first
+            CleanupLevelThemes();
+
             // Clear grid content
             if (_gridManager != null)
             {
@@ -609,6 +619,75 @@ public class LevelManager : MonoBehaviour
     public string GetCurrentWorldId()
     {
         return _currentLevelDef != null ? _currentLevelDef.worldId : null;
+    }
+
+    #endregion
+
+    #region Theme Management
+
+    /// <summary>
+    /// Applies visual and audio themes from a level definition.
+    /// Themes are optional and enhance the level's atmosphere.
+    /// </summary>
+    /// <param name="levelDef">The level definition containing theme references</param>
+    private void ApplyLevelThemes(LevelDefinition levelDef)
+    {
+        if (levelDef == null) return;
+
+        // Apply visual theme (lighting, sky, fog, background)
+        if (levelDef.visualTheme != null)
+        {
+            Camera cam = Camera.main;
+            if (cam == null)
+            {
+                cam = FindFirstObjectByType<Camera>();
+            }
+
+            _currentVisualThemeBackground = levelDef.visualTheme.Apply(cam);
+            Debug.Log($"[LevelManager] Applied visual theme: {levelDef.visualTheme.themeName}");
+        }
+
+        // Apply audio theme (music, ambient sounds)
+        if (levelDef.audioTheme != null)
+        {
+            GameObject audioContainer = new GameObject($"AudioTheme_{levelDef.levelId}");
+            _currentAudioThemeController = levelDef.audioTheme.Apply(audioContainer);
+            Debug.Log($"[LevelManager] Applied audio theme: {levelDef.audioTheme.themeName}");
+        }
+    }
+
+    /// <summary>
+    /// Cleans up any active level themes.
+    /// Called when unloading a level or loading a new one.
+    /// </summary>
+    private void CleanupLevelThemes()
+    {
+        // Cleanup visual theme background
+        if (_currentVisualThemeBackground != null)
+        {
+            Destroy(_currentVisualThemeBackground);
+            _currentVisualThemeBackground = null;
+
+            // Reset to default lighting
+            LevelVisualTheme.ResetToDefaults();
+        }
+
+        // Cleanup audio theme
+        if (_currentAudioThemeController != null)
+        {
+            _currentAudioThemeController.Stop();
+            Destroy(_currentAudioThemeController.gameObject);
+            _currentAudioThemeController = null;
+
+            // Reset music tracks to defaults
+            GameModeManager gameModeManager = ServiceRegistry.Get<GameModeManager>();
+            if (gameModeManager != null)
+            {
+                gameModeManager.ResetMusicTracks();
+            }
+        }
+
+        Debug.Log("[LevelManager] Cleaned up level themes");
     }
 
     #endregion
