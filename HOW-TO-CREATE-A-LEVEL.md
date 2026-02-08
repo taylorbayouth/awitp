@@ -201,6 +201,34 @@ Now that you have a basic level, try adding:
 
 ---
 
+### Step 7: Add Visual & Audio Themes (Optional)
+
+Give your level a unique atmosphere with themes:
+
+**Visual Themes** (lighting, sky, fog, backgrounds):
+1. In Unity Editor (not Play mode), select your LevelDefinition asset
+2. Create a visual theme: Right-click in Project → Create → AWITP → Level Visual Theme
+3. Name it (e.g., "Theme_Sunset")
+4. Configure lighting, fog, sky settings in Inspector
+5. Drag theme to LevelDefinition.visualTheme field
+6. Load level - theme applies automatically!
+
+**Audio Themes** (music, ambient sounds):
+1. Create an audio theme: Right-click in Project → Create → AWITP → Level Audio Theme
+2. Name it (e.g., "Theme_Peaceful")
+3. Assign audio clips (music tracks, ambient loops, random sounds)
+4. Drag theme to LevelDefinition.audioTheme field
+5. Load level - audio plays automatically!
+
+**Quick Start with Presets**:
+Use `ThemePresets` for instant atmospheres (Day, Sunset, Night, Overcast, Industrial)
+
+**See**: [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md) for complete documentation
+
+**Note**: Themes are completely optional - levels work perfectly without them!
+
+---
+
 ## Block Types Reference
 
 ### Walk Block (Cyan) - Type 1
@@ -927,6 +955,36 @@ This guide is comprehensive for the **current** system, but here are features th
 
 ---
 
+## Visual & Audio Variety
+
+### Using Themes to Enhance Levels
+
+Themes add atmosphere without affecting gameplay:
+
+**When to Add Themes**:
+- After level is fully playable
+- When creating world-specific identity
+- For dramatic effect on special levels
+- To guide player mood (cheerful, tense, mysterious)
+
+**Theme Library Approach**:
+1. Create 3-5 visual themes for your game (Day, Sunset, Night, etc.)
+2. Create 2-3 audio themes (Peaceful, Intense, Nature, etc.)
+3. Mix and match across levels
+4. Share themes to maintain consistency within worlds
+
+**Example Theme Progression**:
+- **Tutorial World**: Day theme (bright, cheerful) + Peaceful audio
+- **Forest World**: Sunset theme (warm, inviting) + Nature audio
+- **Factory World**: Industrial theme (cold, harsh) + Intense audio
+- **Final World**: Night theme (dramatic, mysterious) + Epic audio
+
+**See Documentation**:
+- [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md) - Complete theming guide
+- [SAVE_SYSTEM.md](../SAVE_SYSTEM.md) - Technical documentation
+
+---
+
 ## Conclusion
 
 You now have everything you need to create compelling levels in A Walk in the Park!
@@ -937,6 +995,7 @@ You now have everything you need to create compelling levels in A Walk in the Pa
 3. Test relentlessly - iterate in Play Mode
 4. Think like a player - is it fun and fair?
 5. Save often - preserve your work
+6. Add themes last - polish the atmosphere
 
 **Best practices**:
 - Introduce mechanics gradually
@@ -959,6 +1018,8 @@ Happy level designing! May your puzzles be clever, your blocks well-placed, and 
 - [README.md](README.md) - Project overview
 - [PROJECT.md](PROJECT.md) - Technical architecture
 - [DESIGNER-GUIDE.md](DESIGNER-GUIDE.md) - Level Designer mode controls and workflow
+- [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md) - Visual & audio theme guide
+- [SAVE_SYSTEM.md](../SAVE_SYSTEM.md) - Save system technical docs
 
 **Need Help?**
 - Check the console for debug messages

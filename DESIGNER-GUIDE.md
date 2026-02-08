@@ -314,6 +314,95 @@ Levels are stored as JSON inside **LevelDefinition** assets (not standalone file
 
 If you use the legacy `LevelSaveSystem` for file-based backups, the JSON structure is the same.
 
+## Visual & Audio Themes (Optional)
+
+### Overview
+
+Add atmosphere to your levels with optional visual and audio themes:
+
+**Visual Themes**: Lighting, sky, fog, background elements
+**Audio Themes**: Music overrides, ambient sounds
+
+**Key Points**:
+- Completely optional (levels work fine without them)
+- Reusable across multiple levels
+- Git-friendly (ScriptableObject assets)
+- Applied automatically on level load
+- Cleaned up automatically on level unload
+
+### Adding Visual Themes
+
+1. **Create Theme** (in Unity Editor, not Play mode):
+   - Right-click in Project → Create → AWITP → Level Visual Theme
+   - Name it (e.g., "Theme_Sunset")
+
+2. **Configure Theme**:
+   - Select theme asset in Inspector
+   - Set light direction, color, intensity
+   - Enable fog and configure color/density
+   - Optionally assign skybox material
+   - Optionally assign background prefab
+
+3. **Assign to Level**:
+   - Select your LevelDefinition asset
+   - Drag theme to visualTheme field
+   - Load level - theme applies automatically!
+
+**Quick Start**: Use `ThemePresets.CreateSunsetTheme()` for instant preset
+
+### Adding Audio Themes
+
+1. **Create Theme**:
+   - Right-click in Project → Create → AWITP → Level Audio Theme
+   - Name it (e.g., "Theme_Peaceful")
+
+2. **Configure Theme**:
+   - Assign music clips (builderModeTrack, playModeTrack)
+   - Assign ambient loop (wind, water, birds, etc.)
+   - Assign random sounds (optional)
+   - Set volumes and intervals
+
+3. **Assign to Level**:
+   - Select your LevelDefinition asset
+   - Drag theme to audioTheme field
+   - Load level - audio plays automatically!
+
+### Theme Workflow Best Practices
+
+**Approach 1: Design First, Theme Later**
+1. Create level layout and gameplay
+2. Test level thoroughly
+3. Add themes as final polish
+4. Iterate on atmosphere
+
+**Approach 2: Theme Library**
+1. Create 3-5 visual themes upfront
+2. Create 2-3 audio themes upfront
+3. Assign themes as you create levels
+4. Maintain consistency within worlds
+
+**Approach 3: Per-World Themes**
+- World 1: Day + Peaceful
+- World 2: Sunset + Nature
+- World 3: Industrial + Intense
+- World 4: Night + Epic
+
+### Documentation
+
+**Complete Guide**: [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md)
+- System overview
+- How to create themes
+- Example gallery
+- Performance tips
+- Git best practices
+
+**Technical Docs**: [SAVE_SYSTEM.md](../SAVE_SYSTEM.md)
+- Architecture details
+- API reference
+- Integration with LevelManager
+
+---
+
 ## Getting Help
 
 Check the console (Unity's Console window) for helpful messages:
@@ -321,5 +410,12 @@ Check the console (Unity's Console window) for helpful messages:
 - Mode switch notifications
 - Save/load status messages
 - Error messages with troubleshooting hints
+- Theme application confirmations
 
 Most operations provide clear feedback about what's happening.
+
+**Documentation Resources**:
+- [HOW-TO-CREATE-A-LEVEL.md](HOW-TO-CREATE-A-LEVEL.md) - Complete level creation guide
+- [LEVEL_THEMING_GUIDE.md](Assets/Scripts/LevelSystem/LEVEL_THEMING_GUIDE.md) - Theme system guide
+- [SAVE_SYSTEM.md](../SAVE_SYSTEM.md) - Technical save system docs
+- [PROJECT.md](../PROJECT.md) - Full architecture documentation
