@@ -290,6 +290,385 @@ ProgressManager.Instance.ExportProgressJson();    // Debug export
 
 ---
 
+## Level Theming System (Visual & Audio Variety)
+
+The **Level Theming System** provides optional visual and audio customization per level through reusable ScriptableObject assets. Themes are completely optional and have zero impact on gameplay logic.
+
+### Architecture
+
+**Components**:
+- **LevelVisualTheme** - Lighting, sky, fog, background elements
+- **LevelAudioTheme** - Music overrides, ambient sounds
+- **ThemePresets** - Quick-start preset themes
+- **LevelVarietyUtils** - Helper utilities for color, lighting, fog calculations
+
+**Integration**:
+- Themes are referenced (not embedded) in LevelDefinition
+- LevelManager applies themes on level load
+- Automatically cleaned up on level unload
+- Git-friendly (ScriptableObjects serialize as text YAML)
+
+### LevelVisualTheme (ScriptableObject)
+
+**Purpose**: Define visual atmosphere for a level
+
+**ScriptableObject Path**: Create → AWITP → Level Visual Theme
+
+**Properties**:
+```csharp
+// Theme Info
+string themeName;
+string description;
+
+// Directional Light
+bool overrideDirectionalLight;
+Vector3 lightDirection;        // Euler angles
+Color lightColor;
+float lightIntensity;          // 0-3
+bool castShadows;
+
+// Ambient Lighting
+AmbientMode ambientMode;       // Skybox, Flat, Trilight
+Color ambientColor;            // Flat mode
+Color ambientSkyColor;         // Trilight mode
+Color ambientEquatorColor;     // Trilight mode
+Color ambientGroundColor;      // Trilight mode
+float ambientIntensity;        // 0-2
+
+// Sky & Background
+bool overrideSkybox;
+Material skyboxMaterial;
+Color backgroundColor;
+
+// Fog
+bool enableFog;
+Color fogColor;
+FogMode fogMode;               // Linear, Exponential, ExponentialSquared
+float fogDensity;              // Exponential modes
+float fogStartDistance;        // Linear mode
+float fogEndDistance;          // Linear mode
+
+// Background Elements
+GameObject backgroundPrefab;   // 3D scenery (mountains, clouds, etc.)
+Vector3 backgroundPosition;
+Vector3 backgroundRotation;
+Vector3 backgroundScale;
+
+// Post-Processing (Future)
+GameObject postProcessingVolumePrefab;
+```
+
+**Usage**:
+1. Create visual theme asset
+2. Configure lighting/fog/sky properties
+3. Assign to `LevelDefinition.visualTheme`
+4. Theme applies automatically on level load
+
+**Lifecycle**:
+- Applied: `LevelManager.LoadLevel()` → `ApplyLevelThemes()`
+- Cleaned: `LevelManager.UnloadLevel()` → `CleanupLevelThemes()`
+
+**Example Presets**: Day, Sunset, Night, Overcast, Industrial
+
+**Files**: `LevelVisualTheme.cs`, `ThemePresets.cs`
+
+---
+
+### LevelAudioTheme (ScriptableObject)
+
+**Purpose**: Define audio atmosphere for a level
+
+**ScriptableObject Path**: Create → AWITP → Level Audio Theme
+
+**Properties**:
+```csharp
+// Theme Info
+string themeName;
+string description;
+
+// Music Tracks
+AudioClip builderModeTrack;    // Override builder/designer music
+AudioClip playModeTrack;       // Override play mode music
+float musicVolume;             // 0-1 multiplier
+float musicFadeInDuration;     // Seconds
+
+// Ambient Sound Layer
+AudioClip ambientLoop;         // Continuous background (wind, water, etc.)
+float ambientVolume;           // 0-1
+bool ambientIs3D;              // Spatial audio
+
+// Random Ambient Sounds
+AudioClip[] randomAmbientSounds;  // One-shots (birds, thunder, etc.)
+float randomSoundMinInterval;     // Seconds between sounds
+float randomSoundMaxInterval;
+float randomSoundVolume;          // 0-1
+
+// Sound Effects (Future)
+AudioClip blockPlacementSound;
+AudioClip blockRemovalSound;
+AudioClip uiClickSound;
+```
+
+**Integration with GameModeManager**:
+- Overrides music tracks while preserving synchronized dual-track crossfading
+- Both builder and play tracks can be overridden
+- Tracks reset to defaults when level unloads
+
+**New GameModeManager API**:
+```csharp
+public void SetBuilderModeTrack(AudioClip track);
+public void SetPlayModeTrack(AudioClip track);
+public void SetMusicVolume(float volume);
+public void ResetMusicTracks();
+```
+
+**Runtime Component**: `AudioThemeController`
+- Created automatically when theme applied
+- Manages ambient loop AudioSource
+- Schedules random sounds
+- Cleaned up on level unload
+
+**Usage**:
+1. Create audio theme asset
+2. Assign music clips and ambient sounds
+3. Assign to `LevelDefinition.audioTheme`
+4. Theme applies automatically on level load
+
+**Example**: Peaceful theme with soft piano, bird chirps, wind ambience
+
+**Files**: `LevelAudioTheme.cs`, `GameModeManager.cs` (lines 319-390)
+
+---
+
+### Theme Presets (Static Utility)
+
+**Purpose**: Quick access to common theme configurations
+
+**Available Presets**:
+- **Day**: Bright, cheerful daytime (warm white light, clear sky)
+- **Sunset**: Dramatic orange/pink (low-angle light, warm fog)
+- **Night**: Dark, mysterious (blue moonlight, dark fog)
+- **Overcast**: Gray, somber (diffuse light, no shadows)
+- **Industrial**: Cold, metallic (harsh white light, gray fog)
+- **Random**: Randomized settings for experimentation
+
+**Usage**:
+```csharp
+// Get preset theme
+LevelVisualTheme sunset = ThemePresets.CreateSunsetTheme();
+
+// Apply immediately (testing)
+sunset.Apply(Camera.main);
+
+// Or assign to level
+levelDefinition.visualTheme = sunset;
+```
+
+**Files**: `ThemePresets.cs`
+
+---
+
+### Level Variety Utilities
+
+**Purpose**: Helper methods for procedural variety and theme creation
+
+**Features**:
+
+**Color Theory**:
+```csharp
+// Generate harmonious palette
+Color[] palette = LevelVarietyUtils.GenerateColorPalette(baseHue: 0.6f, count: 5);
+
+// Get complementary colors
+var (primary, complement) = LevelVarietyUtils.GetComplementaryColors(0.5f);
+```
+
+**Time of Day**:
+```csharp
+// Convert hour to lighting
+Color lightColor = LevelVarietyUtils.GetLightColorForTimeOfDay(18f); // 6 PM
+Vector3 lightDir = LevelVarietyUtils.GetLightDirectionForTimeOfDay(18f);
+```
+
+**Fog Calculations**:
+```csharp
+// Calculate density for desired visibility distance
+float density = LevelVarietyUtils.CalculateFogDensity(50f, FogMode.Exponential);
+
+// Match fog to light color
+var (fogColor, fogDensity) = LevelVarietyUtils.GetMatchingFog(lightColor, thickness: 0.015f);
+```
+
+**Sky Gradients**:
+```csharp
+// Get gradient colors for time of day
+var (topColor, horizonColor) = LevelVarietyUtils.GetSkyGradient(timeOfDay: 18f);
+```
+
+**Atmosphere Presets**:
+```csharp
+// Get complete atmosphere configuration
+var preset = LevelVarietyUtils.GetAtmospherePreset("dramatic");
+LevelVarietyUtils.ApplyAtmospherePreset(myTheme, preset);
+```
+
+**Files**: `LevelVarietyUtils.cs`
+
+---
+
+### Theme Integration in LevelDefinition
+
+**New Fields**:
+```csharp
+[Header("Visual & Audio Themes (Optional)")]
+public LevelVisualTheme visualTheme;  // null = use defaults
+public LevelAudioTheme audioTheme;    // null = use defaults
+```
+
+**Backward Compatibility**:
+- Themes are optional - null references work fine
+- Existing levels continue to function without themes
+- No changes to LevelData JSON structure
+
+**Workflow**:
+1. Create level (blocks, lems, inventory, etc.)
+2. Optionally assign visual theme
+3. Optionally assign audio theme
+4. Save level (themes referenced by GUID, not embedded)
+
+**Files**: `LevelDefinition.cs` (lines 33-40)
+
+---
+
+### Theme Lifecycle Management
+
+**LevelManager Integration**:
+
+**Load Flow**:
+```
+LevelManager.LoadLevel()
+  → InstantiateLevel()
+  → ApplyLevelThemes()
+    → visualTheme.Apply(mainCamera) [if not null]
+      → Sets RenderSettings (lighting, fog, skybox)
+      → Instantiates backgroundPrefab
+      → Returns background GameObject reference
+    → audioTheme.Apply(audioContainer) [if not null]
+      → Creates AudioThemeController component
+      → Starts ambient loop
+      → Schedules random sounds
+      → Overrides music tracks via GameModeManager
+      → Returns AudioThemeController reference
+```
+
+**Unload Flow**:
+```
+LevelManager.UnloadLevel()
+  → CleanupLevelThemes()
+    → Destroy(visualThemeBackground) [if exists]
+    → LevelVisualTheme.ResetToDefaults()
+    → audioThemeController.Stop()
+    → Destroy(audioThemeController.gameObject)
+    → GameModeManager.ResetMusicTracks()
+```
+
+**State Tracking**:
+```csharp
+// LevelManager private fields
+private GameObject _currentVisualThemeBackground;
+private AudioThemeController _currentAudioThemeController;
+```
+
+**Files**: `LevelManager.cs` (lines 266-300, 646-712)
+
+---
+
+### Git Workflow with Themes
+
+**Commit Structure**:
+```bash
+# Theme assets separate from levels
+git add Assets/Data/Themes/Visual/Theme_Sunset.asset
+git commit -m "Add sunset visual theme"
+
+git add Assets/Data/Levels/LevelDefinitions/Level_05.asset
+git commit -m "Add Level 5 using sunset theme"
+```
+
+**Merge Handling**:
+- Themes are ScriptableObjects (text YAML format)
+- Merge conflicts rare and human-readable
+- Asset references use GUIDs (stable across renames/moves)
+
+**Theme Reusability**:
+```
+Assets/Data/Themes/
+├── Visual/
+│   ├── Theme_Day.asset       (shared by Levels 1-3)
+│   ├── Theme_Sunset.asset    (shared by Levels 4-6)
+│   ├── Theme_Night.asset     (shared by Levels 7-9)
+│   └── Theme_Industrial.asset
+└── Audio/
+    ├── Theme_Peaceful.asset   (shared by early worlds)
+    ├── Theme_Intense.asset    (shared by challenge levels)
+    └── Theme_Nature.asset
+```
+
+---
+
+### Performance Characteristics
+
+**Visual Themes**:
+- Applied once at level load (not per-frame)
+- Background prefabs: Check poly count, use LOD groups if needed
+- Fog: Negligible overhead on modern hardware
+- Post-processing: Can be expensive, use wisely
+
+**Audio Themes**:
+- Ambient loop: 1 AudioSource (minimal overhead)
+- Random sounds: 1 AudioSource, plays occasionally
+- Music overrides: Same cost as default system
+
+**Memory**:
+- Themes are lightweight asset references (GUIDs only)
+- Background prefabs loaded on-demand
+- Audio clips streamed (not loaded in memory unless playing)
+
+---
+
+### Documentation
+
+**Comprehensive Guides**:
+1. **LEVEL_THEMING_GUIDE.md** - 500+ line guide
+   - System overview
+   - How to create themes
+   - Designer workflows
+   - Git practices
+   - Performance tips
+   - Examples gallery
+
+2. **SAVE_SYSTEM_ENHANCEMENTS.md** - Executive summary
+   - What was added
+   - Quick start guide
+   - Next steps
+
+3. **PROJECT.md** - Architecture documentation
+   - Added Level Theming System section
+
+**Quick Start**:
+```csharp
+// 1. Create preset
+LevelVisualTheme sunset = ThemePresets.CreateSunsetTheme();
+
+// 2. Assign to level
+levelDefinition.visualTheme = sunset;
+
+// 3. Load level - theme applies automatically
+LevelManager.Instance.LoadLevel(levelDefinition);
+```
+
+---
+
 ## Legacy File-Based Level Saves (Optional)
 
 `LevelSaveSystem` can save a `LevelData` JSON file to disk:

@@ -62,9 +62,30 @@ A Walk in the Park is a 2D grid-based puzzle game built in Unity where players c
 - **BorderRenderer** - Reusable component for drawing square borders with LineRenderer
 
 #### Save/Load System
-- **LevelData** - Serializable data structure for level state
-- **LevelDefinition** - ScriptableObject that stores LevelData JSON inside assets
-- **LevelSaveSystem** - Optional file I/O for saving/loading LevelData JSON to disk
+- **LevelData** - Serializable data structure for level state (grid, blocks, lems, inventory, camera)
+- **LevelDefinition** - ScriptableObject that stores LevelData and optional themes
+- **GameProgressData** - Player save data (completed levels, unlocked worlds, statistics)
+- **ProgressManager** - Singleton managing player progress persistence (JSON to disk)
+- **LevelManager** - Loads/instantiates levels, applies themes, tracks completion
+- **WorldManager** - Manages world collections and progression
+
+#### Level Theming System (Visual & Audio Variety)
+- **LevelVisualTheme** - ScriptableObject for lighting, sky, fog, background elements
+  - Directional light (color, direction, intensity, shadows)
+  - Ambient lighting (skybox, flat, trilight modes)
+  - Sky & background (custom skybox, camera color, prefab scenery)
+  - Fog (linear, exponential, exponential-squared)
+  - Optional post-processing volumes
+- **LevelAudioTheme** - ScriptableObject for music and ambient sounds
+  - Music track overrides (builder/play modes)
+  - Ambient sound loops (wind, water, birds, etc.)
+  - Random one-shot sounds (thunder, calls, etc.)
+  - Integrates with GameModeManager's dual-track system
+- **ThemePresets** - Quick-start presets (Day, Sunset, Night, Overcast, Industrial)
+- **LevelVarietyUtils** - Color palettes, lighting calculations, atmosphere generators
+- **Git-Friendly**: All themes are ScriptableObjects (text-based YAML)
+- **Modular & Reusable**: One theme can be shared across many levels
+- **Optional**: Levels work without themes (use defaults)
 
 ### Game Modes
 
