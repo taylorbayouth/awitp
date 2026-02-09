@@ -181,7 +181,11 @@ public class LevelDefinitionEditor : Editor
         {
             EditorGUILayout.Space(5);
             EditorGUILayout.LabelField("Teleporter Settings", EditorStyles.miniBoldLabel);
-            entry.flavorId = EditorGUILayout.TextField("Flavor ID (e.g., A, B, C)", entry.flavorId);
+
+            TeleporterBlock.TeleporterFlavor flavor = TeleporterBlock.ParseFlavorOrDefault(entry.flavorId);
+            flavor = (TeleporterBlock.TeleporterFlavor)EditorGUILayout.EnumPopup("Flavor", flavor);
+            entry.flavorId = TeleporterBlock.FlavorToId(flavor);
+
             entry.isPairInventory = EditorGUILayout.Toggle("Is Pair Inventory", entry.isPairInventory);
             if (entry.isPairInventory)
             {
