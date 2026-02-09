@@ -15,6 +15,10 @@ public class KeyItem : MonoBehaviour
     private float sourceLocalYOffset = 0.6f;
     private float sourceScale = 0.2f;
     private float carryYOffset = 0.6f;
+    private bool hasSourcePose;
+    private Vector3 sourceLocalPosition;
+    private Quaternion sourceLocalRotation = Quaternion.identity;
+    private Vector3 sourceLocalScale = Vector3.one;
 
     public void ConfigureSource(int keyBlockIndex, float localYOffset, float scale, float carryOffset)
     {
@@ -22,6 +26,14 @@ public class KeyItem : MonoBehaviour
         sourceLocalYOffset = localYOffset;
         sourceScale = scale;
         carryYOffset = carryOffset;
+    }
+
+    public void CaptureSourcePoseFromCurrentTransform()
+    {
+        sourceLocalPosition = transform.localPosition;
+        sourceLocalRotation = transform.localRotation;
+        sourceLocalScale = transform.localScale;
+        hasSourcePose = true;
     }
 
     public float GetCarryYOffset(float cellSize = 1f)
@@ -42,12 +54,18 @@ public class KeyItem : MonoBehaviour
         holderLem = null;
         holderLock = null;
 
-        // Look for ApplePlacement marker on key block
-        Transform applePlacement = blockTransform.Find("ApplePlacement");
-        Transform parentTarget = applePlacement != null ? applePlacement : blockTransform;
-        Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * sourceLocalYOffset;
+        if (hasSourcePose)
+        {
+            transform.SetParent(blockTransform, false);
+            transform.localPosition = sourceLocalPosition;
+            transform.localRotation = sourceLocalRotation;
+            transform.localScale = sourceLocalScale;
+            RefreshIdleMotion();
+            return;
+        }
 
-        SetParentAndTransform(parentTarget, localPos, GetWorldScale(cellSize));
+        SetParentAndTransform(blockTransform, Vector3.up * sourceLocalYOffset, GetWorldScale(cellSize));
+        RefreshIdleMotion();
     }
 
     public void AttachToLem(LemController lem, float localYOffset, float worldScale)
@@ -63,6 +81,7 @@ public class KeyItem : MonoBehaviour
         Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * localYOffset;
 
         SetParentAndTransform(parentTarget, localPos, worldScale);
+        RefreshIdleMotion();
     }
 
     public void AttachToLock(Transform lockTransform, float localYOffset, float worldScale)
@@ -79,6 +98,7 @@ public class KeyItem : MonoBehaviour
         Vector3 localPos = applePlacement != null ? Vector3.zero : Vector3.up * localYOffset;
 
         SetParentAndTransform(parentTarget, localPos, worldScale);
+        RefreshIdleMotion();
     }
 
     public static KeyItem FindHeldKey(LemController lem)
@@ -118,5 +138,14 @@ public class KeyItem : MonoBehaviour
         float parentScale = parent != null ? parent.lossyScale.x : 1f;
         float localScale = parentScale > 0f ? worldScale / parentScale : worldScale;
         transform.localScale = Vector3.one * localScale;
+    }
+
+    private void RefreshIdleMotion()
+    {
+        KeyIdleMotion idleMotion = GetComponent<KeyIdleMotion>();
+        if (idleMotion != null)
+        {
+            idleMotion.RefreshState();
+        }
     }
 }

@@ -2080,7 +2080,7 @@ CapsuleCollider:
   m_Enabled: 1
   serializedVersion: 2
   m_Radius: 0.2375
-  m_Height: 0.95
+  m_Height: 0.9
   m_Direction: 1
   m_Center: {x: 0, y: 0.475, z: 0}
 --- !u!114 &6430986204268279358
@@ -2095,8 +2095,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1b29b6324af2b48e591ebd487d43b8aa, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LemController
-  glitchRotationOffset: {x: 0, y: 90, z: 0}
+  visualRotationOffset: {x: 0, y: 90, z: 0}
+  speedBlendDampTime: 0.08
   walkSpeed: 0.8
+  lemHeight: 1
+  horizontalAcceleration: 5
+  horizontalDeceleration: 11
+  wallBumpSlowdownMultiplier: 0.95
+  wallBumpSlowdownDuration: 0.2
+  turnDuration: 0.6
   wallCheckDistance: 0.3
   groundCheckDistance: 1
   solidLayerMask:
@@ -2106,7 +2113,6 @@ MonoBehaviour:
   fallArcHorizontalSpeed: 0.5
   fallArcEaseInTime: 0.08
   fallArcEaseOutTime: 0.01
-  fallArcCooldown: 1
   facingRight: 1
   isGrounded: 0
   isAlive: 1
@@ -2116,15 +2122,16 @@ MonoBehaviour:
   footstepSurfaces:
   - blockType: 0
     clip: {fileID: 8300000, guid: fc06879d4b7c741509ae08765496d7f8, type: 3}
-    volumeRange: {x: 2, y: 2.5}
+    volumeRange: {x: 8, y: 10}
     pitchRange: {x: 0.95, y: 1.05}
   - blockType: 2
     clip: {fileID: 8300000, guid: 28f7d5dbc6d71418697f966c96dd70b0, type: 3}
-    volumeRange: {x: 2, y: 2.5}
+    volumeRange: {x: 8, y: 10}
     pitchRange: {x: 0.95, y: 1.05}
   footstepFallbackClip: {fileID: 8300000, guid: 28f7d5dbc6d71418697f966c96dd70b0, type: 3}
-  footstepFallbackVolumeRange: {x: 2, y: 2.5}
+  footstepFallbackVolumeRange: {x: 8, y: 10}
   footstepFallbackPitchRange: {x: 0.95, y: 1.05}
+  interactionStopTweenDuration: 0.2
 --- !u!54 &8779439179383067650
 Rigidbody:
   m_ObjectHideFlags: 0

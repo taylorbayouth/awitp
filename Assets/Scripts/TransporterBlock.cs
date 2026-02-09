@@ -43,7 +43,6 @@ public class TransporterBlock : BaseBlock
         LemController lem = currentPlayer != null ? currentPlayer : ServiceRegistry.Get<LemController>();
         if (lem == null)
         {
-            Debug.LogError("Cannot transport - Lem not found");
             return;
         }
 
@@ -60,7 +59,6 @@ public class TransporterBlock : BaseBlock
         // Disarm trigger and start transport
         isArmed = false;
         SetCenterTriggerEnabled(false);
-        if (debugLogs) Debug.Log($"TransporterBlock: start transport (forward={isForward})", this);
         StartCoroutine(TransportRoutine(lem, steps));
     }
 
@@ -110,6 +108,9 @@ public class TransporterBlock : BaseBlock
     {
         isTransporting = true;
         hasSnappedThisRide = false;
+        bool lemWasPushedOff = false;
+
+        yield return lem.StartCoroutine(lem.TweenHorizontalSpeedToZero(lem.GetInteractionStopTweenDuration()));
 
         // Freeze Lem's physics - save previous state to restore later
         Rigidbody lemRb = lem.GetComponent<Rigidbody>();
@@ -124,7 +125,6 @@ public class TransporterBlock : BaseBlock
             lemRb.useGravity = false;
         }
         lem.SetFrozen(true);
-        if (debugLogs) Debug.Log("TransporterBlock: Lem frozen and parented", this);
 
         // Parent Lem to the block so they move together
         lem.transform.SetParent(transform, true);
@@ -153,8 +153,19 @@ public class TransporterBlock : BaseBlock
             float t = 0f;
             while (t < 1f)
             {
+                Vector3 previousPosition = transform.position;
                 t += Time.deltaTime / duration;
                 transform.position = Vector3.Lerp(startPos, targetPos, Mathf.Clamp01(t));
+
+                if (!lemWasPushedOff)
+                {
+                    Vector3 movementDirection = transform.position - previousPosition;
+                    if (TryPushCarriedLemOffIfBlocked(lem, lemRb, prevKinematic, prevUseGravity, movementDirection))
+                    {
+                        lemWasPushedOff = true;
+                    }
+                }
+
                 yield return null;
             }
 
@@ -169,15 +180,17 @@ public class TransporterBlock : BaseBlock
             grid.RegisterBlock(this);
         }
 
-        // Unparent Lem and restore physics
-        lem.transform.SetParent(null, true);
-        if (lemRb != null)
+        // Unparent Lem and restore physics when still being carried.
+        if (!lemWasPushedOff)
         {
-            lemRb.isKinematic = prevKinematic;
-            lemRb.useGravity = prevUseGravity;
+            lem.transform.SetParent(null, true);
+            if (lemRb != null)
+            {
+                lemRb.isKinematic = prevKinematic;
+                lemRb.useGravity = prevUseGravity;
+            }
+            lem.SetFrozen(false);
         }
-        lem.SetFrozen(false);
-        if (debugLogs) Debug.Log("TransporterBlock: Lem unfrozen and detached", this);
 
         // Flip direction for next ride and update arrow
         isForward = !isForward;
@@ -186,14 +199,111 @@ public class TransporterBlock : BaseBlock
         // Wait for Lem to exit before re-arming
         isTransporting = false;
         waitingForExit = true;
-        if (debugLogs) Debug.Log("TransporterBlock: transport complete, waiting for exit", this);
+    }
+
+    private bool TryPushCarriedLemOffIfBlocked(
+        LemController lem,
+        Rigidbody lemRb,
+        bool prevKinematic,
+        bool prevUseGravity,
+        Vector3 fallbackDirection)
+    {
+        if (lem == null) return false;
+        if (lem.transform.parent != transform) return false;
+
+        Collider lemCollider = lem.GetComponent<Collider>();
+        if (lemCollider == null) return false;
+
+        Bounds lemBounds = lemCollider.bounds;
+        Vector3 center = lemBounds.center;
+        Vector3 halfExtents = lemBounds.extents + Vector3.one * 0.005f;
+        Collider[] overlaps = Physics.OverlapBox(center, halfExtents, lem.transform.rotation, ~0, QueryTriggerInteraction.Ignore);
+        if (overlaps == null || overlaps.Length == 0) return false;
+
+        float bestSeparationDistance = 0f;
+        Vector3 bestSeparationDirection = Vector3.zero;
+        BaseBlock blockingBlock = null;
+
+        for (int i = 0; i < overlaps.Length; i++)
+        {
+            Collider other = overlaps[i];
+            if (other == null || other == lemCollider) continue;
+            if (other.isTrigger) continue;
+            if (other.transform == lem.transform || other.transform.IsChildOf(lem.transform)) continue;
+
+            BaseBlock otherBlock = other.GetComponentInParent<BaseBlock>();
+            if (otherBlock == null || otherBlock == this) continue;
+
+            if (!Physics.ComputePenetration(
+                lemCollider,
+                lemCollider.transform.position,
+                lemCollider.transform.rotation,
+                other,
+                other.transform.position,
+                other.transform.rotation,
+                out Vector3 separationDirection,
+                out float separationDistance))
+            {
+                continue;
+            }
+
+            if (separationDistance <= bestSeparationDistance) continue;
+
+            bestSeparationDistance = separationDistance;
+            bestSeparationDirection = separationDirection;
+            blockingBlock = otherBlock;
+        }
+
+        if (bestSeparationDistance <= 0f)
+        {
+            return false;
+        }
+
+        Vector3 pushDirection = new Vector3(bestSeparationDirection.x, bestSeparationDirection.y, 0f);
+        if (pushDirection.sqrMagnitude <= 0.0001f)
+        {
+            pushDirection = new Vector3(fallbackDirection.x, fallbackDirection.y, 0f);
+        }
+        if (pushDirection.sqrMagnitude <= 0.0001f)
+        {
+            pushDirection = Vector3.up;
+        }
+        pushDirection.Normalize();
+
+        // Detach and restore normal movement state before applying push.
+        lem.transform.SetParent(null, true);
+        if (lemRb != null)
+        {
+            lemRb.isKinematic = prevKinematic;
+            lemRb.useGravity = prevUseGravity;
+        }
+        lem.SetFrozen(false);
+
+        float pushDistance = bestSeparationDistance + 0.02f;
+        lem.transform.position += pushDirection * pushDistance;
+
+        if (lemRb != null && !lemRb.isKinematic)
+        {
+            Vector3 pushVelocity = pushDirection * 0.75f;
+            pushVelocity.y = Mathf.Max(pushVelocity.y, 0.2f);
+            pushVelocity.z = 0f;
+
+            Vector3 existingVelocity = lemRb.linearVelocity;
+            lemRb.linearVelocity = new Vector3(pushVelocity.x, Mathf.Max(existingVelocity.y, pushVelocity.y), 0f);
+        }
+
+        if (debugLogs && blockingBlock != null)
+        {
+            Debug.Log($"[TransporterBlock] Pushed Lem off during transport due to collision with {blockingBlock.blockType} at index {blockingBlock.gridIndex}.", this);
+        }
+
+        return true;
     }
 
     protected override void OnPlayerExit()
     {
         if (isTransporting) return;
         waitingForExit = true;
-        if (debugLogs) Debug.Log("TransporterBlock: OnPlayerExit -> waiting for exit", this);
     }
 
     private List<Vector2Int> BuildSteps()
@@ -286,31 +396,39 @@ public class TransporterBlock : BaseBlock
         GridManager grid = GetGridManager();
         if (grid == null) return indices;
 
-        int originIndex = previewOriginIndex >= 0 ? previewOriginIndex : gridIndex;
-
-        // Safety check: originIndex must be valid before converting to coordinates
-        if (originIndex < 0 || !grid.IsValidIndex(originIndex))
+        try
         {
-            return indices;  // Return empty list if no valid origin
-        }
+            int originIndex = previewOriginIndex >= 0 ? previewOriginIndex : gridIndex;
 
-        Vector2Int current = grid.IndexToCoordinates(originIndex);
-        List<Vector2Int> steps = BuildSteps();
-
-        HashSet<int> unique = new HashSet<int>();
-        if (grid.IsValidIndex(originIndex)) unique.Add(originIndex);
-
-        foreach (Vector2Int step in steps)
-        {
-            current += step;
-            if (grid.IsValidCoordinates(current.x, current.y))
+            // During editor validation GridManager can exist but be uninitialized.
+            if (originIndex < 0 || !grid.IsValidIndex(originIndex))
             {
-                int idx = grid.CoordinatesToIndex(current);
-                if (unique.Add(idx)) indices.Add(idx);
+                return indices;
             }
+
+            Vector2Int current = grid.IndexToCoordinates(originIndex);
+            List<Vector2Int> steps = BuildSteps();
+
+            HashSet<int> unique = new HashSet<int>();
+            if (grid.IsValidIndex(originIndex)) unique.Add(originIndex);
+
+            foreach (Vector2Int step in steps)
+            {
+                current += step;
+                if (grid.IsValidCoordinates(current.x, current.y))
+                {
+                    int idx = grid.CoordinatesToIndex(current);
+                    if (unique.Add(idx)) indices.Add(idx);
+                }
+            }
+
+            if (unique.Contains(originIndex)) indices.Insert(0, originIndex);
+        }
+        catch
+        {
+            return indices;
         }
 
-        if (unique.Contains(originIndex)) indices.Insert(0, originIndex);
         return indices;
     }
 
@@ -627,7 +745,6 @@ public class TransporterBlock : BaseBlock
             waitingForExit = false;
             isArmed = true;
             SetCenterTriggerEnabled(true);
-            if (debugLogs) Debug.Log("TransporterBlock: Lem cleared block, re-armed", this);
         }
     }
 

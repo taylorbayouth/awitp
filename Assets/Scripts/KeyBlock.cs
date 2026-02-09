@@ -50,11 +50,19 @@ public class KeyBlock : BaseBlock
     {
         if (keyTransform != null) return;
 
-        // Find ApplePlacement child if it exists
-        Transform applePlacement = transform.Find("ApplePlacement");
+        Transform existingKey = transform.Find("Key");
+        if (existingKey == null)
+        {
+            existingKey = transform.Find("GreenApple");
+        }
+        bool hasEmbeddedKeyVisual = existingKey != null;
 
-        GameObject keyObj;
-        if (keyVisualPrefab != null)
+        GameObject keyObj = null;
+        if (existingKey != null)
+        {
+            keyObj = existingKey.gameObject;
+        }
+        else if (keyVisualPrefab != null)
         {
             Object instance = Instantiate((Object)keyVisualPrefab);
             keyObj = instance as GameObject;
@@ -64,7 +72,6 @@ public class KeyBlock : BaseBlock
             }
             if (keyObj == null)
             {
-                Debug.LogWarning($"[KeyBlock] Failed to instantiate key visual prefab on {name}. Falling back to mesh/sphere.", this);
                 keyObj = CreateKeyFromMeshOrSphere();
             }
         }
@@ -75,22 +82,28 @@ public class KeyBlock : BaseBlock
             if (applePrefab != null)
             {
                 keyObj = Instantiate(applePrefab);
-                DebugLog.Info($"[KeyBlock] Loaded GreenApple prefab from Resources");
             }
             else
             {
                 keyObj = CreateKeyFromMeshOrSphere();
             }
         }
-        keyObj.name = "Key";
+
+        if (keyObj == null) return;
+
+        if (!hasEmbeddedKeyVisual)
+        {
+            keyObj.name = "Key";
+        }
         foreach (Collider collider in keyObj.GetComponentsInChildren<Collider>())
         {
             Destroy(collider);
         }
 
-        // Parent to ApplePlacement if it exists, otherwise to the block itself
-        Transform parentTransform = applePlacement != null ? applePlacement : transform;
-        keyObj.transform.SetParent(parentTransform, false);
+        if (!hasEmbeddedKeyVisual)
+        {
+            keyObj.transform.SetParent(transform, false);
+        }
 
         MeshFilter meshFilter = keyObj.GetComponentInChildren<MeshFilter>();
         if (meshFilter != null && meshFilter.sharedMesh != null)
@@ -110,20 +123,31 @@ public class KeyBlock : BaseBlock
         }
 
         keyTransform = keyObj.transform;
-        keyItem = keyObj.AddComponent<KeyItem>();
+        keyItem = keyObj.GetComponent<KeyItem>();
+        if (keyItem == null)
+        {
+            keyItem = keyObj.AddComponent<KeyItem>();
+        }
+        if (keyObj.GetComponent<KeyIdleMotion>() == null)
+        {
+            keyObj.AddComponent<KeyIdleMotion>();
+        }
         keyItem.ConfigureSource(gridIndex, keyLocalYOffset, keyScale * keyVisualScaleMultiplier, keyCarryYOffset);
 
-        // If parented to ApplePlacement, use its position; otherwise apply offset
-        if (keyTransform.parent != transform)
+        if (hasEmbeddedKeyVisual)
         {
-            // Already positioned by ApplePlacement, just apply scale
-            ApplyKeyTransform(keyTransform, Vector3.zero, GetKeyWorldScale());
-            DebugLog.Info($"[KeyBlock] Key positioned at ApplePlacement marker");
+            keyItem.CaptureSourcePoseFromCurrentTransform();
         }
         else
         {
-            // No ApplePlacement found, use legacy offset positioning
             ApplyKeyTransform(keyTransform, Vector3.up * keyLocalYOffset, GetKeyWorldScale());
+            keyItem.CaptureSourcePoseFromCurrentTransform();
+        }
+
+        KeyIdleMotion idleMotion = keyObj.GetComponent<KeyIdleMotion>();
+        if (idleMotion != null)
+        {
+            idleMotion.RefreshState();
         }
     }
 
