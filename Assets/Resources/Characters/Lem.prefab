@@ -2097,8 +2097,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LemController
   visualRotationOffset: {x: 0, y: 90, z: 0}
   speedBlendDampTime: 0.08
-  walkSpeed: 0.8
-  lemHeight: 1
+  walkSpeed: 0.7
+  lemHeight: 0.85
   horizontalAcceleration: 5
   horizontalDeceleration: 11
   wallBumpSlowdownMultiplier: 0.95
@@ -2109,7 +2109,7 @@ MonoBehaviour:
   solidLayerMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  fallArcForwardDistance: 0.5
+  fallArcForwardDistance: 0.45
   fallArcHorizontalSpeed: 0.5
   fallArcEaseInTime: 0.08
   fallArcEaseOutTime: 0.01
