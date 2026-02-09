@@ -21,7 +21,7 @@ public class BlockInventoryEntry
     [Tooltip("Optional shared pool id. Entries with the same group id share counts.")]
     public string inventoryGroupId;
 
-    [Tooltip("Optional flavor id (e.g., 'A', 'B', 'C' for teleporters; 'L3,U1' for transporters).")]
+    [Tooltip("Optional flavor id (teleporters use A-D; transporters can use route ids like L3,U1).")]
     public string flavorId;
 
     [Tooltip("Transporter-only route steps like L2, U1. Leave empty for non-transporters.")]
@@ -68,6 +68,21 @@ public class BlockInventoryEntry
 
     public string GetResolvedFlavorId()
     {
+        if (blockType == BlockType.Teleporter)
+        {
+            if (TeleporterBlock.TryParseFlavor(flavorId, out TeleporterBlock.TeleporterFlavor flavor))
+            {
+                return TeleporterBlock.FlavorToId(flavor);
+            }
+
+            if (!string.IsNullOrWhiteSpace(flavorId))
+            {
+                return flavorId.Trim();
+            }
+
+            return TeleporterBlock.FlavorToId(TeleporterBlock.TeleporterFlavor.A);
+        }
+
         if (!string.IsNullOrEmpty(flavorId)) return flavorId;
         if (routeSteps != null && routeSteps.Length > 0)
         {
