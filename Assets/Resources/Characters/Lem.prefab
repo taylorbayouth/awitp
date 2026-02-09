@@ -2098,7 +2098,7 @@ MonoBehaviour:
   visualRotationOffset: {x: 0, y: 90, z: 0}
   speedBlendDampTime: 0.08
   walkSpeed: 0.7
-  lemHeight: 0.85
+  lemHeight: 0.9
   horizontalAcceleration: 5
   horizontalDeceleration: 11
   wallBumpSlowdownMultiplier: 0.95

@@ -643,6 +643,12 @@ public class BlockPlacementManager : MonoBehaviour
 
         block.transform.position = position;
         block.transform.localScale = Vector3.one; // Grid cells are normalized to 1.0 world unit
+
+        if (block.blockType == BlockType.Walk || block.blockType == BlockType.Crumbler)
+        {
+            float yRotation = 90f * UnityEngine.Random.Range(0, 4);
+            block.transform.rotation = Quaternion.Euler(0f, yRotation, 0f);
+        }
     }
 
     /// <summary>

@@ -45,6 +45,7 @@ public class TeleporterBlock : BaseBlock
     private Transform labelTransform;
 
     private static readonly Dictionary<LemController, float> LemCooldownUntil = new Dictionary<LemController, float>();
+    private readonly HashSet<LemController> blockedUntilTriggerExit = new HashSet<LemController>();
 
     // Flavor A keeps source material/shader colors.
     private static readonly Color PadPurple = new Color(95f / 255f, 0f, 154f / 255f, 1f);      // #5F009A
@@ -117,6 +118,11 @@ public class TeleporterBlock : BaseBlock
     {
         LemController lem = currentPlayer != null ? currentPlayer : ServiceRegistry.Get<LemController>();
         if (lem == null) return;
+
+        if (IsBlockedUntilTriggerExit(lem))
+        {
+            return;
+        }
 
         if (IsOnCooldown(lem))
         {
@@ -206,6 +212,7 @@ public class TeleporterBlock : BaseBlock
         }
 
         Vector3 targetPosition = destination.GetTeleportLandingPosition(destinationYOffset);
+        destination.RequireTriggerExitBeforeReuse(lem);
         lem.transform.position = targetPosition;
 
         float postDelay = Mathf.Max(0f, postTeleportPauseSeconds);
@@ -236,6 +243,30 @@ public class TeleporterBlock : BaseBlock
             return Time.time < until;
         }
         return false;
+    }
+
+    protected override void OnPlayerTriggerExit(LemController lem)
+    {
+        if (lem == null) return;
+        blockedUntilTriggerExit.Remove(lem);
+    }
+
+    private void RequireTriggerExitBeforeReuse(LemController lem)
+    {
+        if (lem == null) return;
+        blockedUntilTriggerExit.Add(lem);
+    }
+
+    private bool IsBlockedUntilTriggerExit(LemController lem)
+    {
+        if (blockedUntilTriggerExit.Count == 0) return false;
+
+        if (blockedUntilTriggerExit.Remove(null) && blockedUntilTriggerExit.Count == 0)
+        {
+            return false;
+        }
+
+        return lem != null && blockedUntilTriggerExit.Contains(lem);
     }
 
     private void SetCooldown(LemController lem)
