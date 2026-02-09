@@ -92,7 +92,6 @@ public class TeleporterBlock : BaseBlock
         TeleporterBlock destination = FindMatchingTeleporter();
         if (destination == null)
         {
-            Debug.LogWarning($"[TeleporterBlock] No matching teleporter found for flavor '{GetTeleportKey()}'", this);
             return;
         }
 
@@ -122,11 +121,6 @@ public class TeleporterBlock : BaseBlock
                 bestDistance = dist;
                 best = teleporter;
             }
-        }
-
-        if (matchCount > 1)
-        {
-            Debug.LogWarning($"[TeleporterBlock] Multiple matching teleporters found for flavor '{key}'. Using closest.", this);
         }
 
         return best;
@@ -161,11 +155,7 @@ public class TeleporterBlock : BaseBlock
     {
         if (lem == null || destination == null) yield break;
 
-        Rigidbody lemRb = lem.GetComponent<Rigidbody>();
-        if (lemRb != null)
-        {
-            lemRb.linearVelocity = Vector3.zero;
-        }
+        yield return lem.StartCoroutine(lem.TweenHorizontalSpeedToZero(lem.GetInteractionStopTweenDuration()));
 
         lem.SetFrozen(true);
         SetCooldown(lem);
@@ -190,8 +180,6 @@ public class TeleporterBlock : BaseBlock
             lem.SetFacingRight(facingRight);
             lem.SetFrozen(false);
         }
-
-        DebugLog.Info($"[TeleporterBlock] Teleported Lem to '{destination.name}' (flavor '{GetTeleportKey()}')", this);
     }
 
     private bool IsOnCooldown(LemController lem)

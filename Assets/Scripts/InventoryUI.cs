@@ -66,6 +66,24 @@ public class InventoryUI : MonoBehaviour
     [Tooltip("Editor-only asset path fallback for the Teleporter icon")]
     public string teleporterBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/teleporterIcon.png";
 
+    [Tooltip("Optional sprite override for the Key block inventory preview")]
+    public Sprite keyBlockSprite;
+
+    [Tooltip("Resources path fallback for the Key icon (without extension)")]
+    public string keyBlockSpriteResourcePath = "Sprites/inventoryUi/greenApple";
+
+    [Tooltip("Editor-only asset path fallback for the Key icon")]
+    public string keyBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/greenApple.png";
+
+    [Tooltip("Optional sprite override for the Lock block inventory preview")]
+    public Sprite lockBlockSprite;
+
+    [Tooltip("Resources path fallback for the Lock icon (without extension)")]
+    public string lockBlockSpriteResourcePath = "Sprites/inventoryUi/marbleHand";
+
+    [Tooltip("Editor-only asset path fallback for the Lock icon")]
+    public string lockBlockSpriteAssetPath = "Assets/Sprites/inventoryUi/marbleHand.png";
+
     [Tooltip("Optional texture override for the Transporter inventory preview")]
     public Texture2D transporterIconTexture;
 
@@ -124,6 +142,7 @@ public class InventoryUI : MonoBehaviour
         public Image countBadge;
         public Text count;
         public Text teleporterLabel;
+        public Text blockLabel;
         public BlockInventoryEntry entry;
         public int index;
     }
@@ -149,6 +168,8 @@ public class InventoryUI : MonoBehaviour
         LoadWalkBlockSprite();
         LoadCrumblerBlockSprite();
         LoadTeleporterBlockSprite();
+        LoadKeyBlockSprite();
+        LoadLockBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
         EnsureEventSystem();
@@ -162,6 +183,8 @@ public class InventoryUI : MonoBehaviour
         LoadWalkBlockSprite();
         LoadCrumblerBlockSprite();
         LoadTeleporterBlockSprite();
+        LoadKeyBlockSprite();
+        LoadLockBlockSprite();
         LoadTransporterIconTexture();
         EnsureCanvas();
         EnsureEventSystem();
@@ -478,6 +501,7 @@ public class InventoryUI : MonoBehaviour
             RawImage previewRaw = null;
             Text count = null;
             Text teleporterLabel = null;
+            Text blockLabel = null;
 
             Transform previewTransform = child.Find("Background/Preview");
             if (previewTransform != null)
@@ -493,6 +517,12 @@ public class InventoryUI : MonoBehaviour
                 if (labelTransform != null)
                 {
                     teleporterLabel = labelTransform.GetComponent<Text>();
+                }
+
+                Transform blockLabelTransform = previewTransform.Find("BlockLabel");
+                if (blockLabelTransform != null)
+                {
+                    blockLabel = blockLabelTransform.GetComponent<Text>();
                 }
             }
 
@@ -513,7 +543,8 @@ public class InventoryUI : MonoBehaviour
                 previewOutline = EnsureOutline(previewImage),
                 previewRawOutline = EnsureOutline(previewRaw),
                 count = count,
-                teleporterLabel = teleporterLabel
+                teleporterLabel = teleporterLabel,
+                blockLabel = blockLabel
             });
         }
     }
@@ -555,13 +586,13 @@ public class InventoryUI : MonoBehaviour
         if (!showInventory) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = inventory.GetEntriesForMode(mode);
-        List<BlockInventoryEntry> orderedEntries = OrderEntriesForInventory(entries, mode);
+        List<BlockInventoryEntry> orderedEntries = OrderEntriesForInventory(entries);
         bool showInfinite = mode == GameMode.Designer;
 
         int drawIndex = 0;
         for (int i = 0; i < orderedEntries.Count; i++)
         {
-            if (ShouldHideFromInventory(orderedEntries[i], mode)) continue;
+            if (ShouldHideFromInventory(orderedEntries[i])) continue;
 
             SlotUI slot = EnsureSlot(drawIndex);
             slot.entry = orderedEntries[i];
@@ -574,7 +605,7 @@ public class InventoryUI : MonoBehaviour
         FitPanelToViewport(drawIndex);
     }
 
-    private List<BlockInventoryEntry> OrderEntriesForInventory(IReadOnlyList<BlockInventoryEntry> entries, GameMode mode)
+    private List<BlockInventoryEntry> OrderEntriesForInventory(IReadOnlyList<BlockInventoryEntry> entries)
     {
         if (entries == null || entries.Count == 0)
         {
@@ -589,7 +620,7 @@ public class InventoryUI : MonoBehaviour
         {
             BlockInventoryEntry entry = entries[i];
             if (entry == null) continue;
-            if (ShouldHideFromInventory(entry, mode)) continue;
+            if (ShouldHideFromInventory(entry)) continue;
 
             if (!grouped.TryGetValue(entry.blockType, out List<BlockInventoryEntry> list))
             {
@@ -700,6 +731,15 @@ public class InventoryUI : MonoBehaviour
         labelRect.offsetMax = Vector2.zero;
         teleporterLabel.raycastTarget = false;
 
+        Text blockLabel = CreateText("BlockLabel", previewRect, textSize, TextAnchor.LowerCenter, Color.black);
+        RectTransform blockLabelRect = blockLabel.GetComponent<RectTransform>();
+        blockLabelRect.anchorMin = new Vector2(0f, 0f);
+        blockLabelRect.anchorMax = new Vector2(1f, 0f);
+        blockLabelRect.pivot = new Vector2(0.5f, 0f);
+        blockLabelRect.anchoredPosition = new Vector2(0f, 2f);
+        blockLabelRect.sizeDelta = new Vector2(0f, Mathf.Max(12f, textSize * 0.9f));
+        blockLabel.raycastTarget = false;
+
         Text count = CreateText("Count", badgeRect, textSize * 3, TextAnchor.MiddleCenter, Color.white);
         RectTransform countRect = count.GetComponent<RectTransform>();
         countRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -719,7 +759,8 @@ public class InventoryUI : MonoBehaviour
             previewRawOutline = previewRawOutline,
             countBadge = badgeImage,
             count = count,
-            teleporterLabel = teleporterLabel
+            teleporterLabel = teleporterLabel,
+            blockLabel = blockLabel
         };
     }
 
@@ -831,6 +872,50 @@ public class InventoryUI : MonoBehaviour
                 slot.previewRaw.gameObject.SetActive(false);
             }
         }
+        else if (entry.blockType == BlockType.Key)
+        {
+            if (keyBlockSprite == null)
+            {
+                LoadKeyBlockSprite();
+            }
+
+            if (keyBlockSprite != null)
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = keyBlockSprite;
+                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+                slot.previewRaw.gameObject.SetActive(false);
+            }
+            else
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
+            }
+        }
+        else if (entry.blockType == BlockType.Lock)
+        {
+            if (lockBlockSprite == null)
+            {
+                LoadLockBlockSprite();
+            }
+
+            if (lockBlockSprite != null)
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = lockBlockSprite;
+                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
+                slot.previewRaw.gameObject.SetActive(false);
+            }
+            else
+            {
+                slot.previewImage.enabled = true;
+                slot.previewImage.sprite = null;
+                slot.previewImage.color = blockColor;
+                slot.previewRaw.gameObject.SetActive(false);
+            }
+        }
         else if (entry.blockType == BlockType.Transporter)
         {
             if (TrySetTransporterPreview(entry, slot.previewRaw, blockColor, slot.previewImage.rectTransform.rect.size))
@@ -859,6 +944,7 @@ public class InventoryUI : MonoBehaviour
         }
 
         UpdateTeleporterLabel(slot);
+        UpdateBlockLabel(slot);
         ApplyIconShadow(slot.previewShadow);
         ApplyIconShadow(slot.previewRawShadow);
         bool isSelected = builderController != null && builderController.currentInventoryEntry == entry;
@@ -1020,6 +1106,40 @@ public class InventoryUI : MonoBehaviour
         slot.teleporterLabel.enabled = true;
     }
 
+    private void UpdateBlockLabel(SlotUI slot)
+    {
+        if (slot.blockLabel == null) return;
+        BlockInventoryEntry entry = slot.entry;
+        if (entry == null)
+        {
+            slot.blockLabel.text = string.Empty;
+            slot.blockLabel.enabled = false;
+            return;
+        }
+
+        if (entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock)
+        {
+            slot.blockLabel.text = string.Empty;
+            slot.blockLabel.enabled = false;
+            return;
+        }
+
+        string label = BlockColors.GetBlockTypeName(entry.blockType);
+        if (string.IsNullOrEmpty(label))
+        {
+            slot.blockLabel.text = string.Empty;
+            slot.blockLabel.enabled = false;
+            return;
+        }
+
+        slot.blockLabel.text = label.ToUpperInvariant();
+        slot.blockLabel.font = font;
+        slot.blockLabel.fontSize = Mathf.Max(1, Mathf.RoundToInt(textSize * 0.55f));
+        slot.blockLabel.color = new Color(0f, 0f, 0f, 0.75f);
+        slot.blockLabel.alignment = TextAnchor.LowerCenter;
+        slot.blockLabel.enabled = true;
+    }
+
     private bool TrySetTransporterPreview(BlockInventoryEntry entry, RawImage rawImage, Color blockColor, Vector2 size)
     {
         string[] steps = ResolveRouteSteps(entry);
@@ -1127,6 +1247,16 @@ public class InventoryUI : MonoBehaviour
         teleporterBlockSprite = LoadSpriteFromPaths(teleporterBlockSprite, teleporterBlockSpriteAssetPath, teleporterBlockSpriteResourcePath);
     }
 
+    private void LoadKeyBlockSprite()
+    {
+        keyBlockSprite = LoadSpriteFromPaths(keyBlockSprite, keyBlockSpriteAssetPath, keyBlockSpriteResourcePath);
+    }
+
+    private void LoadLockBlockSprite()
+    {
+        lockBlockSprite = LoadSpriteFromPaths(lockBlockSprite, lockBlockSpriteAssetPath, lockBlockSpriteResourcePath);
+    }
+
     /// <summary>
     /// Loads a sprite using editor asset path (preferred) or Resources path (fallback).
     /// Re-creates the sprite if the source rect doesn't cover the full texture (atlas slicing fix).
@@ -1218,11 +1348,9 @@ public class InventoryUI : MonoBehaviour
         return Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f), 100f);
     }
 
-    private bool ShouldHideFromInventory(BlockInventoryEntry entry, GameMode mode)
+    private static bool ShouldHideFromInventory(BlockInventoryEntry entry)
     {
-        if (entry == null) return true;
-        if (mode == GameMode.Designer) return false;
-        return entry.blockType == BlockType.Key || entry.blockType == BlockType.Lock;
+        return entry == null;
     }
 
     private Color GetColorForBlockType(BlockType blockType)

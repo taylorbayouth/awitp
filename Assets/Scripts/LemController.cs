@@ -15,7 +15,7 @@ using System;
 /// - Uses Rigidbody with continuous collision detection
 /// - Custom PhysicMaterial with zero friction to prevent sticking
 /// - Constrained to XY plane (Z position and rotation frozen)
-/// - Height is 95% of grid cell size (leaving 5% headroom)
+/// - Height is scaled to 95% of grid cell size on spawn
 ///
 /// DESIGN NOTES:
 /// - Raycasts use QueryTriggerInteraction.Ignore to avoid detecting block trigger zones
@@ -24,6 +24,16 @@ using System;
 /// </summary>
 public class LemController : MonoBehaviour
 {
+    private const float DefaultLemHeight = 0.95f;
+    private const float ClockwiseTurnDegrees = -180f;
+    private const string PreRiggedLemResourcePath = "Characters/LemMeshPreRigged";
+    private const string PreRiggedLemTexturePath = "Characters/LemMeshPreRigged_Albedo";
+    private const string AnimatorControllerResourcePath = "Animations/Lem";
+    private static readonly int SpeedParam = Animator.StringToHash("Speed");
+    private static readonly int IsWalkingParam = Animator.StringToHash("IsWalking");
+    private static readonly int HasKeyParam = Animator.StringToHash("HasKey");
+    private static readonly int IsFallingParam = Animator.StringToHash("IsFalling");
+
     [System.Serializable]
     public class FootstepSurface
     {
@@ -35,15 +45,30 @@ public class LemController : MonoBehaviour
         public Vector2 pitchRange = new Vector2(0.95f, 1.05f);
     }
 
-    [Header("Glitch Visuals")]
-    [Tooltip("Local rotation offset (degrees) to align Glitch with +X movement")]
-    [SerializeField] private Vector3 glitchRotationOffset = new Vector3(0f, 90f, 0f);
+    [Header("Visual")]
+    [Tooltip("Local rotation offset (degrees) to align visual with +X movement")]
+    [SerializeField] private Vector3 visualRotationOffset = new Vector3(0f, 90f, 0f);
+    [Tooltip("Animator speed blend damp time in seconds")]
+    [SerializeField] private float speedBlendDampTime = 0.08f;
 
     #region Inspector Fields
 
     [Header("Movement")]
     [Tooltip("Horizontal movement speed in units per second")]
-    [SerializeField] private float walkSpeed = 1f;
+    [SerializeField] private float walkSpeed = .8f;
+    [Header("Dimensions")]
+    [Tooltip("Overall Lem height in world units (controls collider and visual fit).")]
+    [SerializeField] private float lemHeight = DefaultLemHeight;
+    [Tooltip("How quickly Lem accelerates toward target horizontal speed")]
+    [SerializeField] private float horizontalAcceleration = 7f;
+    [Tooltip("How quickly Lem slows when reversing direction or stopping")]
+    [SerializeField] private float horizontalDeceleration = 11f;
+    [Tooltip("Temporary slowdown after bumping a wall")]
+    [SerializeField] [Range(0.1f, 1f)] private float wallBumpSlowdownMultiplier = 0.7f;
+    [Tooltip("Slowdown duration after bumping a wall")]
+    [SerializeField] private float wallBumpSlowdownDuration = 0.12f;
+    [Tooltip("Duration of clockwise turn when Lem changes direction")]
+    [SerializeField] private float turnDuration = 0.25f;
 
     [Header("Detection")]
     [Tooltip("Raycast distance for wall detection")]
@@ -60,16 +85,13 @@ public class LemController : MonoBehaviour
     [SerializeField] private float fallArcForwardDistance = 0.5f;
 
     [Tooltip("Horizontal speed during the fall arc (units per second)")]
-    [SerializeField] private float fallArcHorizontalSpeed = 2.0f;
+    [SerializeField] private float fallArcHorizontalSpeed = 0.8f;
 
     [Tooltip("Time to smoothly ramp up to full speed at start (seconds)")]
     [SerializeField] private float fallArcEaseInTime = 0.08f;
 
     [Tooltip("Time to smoothly ramp down to zero at handoff (seconds)")]
     [SerializeField] private float fallArcEaseOutTime = 0.08f;
-
-    [Tooltip("Cooldown after landing before another fall arc can trigger")]
-    [SerializeField] private float fallArcCooldown = 0.2f;
 
     [Header("State")]
     [Tooltip("True if facing right, false if facing left")]
@@ -94,12 +116,15 @@ public class LemController : MonoBehaviour
     [SerializeField] private Vector2 footstepFallbackVolumeRange = new Vector2(0.9f, 1f);
     [SerializeField] private Vector2 footstepFallbackPitchRange = new Vector2(0.95f, 1.05f);
 
+    [Header("Interaction Stops")]
+    [Tooltip("How long movement takes to tween to zero for transporter/teleporter pauses")]
+    [SerializeField] private float interactionStopTweenDuration = 0.2f;
+
     // Cached component references
     private Rigidbody rb;
     private CapsuleCollider capsuleCollider;
-    private Transform hatTransform;
     private Transform footPoint;
-    private Animator glitchAnimator;
+    private Animator visualAnimator;
     private bool hasAnimator;
     private bool hasSpeedParam;
     private bool hasIsWalkingParam;
@@ -113,16 +138,28 @@ public class LemController : MonoBehaviour
     private float fallArcElapsed = 0f;
     private bool fallArcHandoffStarted = false;
     private float fallArcHandoffElapsed = 0f;
-    private float fallArcCooldownTimer = 0f;
+    private float wallBumpTimer = 0f;
+    private bool isExternalStopActive = false;
+    private bool isTurningAround = false;
+    private Coroutine turnRoutine;
+    private float lastAppliedLemHeight = -1f;
 
-    private Transform glitchVisual;
-    private Transform glitchPivot;
-    private Vector3 lastGlitchRotationOffset;
+    private Transform visualPivot;
+    private Vector3 lastVisualRotationOffset;
     private bool defaultUseGravity;
     private bool defaultIsKinematic;
     private BaseBlock currentBlock;
     private BlockType currentBlockType = BlockType.Walk;
     private bool hasCurrentBlock;
+
+    private enum AnimState
+    {
+        Dead,
+        Frozen,
+        Falling,
+        Turning,
+        Walking
+    }
 
     #endregion
 
@@ -140,6 +177,8 @@ public class LemController : MonoBehaviour
         }
 
         capsuleCollider = GetComponent<CapsuleCollider>();
+
+        ApplyLemDimensions();
 
         rb.useGravity = true;
         rb.constraints = RigidbodyConstraints.FreezeRotation | RigidbodyConstraints.FreezePositionZ;
@@ -161,16 +200,16 @@ public class LemController : MonoBehaviour
             collider.material = physicsMaterial;
         }
 
+        TrySwapToPreRiggedVisual();
+
         footPoint = transform.Find("FootPoint");
         if (footPoint == null)
         {
             footPoint = transform;
         }
-        hatTransform = transform.Find("Hat");
-        glitchPivot = transform.Find("GlitchPivot");
-        glitchVisual = transform.Find("Glitch");
+        visualPivot = transform.Find("VisualPivot");
         CacheAnimator();
-        ApplyGlitchVisualRotation();
+        ApplyVisualRotation();
 
         if (footstepSource == null)
         {
@@ -185,15 +224,187 @@ public class LemController : MonoBehaviour
         footstepSource.spatialBlend = 0f;
     }
 
+    private void TrySwapToPreRiggedVisual()
+    {
+        GameObject preRiggedPrefab = Resources.Load<GameObject>(PreRiggedLemResourcePath);
+        if (preRiggedPrefab == null) return;
+
+        RuntimeAnimatorController controllerAsset = null;
+        Animator existingAnimator = GetComponentInChildren<Animator>();
+        if (existingAnimator != null)
+        {
+            controllerAsset = existingAnimator.runtimeAnimatorController;
+        }
+        if (controllerAsset == null)
+        {
+            controllerAsset = Resources.Load<RuntimeAnimatorController>(AnimatorControllerResourcePath);
+        }
+
+        Transform existingPivot = transform.Find("VisualPivot");
+        if (existingPivot != null)
+        {
+            Destroy(existingPivot.gameObject);
+        }
+        Transform existingVisual = transform.Find("Visual");
+        if (existingVisual != null)
+        {
+            Destroy(existingVisual.gameObject);
+        }
+        Transform legacyGlitchPivot = transform.Find("GlitchPivot");
+        if (legacyGlitchPivot != null)
+        {
+            Destroy(legacyGlitchPivot.gameObject);
+        }
+        Transform legacyGlitch = transform.Find("Glitch");
+        if (legacyGlitch != null)
+        {
+            Destroy(legacyGlitch.gameObject);
+        }
+
+        Transform pivot = new GameObject("VisualPivot").transform;
+        pivot.SetParent(transform, false);
+        pivot.localPosition = Vector3.zero;
+        pivot.localRotation = Quaternion.identity;
+        pivot.localScale = Vector3.one;
+
+        Transform visualRoot = new GameObject("Visual").transform;
+        visualRoot.SetParent(pivot, false);
+        visualRoot.localPosition = Vector3.zero;
+        visualRoot.localRotation = Quaternion.identity;
+        visualRoot.localScale = Vector3.one;
+
+        GameObject modelInstance = Instantiate(preRiggedPrefab, visualRoot);
+        modelInstance.transform.localPosition = Vector3.zero;
+        modelInstance.transform.localRotation = Quaternion.identity;
+        modelInstance.transform.localScale = Vector3.one;
+        if (modelInstance.GetComponent<HeadTiltOffset>() == null)
+        {
+            modelInstance.AddComponent<HeadTiltOffset>();
+        }
+        ApplyPreRiggedMaterial(modelInstance);
+        FitVisualToHeight(visualRoot, transform, capsuleCollider != null ? capsuleCollider.height : DefaultLemHeight);
+
+        Animator modelAnimator = modelInstance.GetComponent<Animator>();
+        if (modelAnimator == null)
+        {
+            modelAnimator = modelInstance.GetComponentInChildren<Animator>();
+        }
+
+        if (modelAnimator != null)
+        {
+            if (controllerAsset != null)
+            {
+                modelAnimator.runtimeAnimatorController = controllerAsset;
+            }
+            modelAnimator.applyRootMotion = false;
+            modelAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            modelAnimator.Rebind();
+        }
+    }
+
+    private void ApplyPreRiggedMaterial(GameObject modelInstance)
+    {
+        if (modelInstance == null) return;
+        Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
+        if (renderers == null || renderers.Length == 0) return;
+
+        Texture2D texture = Resources.Load<Texture2D>(PreRiggedLemTexturePath);
+        if (texture == null) return;
+
+        Shader shader = GetPreferredCharacterShader(renderers);
+        if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null) shader = Shader.Find("Standard");
+        if (shader == null) return;
+
+        Material materialToApply = new Material(shader);
+        if (materialToApply.HasProperty("_BaseMap")) materialToApply.SetTexture("_BaseMap", texture);
+        if (materialToApply.HasProperty("_MainTex")) materialToApply.SetTexture("_MainTex", texture);
+        Color darkenTint = new Color(0.5f, 0.5f, 0.5f, 1f);
+        if (materialToApply.HasProperty("_BaseColor")) materialToApply.SetColor("_BaseColor", darkenTint);
+        if (materialToApply.HasProperty("_Color")) materialToApply.SetColor("_Color", darkenTint);
+
+        // Set render queue higher than default (2000) so Lem renders in front of debris
+        // Standard opaque queue is 2000, we use 2450 to render after debris (1900) and blocks (2000)
+        materialToApply.renderQueue = 2450;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null) continue;
+
+            Material[] mats = renderer.sharedMaterials;
+            if (mats == null || mats.Length == 0)
+            {
+                renderer.sharedMaterial = materialToApply;
+                continue;
+            }
+
+            for (int m = 0; m < mats.Length; m++)
+            {
+                mats[m] = materialToApply;
+            }
+            renderer.sharedMaterials = mats;
+        }
+    }
+
+    private static Shader GetPreferredCharacterShader(Renderer[] renderers)
+    {
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null) continue;
+
+            Material[] mats = renderer.sharedMaterials;
+            if (mats == null) continue;
+            for (int m = 0; m < mats.Length; m++)
+            {
+                Material mat = mats[m];
+                if (mat != null && mat.shader != null)
+                {
+                    return mat.shader;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static void FitVisualToHeight(Transform visualRoot, Transform lemRoot, float targetHeight)
+    {
+        if (visualRoot == null || lemRoot == null) return;
+        if (targetHeight <= 0f) return;
+
+        if (!TryGetBoundsInParentSpace(visualRoot, lemRoot, out Bounds bounds))
+        {
+            return;
+        }
+
+        float currentHeight = bounds.size.y;
+        if (currentHeight <= 0.0001f) return;
+
+        float scale = targetHeight / currentHeight;
+        visualRoot.localScale = Vector3.one * scale;
+
+        if (!TryGetBoundsInParentSpace(visualRoot, lemRoot, out bounds))
+        {
+            return;
+        }
+
+        Transform pivot = visualRoot.parent;
+        if (pivot != null)
+        {
+            pivot.localPosition = new Vector3(-bounds.center.x, -bounds.min.y, 0f);
+        }
+    }
+
     void FixedUpdate()
     {
         if (!isAlive) return;
         if (isFrozen) return;
 
-        // Update cooldown timer
-        if (fallArcCooldownTimer > 0f)
+        if (wallBumpTimer > 0f)
         {
-            fallArcCooldownTimer -= Time.fixedDeltaTime;
+            wallBumpTimer -= Time.fixedDeltaTime;
         }
 
         // Store previous grounded state before checking
@@ -209,8 +420,7 @@ public class LemController : MonoBehaviour
         }
 
         // Detect grounded → airborne transition (stepped off an edge)
-        // Only trigger if cooldown has expired
-        if (wasGrounded && !isGrounded && wasGroundedLastFrame && fallArcCooldownTimer <= 0f)
+        if (wasGrounded && !isGrounded && wasGroundedLastFrame)
         {
             StartFallArc();
             wasGroundedLastFrame = false;
@@ -218,6 +428,11 @@ public class LemController : MonoBehaviour
         }
 
         wasGroundedLastFrame = isGrounded;
+
+        if (isExternalStopActive || isTurningAround)
+        {
+            return;
+        }
 
         if (isGrounded)
         {
@@ -228,15 +443,20 @@ public class LemController : MonoBehaviour
 
     void Update()
     {
+        if (!Mathf.Approximately(lemHeight, lastAppliedLemHeight))
+        {
+            ApplyLemDimensions();
+        }
+
         // Die if fallen outside camera bounds
         if (IsOutsideCameraBounds())
         {
             Die();
         }
 
-        if (glitchRotationOffset != lastGlitchRotationOffset)
+        if (visualRotationOffset != lastVisualRotationOffset)
         {
-            ApplyGlitchVisualRotation();
+            ApplyVisualRotation();
         }
 
         UpdateAnimator();
@@ -286,8 +506,8 @@ public class LemController : MonoBehaviour
     private void Walk()
     {
         float direction = facingRight ? 1f : -1f;
-        Vector3 newVelocity = new Vector3(direction * walkSpeed, rb.linearVelocity.y, 0);
-        rb.linearVelocity = newVelocity;
+        float targetSpeed = walkSpeed * GetWallBumpSpeedMultiplier();
+        MoveHorizontalToward(direction * targetSpeed, Time.fixedDeltaTime);
     }
 
     private void CheckGround()
@@ -308,19 +528,6 @@ public class LemController : MonoBehaviour
 
         // Ignore triggers to avoid detecting BaseBlock detection zones
         if (Physics.Raycast(origin, direction, wallCheckDistance, solidLayerMask, QueryTriggerInteraction.Ignore))
-        {
-            TurnAround();
-        }
-    }
-
-    private void CheckCliffAhead()
-    {
-        // Check slightly ahead for ground
-        Vector3 origin = transform.position + (facingRight ? Vector3.right : Vector3.left) * 0.3f;
-        origin.y += 0.1f; // Start from same height as ground check
-
-        // Ignore triggers to avoid detecting BaseBlock detection zones
-        if (!Physics.Raycast(origin, Vector3.down, groundCheckDistance, solidLayerMask, QueryTriggerInteraction.Ignore))
         {
             TurnAround();
         }
@@ -421,15 +628,21 @@ public class LemController : MonoBehaviour
 
         // Zero horizontal velocity - Lem falls straight down from here
         rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
-
-        // Start cooldown to prevent immediate re-trigger
-        fallArcCooldownTimer = fallArcCooldown;
     }
 
     public void TurnAround()
     {
-        facingRight = !facingRight;
-        UpdateFacingVisuals();
+        if (Application.isPlaying && !isFrozen && isAlive && !isFallingArc)
+        {
+            if (turnRoutine != null)
+            {
+                StopCoroutine(turnRoutine);
+            }
+            turnRoutine = StartCoroutine(TurnAroundClockwiseRoutine());
+            return;
+        }
+
+        TurnAroundImmediate();
     }
 
     public bool GetFacingRight()
@@ -450,11 +663,18 @@ public class LemController : MonoBehaviour
 
         if (frozen)
         {
+            isExternalStopActive = false;
+            if (turnRoutine != null)
+            {
+                StopCoroutine(turnRoutine);
+                turnRoutine = null;
+            }
+            isTurningAround = false;
+
             // Cancel any active fall arc
             isFallingArc = false;
             fallArcHandoffStarted = false;
             wasGroundedLastFrame = true;
-            fallArcCooldownTimer = 0f;
 
             if (!rb.isKinematic)
             {
@@ -471,11 +691,55 @@ public class LemController : MonoBehaviour
         }
     }
 
+    public float GetInteractionStopTweenDuration()
+    {
+        return Mathf.Max(0f, interactionStopTweenDuration);
+    }
+
+    public System.Collections.IEnumerator TweenHorizontalSpeedToZero(float duration = -1f)
+    {
+        if (rb == null) yield break;
+
+        float tweenDuration = duration >= 0f ? duration : interactionStopTweenDuration;
+        tweenDuration = Mathf.Max(0f, tweenDuration);
+        if (tweenDuration <= 0.0001f)
+        {
+            rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            yield break;
+        }
+
+        isExternalStopActive = true;
+        try
+        {
+            float startSpeed = rb.linearVelocity.x;
+            float elapsed = 0f;
+
+            while (elapsed < tweenDuration && rb != null)
+            {
+                elapsed += Time.deltaTime;
+                float t = Mathf.Clamp01(elapsed / tweenDuration);
+                float easedT = 1f - Mathf.Pow(1f - t, 2f);
+                float speed = Mathf.Lerp(startSpeed, 0f, easedT);
+                rb.linearVelocity = new Vector3(speed, rb.linearVelocity.y, 0f);
+                yield return null;
+            }
+
+            if (rb != null)
+            {
+                rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
+            }
+        }
+        finally
+        {
+            isExternalStopActive = false;
+        }
+    }
+
     private void UpdateFacingVisuals()
     {
         float yRotation = facingRight ? 0f : 180f;
         transform.rotation = Quaternion.Euler(0f, yRotation, 0f);
-        ApplyGlitchVisualRotation();
+        ApplyVisualRotation();
     }
 
 
@@ -484,9 +748,14 @@ public class LemController : MonoBehaviour
         if (!isAlive) return;
 
         isAlive = false;
+        isExternalStopActive = false;
+        if (turnRoutine != null)
+        {
+            StopCoroutine(turnRoutine);
+            turnRoutine = null;
+        }
+        isTurningAround = false;
         rb.linearVelocity = Vector3.zero;
-
-        DebugLog.Info("Lem died! Waiting 2 seconds before resetting...");
 
         // Wait 2 seconds before exiting play mode
         StartCoroutine(DieAfterDelay(2f));
@@ -617,60 +886,29 @@ public class LemController : MonoBehaviour
 
     /// <summary>
     /// Creates a Lem character with its foot point placed at the specified position.
-    /// Tries to load from Resources/Characters/Lem prefab first, falls back to programmatic creation.
-    /// Lem height is 95% of the current grid cell size (leaving 5% headroom).
+    /// Uses prefab-based creation from Resources/Characters/Lem when available.
+    /// Falls back to programmatic creation if the prefab is missing.
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
     {
-        // PREFAB-BASED INSTANTIATION (Primary method)
         GameObject lemPrefab = Resources.Load<GameObject>("Characters/Lem");
         if (lemPrefab != null)
         {
             GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
-
-            // Scale Lem to 80% of cell size
-            const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
-            float targetHeight = cellSize * 0.80f;
-            ScaleLemToHeight(lem, targetHeight);
-
             LemController controller = lem.GetComponent<LemController>();
             if (controller != null)
             {
-                controller.isFrozen = true;
-                controller.UpdateFacingVisuals();
+                controller.SetFootPointPosition(position);
+                controller.SetFrozen(true);
             }
             return lem;
         }
 
-        Debug.LogWarning("[LemController] Lem prefab not found at Resources/Characters/Lem. Using programmatic creation as fallback.");
-
-        // FALLBACK: Programmatic creation
         return CreateLemProgrammatically(position);
     }
 
     /// <summary>
-    /// Scales a Lem GameObject so its height matches the target height.
-    /// </summary>
-    private static void ScaleLemToHeight(GameObject lem, float targetHeight)
-    {
-        Renderer[] renderers = lem.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0) return;
-
-        Bounds bounds = renderers[0].bounds;
-        for (int i = 1; i < renderers.Length; i++)
-        {
-            bounds.Encapsulate(renderers[i].bounds);
-        }
-
-        float currentHeight = bounds.size.y;
-        if (currentHeight < 0.0001f) return;
-
-        float scale = targetHeight / currentHeight;
-        lem.transform.localScale = Vector3.one * scale;
-    }
-
-    /// <summary>
-    /// Programmatic Lem creation (fallback when prefab doesn't exist).
+    /// Programmatic Lem creation.
     /// </summary>
     private static GameObject CreateLemProgrammatically(Vector3 position)
     {
@@ -680,110 +918,43 @@ public class LemController : MonoBehaviour
         lem.tag = "Player";
 
         const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
-        float lemHeight = cellSize * 0.80f;
-        float lemRadius = lemHeight * 0.25f;
+        float height = cellSize * DefaultLemHeight;
+        float lemRadius = height * 0.25f;
 
         GameObject foot = new GameObject("FootPoint");
         foot.transform.SetParent(lem.transform);
         foot.transform.localPosition = Vector3.zero;
 
-        bool attachedGlitch = AttachGlitchVisual(lem.transform, lemHeight);
-        if (!attachedGlitch)
-        {
-            CreateFallbackBody(lem.transform, lemHeight);
-        }
-
         // Collider on parent - smaller and centered
         CapsuleCollider collider = lem.AddComponent<CapsuleCollider>();
-        collider.height = lemHeight;
+        collider.height = height;
         collider.radius = lemRadius;
-        collider.center = Vector3.up * (lemHeight * 0.5f);
+        collider.center = Vector3.up * (height * 0.5f);
 
         // Controller
         LemController controller = lem.AddComponent<LemController>();
         controller.isFrozen = true;
         controller.UpdateFacingVisuals();
-        controller.glitchVisual = lem.transform.Find("Glitch");
-        controller.ApplyGlitchVisualRotation();
+        controller.ApplyVisualRotation();
+
+        if (lem.GetComponentInChildren<Renderer>() == null)
+        {
+            CreateFallbackBody(lem.transform, height);
+        }
 
         return lem;
     }
-
-    private static bool AttachGlitchVisual(Transform parent, float targetHeight)
+    private void ApplyVisualRotation()
     {
-        if (parent == null) return false;
-
-        GameObject prefab = LoadGlitchPrefab();
-        if (prefab == null)
+        if (visualPivot == null)
         {
-            Debug.LogWarning("[LemController] Glitch prefab not found. Using fallback body.");
-            return false;
+            visualPivot = transform.Find("VisualPivot");
         }
 
-        Transform pivot = new GameObject("GlitchPivot").transform;
-        pivot.SetParent(parent, false);
+        if (visualPivot == null) return;
 
-        GameObject visual = Instantiate(prefab, pivot);
-        visual.name = "Glitch";
-        visual.transform.localPosition = Vector3.zero;
-        visual.transform.localRotation = Quaternion.identity;
-        visual.transform.localScale = Vector3.one;
-
-        Material builtInMaterial = LoadGlitchMaterial();
-        if (builtInMaterial != null)
-        {
-            Renderer[] renderers = visual.GetComponentsInChildren<Renderer>();
-            foreach (Renderer renderer in renderers)
-            {
-                if (renderer == null) continue;
-                Material[] materials = renderer.sharedMaterials;
-                if (materials == null || materials.Length == 0)
-                {
-                    renderer.sharedMaterial = builtInMaterial;
-                }
-                else
-                {
-                    for (int i = 0; i < materials.Length; i++)
-                    {
-                        materials[i] = builtInMaterial;
-                    }
-                    renderer.sharedMaterials = materials;
-                }
-            }
-        }
-
-        if (!TryGetBoundsInParentSpace(visual.transform, parent, out Bounds bounds))
-        {
-            return true;
-        }
-
-        float height = bounds.size.y;
-        if (height > 0.0001f)
-        {
-            float scale = targetHeight / height;
-            visual.transform.localScale = Vector3.one * scale;
-            if (TryGetBoundsInParentSpace(visual.transform, parent, out bounds))
-            {
-                // Center on X and ground on Y; keep Z centered on the block to avoid front-edge drift.
-                Vector3 offset = new Vector3(-bounds.center.x, -bounds.min.y, 0f);
-                pivot.localPosition = offset;
-            }
-        }
-
-        return true;
-    }
-
-    private void ApplyGlitchVisualRotation()
-    {
-        if (glitchPivot == null)
-        {
-            glitchPivot = transform.Find("GlitchPivot");
-        }
-
-        if (glitchPivot == null) return;
-
-        glitchPivot.localRotation = Quaternion.Euler(glitchRotationOffset);
-        lastGlitchRotationOffset = glitchRotationOffset;
+        visualPivot.localRotation = Quaternion.Euler(visualRotationOffset);
+        lastVisualRotationOffset = visualRotationOffset;
     }
 
     private static bool TryGetBoundsInParentSpace(Transform root, Transform parent, out Bounds bounds)
@@ -829,24 +1000,6 @@ public class LemController : MonoBehaviour
         }
 
         return hasBounds;
-    }
-
-    private static GameObject LoadGlitchPrefab()
-    {
-        GameObject prefab = null;
-#if UNITY_EDITOR
-        prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Glitch/Prefabs/PF_Glitch.prefab");
-#endif
-        return prefab;
-    }
-
-    private static Material LoadGlitchMaterial()
-    {
-        Material mat = null;
-#if UNITY_EDITOR
-        mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>("Assets/Glitch/Materials/Built-In/M_Glitch.mat");
-#endif
-        return mat;
     }
 
     private static void CreateFallbackBody(Transform parent, float lemHeight)
@@ -895,8 +1048,16 @@ public class LemController : MonoBehaviour
 
     private void CacheAnimator()
     {
-        glitchAnimator = GetComponentInChildren<Animator>();
-        if (glitchAnimator == null)
+        Transform preferredRoot = transform.Find("VisualPivot");
+        if (preferredRoot != null)
+        {
+            visualAnimator = preferredRoot.GetComponentInChildren<Animator>();
+        }
+        if (visualAnimator == null)
+        {
+            visualAnimator = GetComponentInChildren<Animator>();
+        }
+        if (visualAnimator == null)
         {
             hasAnimator = false;
             return;
@@ -908,47 +1069,184 @@ public class LemController : MonoBehaviour
         hasHasKeyParam = false;
         hasIsFallingParam = false;
 
-        foreach (AnimatorControllerParameter param in glitchAnimator.parameters)
+        foreach (AnimatorControllerParameter param in visualAnimator.parameters)
         {
-            if (param.name == "Speed") hasSpeedParam = true;
-            if (param.name == "IsWalking") hasIsWalkingParam = true;
-            if (param.name == "HasKey") hasHasKeyParam = true;
-            if (param.name == "IsFalling") hasIsFallingParam = true;
+            if (param.nameHash == SpeedParam) hasSpeedParam = true;
+            if (param.nameHash == IsWalkingParam) hasIsWalkingParam = true;
+            if (param.nameHash == HasKeyParam) hasHasKeyParam = true;
+            if (param.nameHash == IsFallingParam) hasIsFallingParam = true;
         }
     }
 
     private void UpdateAnimator()
     {
-        if (!hasAnimator || glitchAnimator == null) return;
+        if (!hasAnimator || visualAnimator == null) return;
 
-        float horizontalSpeed = Mathf.Abs(rb != null ? rb.linearVelocity.x : 0f);
-        if (isFrozen)
+        AnimState state = EvaluateAnimState();
+        bool isWalking = state == AnimState.Walking || state == AnimState.Turning;
+        bool isFalling = state == AnimState.Falling;
+        float horizontalSpeed = GetAnimatorSpeedValue(state);
+
+        if (state == AnimState.Frozen || state == AnimState.Dead)
         {
             horizontalSpeed = 0f;
         }
-        bool isWalking = !isFrozen && horizontalSpeed > 0.01f;
 
         if (hasSpeedParam)
         {
-            glitchAnimator.SetFloat("Speed", horizontalSpeed);
+            visualAnimator.SetFloat(SpeedParam, horizontalSpeed, speedBlendDampTime, Time.deltaTime);
         }
 
         if (hasIsWalkingParam)
         {
-            glitchAnimator.SetBool("IsWalking", isWalking);
+            visualAnimator.SetBool(IsWalkingParam, isWalking);
         }
 
         if (hasHasKeyParam)
         {
             bool hasKey = KeyItem.FindHeldKey(this) != null;
-            glitchAnimator.SetBool("HasKey", hasKey);
+            visualAnimator.SetBool(HasKeyParam, hasKey);
         }
 
         if (hasIsFallingParam)
         {
-            // True during fall arc OR when airborne (not grounded and moving)
-            bool falling = isFallingArc || (!isGrounded && !isFrozen);
-            glitchAnimator.SetBool("IsFalling", falling);
+            visualAnimator.SetBool(IsFallingParam, isFalling);
         }
+    }
+
+    private AnimState EvaluateAnimState()
+    {
+        if (!isAlive) return AnimState.Dead;
+        if (isFrozen) return AnimState.Frozen;
+        if (isFallingArc || !isGrounded) return AnimState.Falling;
+        if (isTurningAround) return AnimState.Turning;
+        return AnimState.Walking;
+    }
+
+    private float GetAnimatorSpeedValue(AnimState state)
+    {
+        if (rb == null) return 0f;
+
+        if (state == AnimState.Turning)
+        {
+            // Turn animation should stay in locomotion space, independent of physics slowdown to zero.
+            return walkSpeed * Mathf.Max(0.1f, wallBumpSlowdownMultiplier);
+        }
+
+        return Mathf.Abs(rb.linearVelocity.x);
+    }
+
+    private float GetWallBumpSpeedMultiplier()
+    {
+        if (wallBumpTimer <= 0f)
+        {
+            return 1f;
+        }
+
+        float slowDuration = Mathf.Max(0f, wallBumpSlowdownDuration);
+        float totalDuration = slowDuration;
+        if (totalDuration <= 0.0001f)
+        {
+            return 1f;
+        }
+
+        float elapsed = totalDuration - wallBumpTimer;
+        if (slowDuration > 0f && elapsed <= slowDuration)
+        {
+            float t = Mathf.Clamp01(elapsed / slowDuration);
+            return Mathf.Lerp(wallBumpSlowdownMultiplier, 1f, t);
+        }
+
+        return 1f;
+    }
+
+    private void MoveHorizontalToward(float targetX, float deltaTime)
+    {
+        if (rb == null) return;
+
+        float currentX = rb.linearVelocity.x;
+        bool acceleratingSameDirection = Mathf.Sign(targetX) == Mathf.Sign(currentX) && Mathf.Abs(targetX) >= Mathf.Abs(currentX);
+        float response = acceleratingSameDirection ? horizontalAcceleration : horizontalDeceleration;
+        float maxDelta = Mathf.Max(0.01f, response) * deltaTime;
+        float nextX = Mathf.MoveTowards(currentX, targetX, maxDelta);
+        rb.linearVelocity = new Vector3(nextX, rb.linearVelocity.y, 0f);
+    }
+
+    private void TriggerWallBumpResponse()
+    {
+        wallBumpTimer = Mathf.Max(0f, wallBumpSlowdownDuration);
+    }
+
+    private void TurnAroundImmediate()
+    {
+        facingRight = !facingRight;
+        UpdateFacingVisuals();
+    }
+
+    private System.Collections.IEnumerator TurnAroundClockwiseRoutine()
+    {
+        if (rb == null)
+        {
+            TurnAroundImmediate();
+            turnRoutine = null;
+            yield break;
+        }
+
+        isTurningAround = true;
+        float duration = Mathf.Max(0.01f, turnDuration);
+        float elapsed = 0f;
+        float startY = transform.eulerAngles.y;
+        float targetY = startY + ClockwiseTurnDegrees;
+        float startSpeedX = rb.linearVelocity.x;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = Mathf.Clamp01(elapsed / duration);
+            float eased = t * t * (3f - 2f * t); // smoothstep
+
+            float newY = Mathf.Lerp(startY, targetY, eased);
+            transform.rotation = Quaternion.Euler(0f, newY, 0f);
+            ApplyVisualRotation();
+
+            float slowedX = Mathf.Lerp(startSpeedX, 0f, eased);
+            rb.linearVelocity = new Vector3(slowedX, rb.linearVelocity.y, 0f);
+            yield return null;
+        }
+
+        facingRight = !facingRight;
+        UpdateFacingVisuals();
+        TriggerWallBumpResponse();
+        float exitSpeed = walkSpeed * Mathf.Max(0.1f, wallBumpSlowdownMultiplier);
+        float exitDirection = facingRight ? 1f : -1f;
+        rb.linearVelocity = new Vector3(exitDirection * exitSpeed, rb.linearVelocity.y, 0f);
+        isTurningAround = false;
+        turnRoutine = null;
+    }
+
+    private void ApplyLemDimensions()
+    {
+        lemHeight = Mathf.Max(0.1f, lemHeight);
+
+        if (capsuleCollider == null)
+        {
+            capsuleCollider = GetComponent<CapsuleCollider>();
+        }
+
+        if (capsuleCollider != null)
+        {
+            float radius = lemHeight * 0.25f;
+            capsuleCollider.height = lemHeight;
+            capsuleCollider.radius = radius;
+            capsuleCollider.center = Vector3.up * (lemHeight * 0.5f);
+        }
+
+        Transform runtimeVisual = transform.Find("VisualPivot/Visual");
+        if (runtimeVisual != null)
+        {
+            FitVisualToHeight(runtimeVisual, transform, lemHeight);
+        }
+
+        lastAppliedLemHeight = lemHeight;
     }
 }

@@ -1,9 +1,9 @@
 using UnityEngine;
 
 /// <summary>
-/// Creates a square border using LineRenderer with animated glow effects.
+/// Creates a square border using LineRenderer with static color.
 /// Used for the grid cursor (red/green/blue states) and other UI highlights.
-/// Applies the CursorGlow shader for emission, wiggle animation, and pulse effects.
+/// Uses a non-animated shader so cursor/border visuals remain stable.
 /// </summary>
 public class BorderRenderer : MonoBehaviour
 {
@@ -23,23 +23,6 @@ public class BorderRenderer : MonoBehaviour
     [Tooltip("Sorting order for 2D rendering")]
     public int sortingOrder = 0;
 
-    [Header("Glow & Animation Settings")]
-    [Tooltip("Brightness multiplier for glow effect (1 = normal, 3 = very bright)")]
-    [Range(1f, 3f)]
-    public float emissionStrength = 1.5f;
-
-    [Tooltip("How much the line wiggles perpendicular to its path")]
-    [Range(0f, 0.2f)]
-    public float wiggleAmount = 0.03f;
-
-    [Tooltip("Speed of the wiggle animation")]
-    [Range(0f, 10f)]
-    public float wiggleSpeed = 2.0f;
-
-    [Tooltip("Number of wiggles along the border perimeter")]
-    [Range(0f, 30f)]
-    public float wiggleFrequency = 10.0f;
-
     private LineRenderer lineRenderer;
     private Material material;  // Instance material for shader properties
 
@@ -58,7 +41,7 @@ public class BorderRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the LineRenderer and configures it with the CursorGlow shader.
+    /// Creates the LineRenderer and configures it with a static, non-animated shader.
     /// Builds a square border in local space with the specified properties.
     /// </summary>
     private void CreateBorder()
@@ -70,10 +53,9 @@ public class BorderRenderer : MonoBehaviour
             lineRenderer = gameObject.AddComponent<LineRenderer>();
         }
 
-        // Try to load CursorGlow shader, with fallbacks if not found
-        Shader shader = Shader.Find("Custom/CursorGlow");
+        // Use non-animated shader for static cursor/grid borders.
+        Shader shader = Shader.Find("Sprites/Default");
         if (shader == null) shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
-        if (shader == null) shader = Shader.Find("Sprites/Default");
 
         // Create a unique material instance for this border
         material = new Material(shader);
@@ -102,27 +84,6 @@ public class BorderRenderer : MonoBehaviour
         lineRenderer.positionCount = 4;
         lineRenderer.SetPositions(corners);
 
-        // Apply animation shader properties
-        UpdateShaderProperties();
-    }
-
-    /// <summary>
-    /// Updates the CursorGlow shader properties with current values.
-    /// Safe to call even if the shader doesn't have these properties.
-    /// </summary>
-    private void UpdateShaderProperties()
-    {
-        if (material == null) return;
-
-        // Only set properties if they exist in the shader
-        if (material.HasProperty("_EmissionStrength"))
-            material.SetFloat("_EmissionStrength", emissionStrength);
-        if (material.HasProperty("_WiggleAmount"))
-            material.SetFloat("_WiggleAmount", wiggleAmount);
-        if (material.HasProperty("_WiggleSpeed"))
-            material.SetFloat("_WiggleSpeed", wiggleSpeed);
-        if (material.HasProperty("_WiggleFrequency"))
-            material.SetFloat("_WiggleFrequency", wiggleFrequency);
     }
 
     /// <summary>
@@ -158,14 +119,4 @@ public class BorderRenderer : MonoBehaviour
         if (material != null) Destroy(material);
     }
 
-#if UNITY_EDITOR
-    /// <summary>
-    /// Editor-only: update shader properties when values change in the Inspector.
-    /// Allows real-time preview of glow and animation settings.
-    /// </summary>
-    private void OnValidate()
-    {
-        UpdateShaderProperties();
-    }
-#endif
 }

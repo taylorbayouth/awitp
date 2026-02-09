@@ -134,7 +134,6 @@ public class BaseBlock : MonoBehaviour
         if (string.IsNullOrEmpty(uniqueID))
         {
             uniqueID = Guid.NewGuid().ToString();
-            DebugLog.Info($"[BaseBlock] Generated new unique ID for block at index {gridIndex}: {uniqueID}");
         }
 
         // Cache renderer reference for highlighting (check children only, base has no mesh)
@@ -145,7 +144,6 @@ public class BaseBlock : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"[BaseBlock] No renderer found on {blockType} block at index {gridIndex}. Block will be invisible.");
         }
     }
 
@@ -161,16 +159,13 @@ public class BaseBlock : MonoBehaviour
             if (GridManager.Instance != null)
             {
                 GridManager.Instance.RegisterBlock(this);
-                DebugLog.Info($"[BaseBlock] Registered {blockType} block at grid index {gridIndex}");
             }
             else
             {
-                Debug.LogError($"[BaseBlock] GridManager.Instance is null! Cannot register block at index {gridIndex}. Ensure GameInitializer runs first.");
             }
         }
         else
         {
-            Debug.LogWarning($"[BaseBlock] Block '{gameObject.name}' has invalid grid index ({gridIndex}). It will not be registered with GridManager.");
         }
 
         // Setup center trigger for precise position detection
@@ -200,7 +195,6 @@ public class BaseBlock : MonoBehaviour
             {
                 // Fallback: Create primitive cube
                 blockObj = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                DebugLog.Info($"[BaseBlock] Created primitive cube for {type} block (no prefab found)");
             }
 
             // Set descriptive name for hierarchy
@@ -222,7 +216,6 @@ public class BaseBlock : MonoBehaviour
                 {
                     // Use DestroyImmediate to remove incompatible component before it can respond to events
                     DestroyImmediate(existingBlock);
-                    DebugLog.Info($"[BaseBlock] Removed incompatible {existingBlock.GetType().Name} component from {type} block");
                 }
             }
 
@@ -243,7 +236,6 @@ public class BaseBlock : MonoBehaviour
             {
                 boxCollider = blockObj.AddComponent<BoxCollider>();
                 boxCollider.isTrigger = false;  // Solid collider for walking
-                DebugLog.Info($"[BaseBlock] Added solid BoxCollider to {type} block");
             }
             // Don't override isTrigger - respect prefab setting (should be false = solid)
 
@@ -260,15 +252,12 @@ public class BaseBlock : MonoBehaviour
             Renderer renderer = blockObj.GetComponentInChildren<Renderer>();
             if (renderer == null)
             {
-                Debug.LogWarning($"[BaseBlock] No Renderer found on {type} block at index {gridIndex}. Block will be invisible.");
             }
 
-            DebugLog.Info($"[BaseBlock] Successfully instantiated {type} block at grid index {gridIndex}");
             return block;
         }
         catch (Exception ex)
         {
-            Debug.LogError($"[BaseBlock] Failed to instantiate {type} block at grid index {gridIndex}: {ex.Message}\n{ex.StackTrace}");
             return null;
         }
     }
@@ -289,33 +278,27 @@ public class BaseBlock : MonoBehaviour
         {
             case BlockType.Crumbler:
                 block = blockObj.AddComponent<CrumblerBlock>();
-                DebugLog.Info($"[BaseBlock] Added CrumblerBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Transporter:
                 block = blockObj.AddComponent<TransporterBlock>();
-                DebugLog.Info($"[BaseBlock] Added TransporterBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Key:
                 block = blockObj.AddComponent<KeyBlock>();
-                DebugLog.Info($"[BaseBlock] Added KeyBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Lock:
                 block = blockObj.AddComponent<LockBlock>();
-                DebugLog.Info($"[BaseBlock] Added LockBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Teleporter:
                 block = blockObj.AddComponent<TeleporterBlock>();
-                DebugLog.Info($"[BaseBlock] Added TeleporterBlock component to {blockObj.name}");
                 break;
 
             case BlockType.Walk:
             default:
                 block = blockObj.AddComponent<WalkBlock>();
-                DebugLog.Info($"[BaseBlock] Added WalkBlock component to {blockObj.name}");
                 break;
         }
 
@@ -360,15 +343,12 @@ public class BaseBlock : MonoBehaviour
             prefab = Resources.Load<GameObject>("Blocks/BaseBlock");
             if (prefab == null)
             {
-                DebugLog.Info($"[BaseBlock] No prefab found at Resources/{prefabName} or Resources/Blocks/BaseBlock, will use primitive");
                 return null;
             }
 
-            DebugLog.Info($"[BaseBlock] Loaded base prefab from Resources/Blocks/BaseBlock for {type}");
             return Instantiate(prefab);
         }
 
-        DebugLog.Info($"[BaseBlock] Loaded prefab from Resources/{prefabName}");
         return Instantiate(prefab);
     }
 
@@ -400,35 +380,29 @@ public class BaseBlock : MonoBehaviour
                     {
                         _cachedInventory.ReturnBlock(blockType);
                     }
-                    DebugLog.Info($"[BaseBlock] Returned {blockType} block at index {gridIndex} to inventory");
                 }
                 else
                 {
-                    Debug.LogWarning($"[BaseBlock] No BlockInventory found to return {blockType} block");
                 }
             }
             else
             {
-                DebugLog.Info($"[BaseBlock] Permanent {blockType} block at index {gridIndex} destroyed (not returned to inventory)");
             }
 
             // Unregister from GridManager
             if (GridManager.Instance != null)
             {
                 GridManager.Instance.UnregisterBlock(this);
-                DebugLog.Info($"[BaseBlock] Unregistered {blockType} block from GridManager");
             }
             else
             {
-                Debug.LogWarning($"[BaseBlock] GridManager.Instance is null, cannot unregister block");
             }
 
             // Destroy the GameObject
             Destroy(gameObject);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Debug.LogError($"[BaseBlock] Error destroying block at index {gridIndex}: {ex.Message}\n{ex.StackTrace}");
         }
     }
 
@@ -471,7 +445,6 @@ public class BaseBlock : MonoBehaviour
             currentPlayer = null;
             lastTriggerState = TriggerState.Off;
 
-            DebugLog.Info($"[BaseBlock] Player exited trigger on {blockType} block at index {gridIndex}");
             OnPlayerExit();
         }
     }
@@ -639,7 +612,6 @@ public class BaseBlock : MonoBehaviour
             return GridManager.Instance.IndexToCoordinates(gridIndex);
         }
 
-        Debug.LogWarning($"[BaseBlock] Cannot get coordinates: GridManager.Instance is null");
         return Vector2Int.zero;
     }
 
@@ -812,7 +784,6 @@ public class BaseBlock : MonoBehaviour
             centerTrigger = triggerObj.AddComponent<CenterTrigger>();
             centerTrigger.Initialize(this);
 
-            DebugLog.Info($"[BaseBlock] Created CenterTrigger for {blockType} block at index {gridIndex}");
         }
 
         // Update trigger shape to match block dimensions
@@ -834,7 +805,6 @@ public class BaseBlock : MonoBehaviour
         if (centerTrigger != null)
         {
             centerTrigger.SetEnabled(enabled);
-            DebugLog.Info($"[BaseBlock] Center trigger {(enabled ? "enabled" : "disabled")} for {blockType} block");
         }
     }
 
@@ -884,7 +854,6 @@ public class BaseBlock : MonoBehaviour
         if (isPlayerOnBlock)
         {
             lastTriggerState = TriggerState.On;
-            DebugLog.Info($"[BaseBlock] Player exited center of {blockType} block");
         }
     }
 

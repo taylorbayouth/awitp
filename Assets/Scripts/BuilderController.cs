@@ -100,14 +100,41 @@ public class BuilderController : MonoBehaviour
 
         if (!found && currentInventoryEntry != null)
         {
-            // In designer mode the entries list is regenerated, so match by block type instead of reference.
+            // Match by block type AND flavor/entryId so selection remains stable across mode changes.
             for (int i = 0; i < entries.Count; i++)
             {
-                if (entries[i] != null && entries[i].blockType == currentInventoryEntry.blockType)
+                if (entries[i] == null || entries[i].blockType != currentInventoryEntry.blockType) continue;
+
+                // Match by entryId first (most specific)
+                if (!string.IsNullOrEmpty(currentInventoryEntry.entryId) &&
+                    entries[i].entryId == currentInventoryEntry.entryId)
                 {
                     foundIndex = i;
                     found = true;
                     break;
+                }
+
+                // Match by flavorId for flavored blocks (teleporters)
+                if (!string.IsNullOrEmpty(currentInventoryEntry.flavorId) &&
+                    entries[i].flavorId == currentInventoryEntry.flavorId)
+                {
+                    foundIndex = i;
+                    found = true;
+                    break;
+                }
+            }
+
+            // If no flavor match, fall back to first entry of same type (for unflavored blocks)
+            if (!found)
+            {
+                for (int i = 0; i < entries.Count; i++)
+                {
+                    if (entries[i] != null && entries[i].blockType == currentInventoryEntry.blockType)
+                    {
+                        foundIndex = i;
+                        found = true;
+                        break;
+                    }
                 }
             }
         }
@@ -295,7 +322,7 @@ public class BuilderController : MonoBehaviour
             {
                 if (block.isPermanent && currentMode != GameMode.Designer)
                 {
-                    Debug.LogWarning("Cannot remove permanent block in Builder mode");
+                    // Cannot remove permanent block in Builder mode
                 }
                 else
                 {
@@ -330,10 +357,6 @@ public class BuilderController : MonoBehaviour
             if (requestedIndex.Value >= 0 && requestedIndex.Value < entries.Count)
             {
                 SelectInventoryIndex(requestedIndex.Value, entries);
-            }
-            else
-            {
-                Debug.LogWarning("No inventory entry assigned to that number key");
             }
             return;
         }
@@ -377,31 +400,12 @@ public class BuilderController : MonoBehaviour
 
         if (currentMode == GameMode.Builder && !blockInventory.CanPlaceEntry(entry))
         {
-            Debug.LogWarning($"Cannot switch to {entry.GetDisplayName()} - no blocks remaining in inventory");
             return;
         }
 
         currentInventoryIndex = index;
         currentInventoryEntry = entry;
         currentBlockType = entry.blockType;
-
-        // Check if cursor is on an existing block
-        GridManager grid = GridManager.Instance;
-        if (grid == null) return;
-
-        int cursorIndex = grid.GetCurrentCursorIndex();
-        BaseBlock existingBlock = grid.GetBlockAtIndex(cursorIndex);
-
-        if (existingBlock != null)
-        {
-            if (existingBlock.isPermanent && currentMode != GameMode.Designer)
-            {
-                Debug.LogWarning("Cannot change permanent block in Builder mode");
-                return;
-            }
-
-            ChangeBlockType(existingBlock, entry);
-        }
     }
 
     public void SelectInventoryEntry(BlockInventoryEntry entry)
@@ -566,7 +570,6 @@ public class BuilderController : MonoBehaviour
                 // Enter play mode from any Designer mode
                 if (GridManager.Instance != null && GridManager.Instance.HasTransporterConflicts())
                 {
-                    Debug.LogWarning("Cannot enter Play mode: transporter route blocked by another block.");
                     return;
                 }
                 if (GridManager.Instance != null)
@@ -644,38 +647,11 @@ public class BuilderController : MonoBehaviour
             LevelManager levelManager = LevelManager.Instance;
             if (levelManager == null || levelManager.CurrentLevelDef == null)
             {
-                Debug.LogWarning("No LevelDefinition loaded. Load a level via LevelManager before saving.");
                 return;
             }
 
-            Debug.Log("=== SAVING LEVEL DATA ===");
             LevelData levelData = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
-            if (!levelManager.CurrentLevelDef.SaveFromLevelData(levelData))
-            {
-                Debug.LogError("Failed to save level to LevelDefinition");
-            }
-            else
-            {
-                Debug.Log("=== SAVE COMPLETE ===");
-            }
-        }
-
-        // Show save location with Ctrl/Cmd + Shift + S
-        if (ctrlOrCmd && Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.S))
-        {
-            LevelManager levelManager = LevelManager.Instance;
-            if (levelManager == null || levelManager.CurrentLevelDef == null)
-            {
-                Debug.LogWarning("No LevelDefinition loaded. Load a level via LevelManager to view its asset path.");
-                return;
-            }
-
-#if UNITY_EDITOR
-            string assetPath = UnityEditor.AssetDatabase.GetAssetPath(levelManager.CurrentLevelDef);
-            DebugLog.Info($"LevelDefinition asset path: {assetPath}");
-#else
-            DebugLog.Info("Level data is saved to the LevelDefinition asset (path available in editor only).");
-#endif
+            levelManager.CurrentLevelDef.SaveFromLevelData(levelData);
         }
     }
 }
