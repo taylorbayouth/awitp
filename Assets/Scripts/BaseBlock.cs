@@ -441,10 +441,12 @@ public class BaseBlock : MonoBehaviour
 
         if (other.CompareTag("Player"))
         {
+            LemController lem = other.GetComponent<LemController>();
             isPlayerOnBlock = false;
             currentPlayer = null;
             lastTriggerState = TriggerState.Off;
 
+            OnPlayerTriggerExit(lem);
             OnPlayerExit();
         }
     }
@@ -541,6 +543,12 @@ public class BaseBlock : MonoBehaviour
     /// Override in subclasses to implement custom behavior.
     /// </summary>
     protected virtual void OnPlayerExit() { }
+
+    /// <summary>
+    /// Called specifically when player exits this block's trigger collider.
+    /// Override in subclasses that need trigger-exit-specific behavior.
+    /// </summary>
+    protected virtual void OnPlayerTriggerExit(LemController lem) { }
 
     /// <summary>
     /// Called when player reaches the center point of this block.
