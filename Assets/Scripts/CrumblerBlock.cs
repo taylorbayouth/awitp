@@ -414,6 +414,9 @@ public class CrumblerBlock : BaseBlock
 
         IgnorePlayerCollisions(colliders);
 
+        // Set debris materials to render behind Lem (lower queue = renders first)
+        SetDebrisRenderQueue(brick);
+
         if (debrisKick > 0f)
         {
             var kick = new Vector3(
@@ -529,7 +532,6 @@ public class CrumblerBlock : BaseBlock
     private void LogCrumble(string message)
     {
         if (!debugCrumbleLogs) return;
-        DebugLog.Crumbler(message, this);
     }
 
     private void ReportDebrisImpact(FirstImpactData data)
@@ -647,6 +649,48 @@ public class CrumblerBlock : BaseBlock
         }
     }
 
+    /// <summary>
+    /// Sets debris materials to render behind Lem (queue 1900, before default 2000).
+    /// This ensures Lem always appears in front when walking through falling debris.
+    /// </summary>
+    private void SetDebrisRenderQueue(GameObject brick)
+    {
+        if (brick == null) return;
+
+        // Include inactive renderers to catch everything
+        Renderer[] renderers = brick.GetComponentsInChildren<Renderer>(true);
+        int renderersProcessed = 0;
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null) continue;
+
+            // Skip particle systems - they have their own rendering
+            if (renderer is ParticleSystemRenderer) continue;
+
+            // Check if renderer already has materials
+            if (renderer.sharedMaterials == null || renderer.sharedMaterials.Length == 0) continue;
+
+            // Create material instances and set render queue
+            Material[] materials = renderer.materials; // This creates instances
+
+            for (int i = 0; i < materials.Length; i++)
+            {
+                if (materials[i] != null)
+                {
+                    // Render queue 1900 = before default opaque (2000) and before Lem (2450)
+                    materials[i].renderQueue = 1900;
+                    renderersProcessed++;
+                }
+            }
+
+            // Reassign to ensure changes stick
+            renderer.materials = materials;
+        }
+
+        LogCrumble($"[Crumbler] Block {gridIndex}: set render queue to 1900 for {renderersProcessed} material(s) on debris '{brick.name}'");
+    }
+
     private static void RefreshPlayerColliders()
     {
         playerColliders.Clear();
@@ -719,18 +763,18 @@ public class CrumblerBlock : BaseBlock
         var dust = Instantiate(puffOfDustTemplate, worldPosition, puffOfDustTemplate.transform.rotation, GetOrCreateRuntimeRoot());
         dust.gameObject.SetActive(true);
 
-        // Grow over lifetime: start small, expand to full size.
+        // Grow over lifetime: start small, expand to 120% size.
         var sizeOverLifetime = dust.sizeOverLifetime;
         sizeOverLifetime.enabled = true;
-        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.EaseInOut(0f, 0.3f, 1f, 1f));
+        sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1.2f, AnimationCurve.EaseInOut(0f, 0.36f, 1f, 1f));
 
-        // Fade: 50% opacity at birth → fully transparent at death.
+        // Fade: 52.5% opacity at birth (+5%) → fully transparent at death.
         var colorOverLifetime = dust.colorOverLifetime;
         colorOverLifetime.enabled = true;
         var alphaGradient = new Gradient();
         alphaGradient.SetKeys(
             new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
-            new[] { new GradientAlphaKey(0.5f, 0f), new GradientAlphaKey(0f, 1f) }
+            new[] { new GradientAlphaKey(0.525f, 0f), new GradientAlphaKey(0f, 1f) }
         );
         colorOverLifetime.color = new ParticleSystem.MinMaxGradient(alphaGradient);
 

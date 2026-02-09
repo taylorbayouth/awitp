@@ -107,7 +107,7 @@ public class BlockInventory : MonoBehaviour
     private List<BlockInventoryEntry> entries = new List<BlockInventoryEntry>();
 
     private readonly Dictionary<string, int> pairCredits = new Dictionary<string, int>();
-    private List<BlockInventoryEntry> designerEntries;
+    private List<BlockInventoryEntry> playerVisibleEntries;
 
     /// <summary>
     /// Fired whenever inventory counts change (use, return, reset, or load).
@@ -135,7 +135,7 @@ public class BlockInventory : MonoBehaviour
         // Inventory starts empty - it's loaded from LevelDefinition via LoadInventoryEntries()
         NormalizeEntries();
         ResetInventory();
-        designerEntries = null;
+        playerVisibleEntries = null;
     }
 
     /// <summary>
@@ -147,16 +147,31 @@ public class BlockInventory : MonoBehaviour
     }
 
     /// <summary>
-    /// Returns entries appropriate for the given game mode. Designer mode gets unlimited entries.
+    /// Returns entries appropriate for the given game mode.
+    /// Builder hides zero-max entries; Designer shows them.
     /// </summary>
     public IReadOnlyList<BlockInventoryEntry> GetEntriesForMode(GameMode mode)
     {
-        if (mode == GameMode.Designer)
+        if (mode == GameMode.Designer || mode == GameMode.Play)
         {
-            return GetDesignerEntries();
+            return entries;
         }
 
-        return entries;
+        if (playerVisibleEntries != null)
+        {
+            return playerVisibleEntries;
+        }
+
+        playerVisibleEntries = new List<BlockInventoryEntry>(entries.Count);
+        for (int i = 0; i < entries.Count; i++)
+        {
+            BlockInventoryEntry entry = entries[i];
+            if (entry == null) continue;
+            if (entry.maxCount <= 0) continue;
+            playerVisibleEntries.Add(entry);
+        }
+
+        return playerVisibleEntries;
     }
 
     /// <summary>
@@ -289,7 +304,6 @@ public class BlockInventory : MonoBehaviour
         BlockInventoryEntry groupEntry = GetEntryForInventoryKey(key);
         if (groupEntry == null)
         {
-            Debug.LogWarning("[BlockInventory] Cannot use block - inventory entry not found.");
             return false;
         }
 
@@ -299,13 +313,11 @@ public class BlockInventory : MonoBehaviour
             if (credits > 0)
             {
                 SetPairCredits(key, credits - 1);
-                DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair credit). Remaining credits: {credits - 1}");
                 return true;
             }
 
             if (groupEntry.currentCount <= 0)
             {
-                Debug.LogWarning($"[BlockInventory] Cannot place {groupEntry.GetDisplayName()} - inventory empty");
                 return false;
             }
 
@@ -313,19 +325,16 @@ public class BlockInventory : MonoBehaviour
             SetGroupCount(key, newCount);
             int newCredits = Mathf.Max(0, groupEntry.pairSize - 1);
             SetPairCredits(key, newCredits);
-            DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()} (pair). Remaining pairs: {newCount}/{groupEntry.maxCount}, credits: {newCredits}");
             return true;
         }
 
         if (groupEntry.currentCount <= 0)
         {
-            Debug.LogWarning($"[BlockInventory] Cannot place {groupEntry.GetDisplayName()} - inventory empty");
             return false;
         }
 
         int remaining = Mathf.Max(0, groupEntry.currentCount - 1);
         SetGroupCount(key, remaining);
-        DebugLog.Info($"[BlockInventory] Used {groupEntry.GetDisplayName()}. Remaining: {remaining}/{groupEntry.maxCount}");
         return true;
     }
 
@@ -355,7 +364,6 @@ public class BlockInventory : MonoBehaviour
 
         if (groupEntry == null)
         {
-            Debug.LogWarning("[BlockInventory] Cannot return block - inventory entry not found.");
             return;
         }
 
@@ -367,20 +375,17 @@ public class BlockInventory : MonoBehaviour
             if (credits < maxCredits)
             {
                 SetPairCredits(key, credits + 1);
-                DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair credit). Credits: {credits + 1}");
                 return;
             }
 
             int newPairCount = Mathf.Min(groupEntry.maxCount, groupEntry.currentCount + 1);
             SetGroupCount(key, newPairCount);
             SetPairCredits(key, 0);
-            DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()} (pair). Available pairs: {newPairCount}/{groupEntry.maxCount}");
             return;
         }
 
         int newSingleCount = Mathf.Min(groupEntry.maxCount, groupEntry.currentCount + 1);
         SetGroupCount(key, newSingleCount);
-        DebugLog.Info($"[BlockInventory] Returned {groupEntry.GetDisplayName()}. Available: {newSingleCount}/{groupEntry.maxCount}");
     }
 
     public int GetAvailableCount(BlockInventoryEntry entry)
@@ -518,7 +523,6 @@ public class BlockInventory : MonoBehaviour
     {
         if (newEntries == null || newEntries.Count == 0)
         {
-            Debug.LogWarning("[BlockInventory] LoadInventoryEntries called with null or empty list");
             return;
         }
 
@@ -533,40 +537,14 @@ public class BlockInventory : MonoBehaviour
 
         NormalizeEntries();
         ResetInventory();
-        designerEntries = null;
+        playerVisibleEntries = null;
 
-        DebugLog.Info($"[BlockInventory] Loaded {entries.Count} inventory entries from level data");
         OnInventoryChanged?.Invoke();
-    }
-
-    private IReadOnlyList<BlockInventoryEntry> GetDesignerEntries()
-    {
-        if (designerEntries != null) return designerEntries;
-
-        designerEntries = new List<BlockInventoryEntry>();
-        foreach (BlockType blockType in System.Enum.GetValues(typeof(BlockType)))
-        {
-            BlockInventoryEntry entry = GetDefaultEntryForBlockType(blockType);
-            BlockInventoryEntry clone = entry != null ? entry.Clone() : new BlockInventoryEntry(blockType, 9999);
-
-            clone.displayName = BlockColors.GetBlockTypeName(blockType);
-            clone.inventoryGroupId = string.Empty;
-            clone.flavorId = string.Empty;
-            clone.routeSteps = null;
-            clone.isPairInventory = false;
-            clone.pairSize = 1;
-            clone.maxCount = 9999;
-            clone.currentCount = 9999;
-            clone.entryId = clone.GetEntryId();
-
-            designerEntries.Add(clone);
-        }
-
-        return designerEntries;
     }
 
     private void NormalizeEntries()
     {
+        playerVisibleEntries = null;
         if (entries == null || entries.Count == 0) return;
 
         ConsolidateTransporterEntries();
@@ -607,8 +585,6 @@ public class BlockInventory : MonoBehaviour
             usedIds.Add(entry.entryId);
         }
 
-        designerEntries = null;
-
         Dictionary<string, int> groupMaxCounts = new Dictionary<string, int>();
         foreach (BlockInventoryEntry entry in entries)
         {
@@ -617,10 +593,6 @@ public class BlockInventory : MonoBehaviour
             if (!groupMaxCounts.ContainsKey(key))
             {
                 groupMaxCounts[key] = entry.maxCount;
-            }
-            else if (groupMaxCounts[key] != entry.maxCount)
-            {
-                Debug.LogWarning($"[BlockInventory] Inventory group '{key}' has mismatched max counts. Using {groupMaxCounts[key]}.");
             }
         }
 
@@ -757,10 +729,6 @@ public class BlockInventory : MonoBehaviour
             target.flavorId = source.flavorId;
         }
 
-        if (target.isPairInventory != source.isPairInventory || target.pairSize != source.pairSize)
-        {
-            Debug.LogWarning("[BlockInventory] Transporter entries with matching routes have different pair settings. Using the first entry's values.");
-        }
     }
 
     private static void ValidateTransporterEntry(BlockInventoryEntry entry)
@@ -768,10 +736,6 @@ public class BlockInventory : MonoBehaviour
         if (entry == null) return;
 
         RouteParser.RouteData data = RouteParser.ParseRoute(entry.routeSteps, entry.flavorId);
-        if (!data.IsValid && !string.IsNullOrEmpty(data.error))
-        {
-            Debug.LogWarning($"[BlockInventory] Transporter entry '{entry.GetEntryId()}' has invalid route: {data.error}");
-        }
 
         if (data.normalizedSteps != null && data.normalizedSteps.Length > 0)
         {
