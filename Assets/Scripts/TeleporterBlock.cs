@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using DG.Tweening;
 
 /// <summary>
 /// Teleporter block: teleports Lem to matching paired teleporter with same flavor.
@@ -25,10 +26,19 @@ public class TeleporterBlock : BaseBlock
     public float teleportCooldownSeconds = 2f;
 
     [Tooltip("Seconds the Lem pauses before teleporting")]
-    public float preTeleportPauseSeconds = 2f;
+    public float preTeleportPauseSeconds = 0.4f;
 
     [Tooltip("Seconds the Lem pauses after teleporting")]
-    public float postTeleportPauseSeconds = 2f;
+    public float postTeleportPauseSeconds = 0.15f;
+
+    [Tooltip("How far the Lem sinks into the teleporter before and after warp")]
+    public float sinkDistance = 0.45f;
+
+    [Tooltip("Seconds to sink into the source teleporter")]
+    public float sinkDurationSeconds = 0.25f;
+
+    [Tooltip("Seconds to rise out of the destination teleporter")]
+    public float riseDurationSeconds = 0.25f;
 
     [Tooltip("Extra vertical offset above the destination block")]
     public float destinationYOffset = 0.1f;
@@ -211,9 +221,28 @@ public class TeleporterBlock : BaseBlock
             yield return new WaitForSeconds(preDelay);
         }
 
+        float sinkAmount = Mathf.Max(0f, sinkDistance);
+        float sinkDuration = Mathf.Max(0f, sinkDurationSeconds);
+        float riseDuration = Mathf.Max(0f, riseDurationSeconds);
+
+        if (lem != null && sinkAmount > 0f)
+        {
+            float sourceSunkenY = lem.transform.position.y - sinkAmount;
+            Tween sinkTween = lem.transform.DOMoveY(sourceSunkenY, sinkDuration).SetEase(Ease.InOutSine);
+            yield return sinkTween.WaitForCompletion();
+        }
+
         Vector3 targetPosition = destination.GetTeleportLandingPosition(destinationYOffset);
+        targetPosition.y -= sinkAmount;
         destination.RequireTriggerExitBeforeReuse(lem);
         lem.transform.position = targetPosition;
+
+        if (lem != null && sinkAmount > 0f)
+        {
+            float destinationRiseY = targetPosition.y + sinkAmount;
+            Tween riseTween = lem.transform.DOMoveY(destinationRiseY, riseDuration).SetEase(Ease.InOutSine);
+            yield return riseTween.WaitForCompletion();
+        }
 
         float postDelay = Mathf.Max(0f, postTeleportPauseSeconds);
         if (postDelay > 0f)
@@ -272,7 +301,12 @@ public class TeleporterBlock : BaseBlock
     private void SetCooldown(LemController lem)
     {
         if (lem == null) return;
-        float cooldown = Mathf.Max(teleportCooldownSeconds, preTeleportPauseSeconds + postTeleportPauseSeconds);
+        float animationTime =
+            Mathf.Max(0f, preTeleportPauseSeconds) +
+            Mathf.Max(0f, postTeleportPauseSeconds) +
+            Mathf.Max(0f, sinkDurationSeconds) +
+            Mathf.Max(0f, riseDurationSeconds);
+        float cooldown = Mathf.Max(teleportCooldownSeconds, animationTime);
         cooldown += Mathf.Max(0.05f, lem.GetInteractionStopTweenDuration());
         LemCooldownUntil[lem] = Time.time + cooldown;
     }
