@@ -29,7 +29,7 @@ public class MainMenuUI : MonoBehaviour
 
     [Header("Settings")]
     [Tooltip("Name of the overworld scene to load")]
-    public string overworldSceneName = "Overworld";
+    public string overworldSceneName = GameConstants.SceneNames.Overworld;
 
     private void Start()
     {
@@ -77,27 +77,10 @@ public class MainMenuUI : MonoBehaviour
 
     private void InitializeManagers()
     {
-        // Ensure singleton managers are initialized
-        if (WorldManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("WorldManager");
-            managerObj.AddComponent<WorldManager>();
-            DontDestroyOnLoad(managerObj);
-        }
-
-        if (ProgressManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("ProgressManager");
-            managerObj.AddComponent<ProgressManager>();
-            DontDestroyOnLoad(managerObj);
-        }
-
-        if (LevelManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("LevelManager");
-            managerObj.AddComponent<LevelManager>();
-            DontDestroyOnLoad(managerObj);
-        }
+        // Access singletons to force initialization.
+        _ = WorldManager.Instance;
+        _ = ProgressManager.Instance;
+        _ = LevelManager.Instance;
     }
 
     private void OnLoadGame()

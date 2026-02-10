@@ -26,6 +26,7 @@ public class LevelNameDisplay : MonoBehaviour
 
     private Canvas canvas;
     private RectTransform textRect;
+    private string lastDisplayedLevelName;
 
     private void Start()
     {
@@ -99,9 +100,20 @@ public class LevelNameDisplay : MonoBehaviour
             levelName = LevelManager.Instance.CurrentLevelDef.levelName;
         }
 
-        textComponent.text = levelName;
-        textComponent.fontSize = fontSize;
-        textComponent.color = textColor;
+        if (lastDisplayedLevelName != levelName)
+        {
+            textComponent.text = levelName;
+            lastDisplayedLevelName = levelName;
+        }
+
+        if (textComponent.fontSize != fontSize)
+        {
+            textComponent.fontSize = fontSize;
+        }
+        if (textComponent.color != textColor)
+        {
+            textComponent.color = textColor;
+        }
 
         // Update position if changed
         if (textRect != null)

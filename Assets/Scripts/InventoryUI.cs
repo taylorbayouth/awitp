@@ -122,6 +122,7 @@ public class InventoryUI : MonoBehaviour
 
     private readonly List<SlotUI> _slots = new List<SlotUI>();
     private readonly Dictionary<string, Texture2D> _transporterIconCache = new Dictionary<string, Texture2D>();
+    private static readonly Color DepletedPreviewColor = new Color(1f, 1f, 1f, 0.3f);
 
     // Dirty-flag tracking for event-driven rebuild
     private bool _isDirty = true;
@@ -163,21 +164,18 @@ public class InventoryUI : MonoBehaviour
         }
 
         _instance = this;
-
-        LoadUIFont();
-        LoadWalkBlockSprite();
-        LoadCrumblerBlockSprite();
-        LoadTeleporterBlockSprite();
-        LoadKeyBlockSprite();
-        LoadLockBlockSprite();
-        LoadTransporterIconTexture();
-        EnsureCanvas();
-        EnsureEventSystem();
-        BindOrCreateStaticUI();
-        RebuildSlotCache();
+        RefreshStaticUI();
     }
 
     private void OnEnable()
+    {
+        RefreshStaticUI();
+        SubscribeToEvents();
+        _isDirty = true;
+        _lockDirty = true;
+    }
+
+    private void RefreshStaticUI()
     {
         LoadUIFont();
         LoadWalkBlockSprite();
@@ -190,9 +188,6 @@ public class InventoryUI : MonoBehaviour
         EnsureEventSystem();
         BindOrCreateStaticUI();
         RebuildSlotCache();
-        SubscribeToEvents();
-        _isDirty = true;
-        _lockDirty = true;
     }
 
     private void Update()
@@ -799,7 +794,6 @@ public class InventoryUI : MonoBehaviour
         }
 
         int available = inventory.GetDisplayAvailableCount(entry);
-        int total = inventory.GetDisplayTotalCount(entry);
         UpdateCountBadge(slot, available, showInfinite, previewSize);
 
         Color blockColor = GetColorForBlockType(entry.blockType);
@@ -808,134 +802,28 @@ public class InventoryUI : MonoBehaviour
             blockColor.a = 0.3f;
         }
 
-        if (entry.blockType == BlockType.Walk)
+        if (TryGetSpritePreview(entry.blockType, out Sprite sprite))
         {
-            if (walkBlockSprite == null)
-            {
-                LoadWalkBlockSprite();
-            }
-
-            if (walkBlockSprite == null)
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
-                return;
-            }
-
-            slot.previewImage.enabled = true;
-            slot.previewImage.sprite = walkBlockSprite;
-            slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
-            slot.previewRaw.gameObject.SetActive(false);
-        }
-        else if (entry.blockType == BlockType.Crumbler)
-        {
-            if (crumblerBlockSprite == null)
-            {
-                LoadCrumblerBlockSprite();
-            }
-
-            if (crumblerBlockSprite == null)
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
-                return;
-            }
-
-            slot.previewImage.enabled = true;
-            slot.previewImage.sprite = crumblerBlockSprite;
-            slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
-            slot.previewRaw.gameObject.SetActive(false);
-        }
-        else if (entry.blockType == BlockType.Teleporter)
-        {
-            if (teleporterBlockSprite == null)
-            {
-                LoadTeleporterBlockSprite();
-            }
-
-            if (teleporterBlockSprite != null)
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = teleporterBlockSprite;
-                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
-                slot.previewRaw.gameObject.SetActive(false);
-            }
-            else
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
-            }
-        }
-        else if (entry.blockType == BlockType.Key)
-        {
-            if (keyBlockSprite == null)
-            {
-                LoadKeyBlockSprite();
-            }
-
-            if (keyBlockSprite != null)
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = keyBlockSprite;
-                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
-                slot.previewRaw.gameObject.SetActive(false);
-            }
-            else
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
-            }
-        }
-        else if (entry.blockType == BlockType.Lock)
-        {
-            if (lockBlockSprite == null)
-            {
-                LoadLockBlockSprite();
-            }
-
-            if (lockBlockSprite != null)
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = lockBlockSprite;
-                slot.previewImage.color = showInfinite || available > 0 ? Color.white : new Color(1f, 1f, 1f, 0.3f);
-                slot.previewRaw.gameObject.SetActive(false);
-            }
-            else
-            {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
-            }
+            SetSpritePreview(slot, sprite, blockColor, showInfinite, available);
         }
         else if (entry.blockType == BlockType.Transporter)
         {
-            if (TrySetTransporterPreview(entry, slot.previewRaw, blockColor, slot.previewImage.rectTransform.rect.size))
+            Vector2 previewSizeForRaw = slot.previewImage != null ? slot.previewImage.rectTransform.rect.size : Vector2.zero;
+            if (TrySetTransporterPreview(entry, slot.previewRaw, blockColor, previewSizeForRaw))
             {
-                slot.previewImage.enabled = false;
+                if (slot.previewImage != null)
+                {
+                    slot.previewImage.enabled = false;
+                }
             }
             else
             {
-                slot.previewImage.enabled = true;
-                slot.previewImage.sprite = null;
-                slot.previewImage.color = blockColor;
-                slot.previewRaw.gameObject.SetActive(false);
+                SetSpritePreview(slot, null, blockColor, showInfinite, available);
             }
         }
         else
         {
-            slot.previewImage.enabled = true;
-            slot.previewImage.sprite = null;
-            slot.previewImage.color = blockColor;
-            slot.previewRaw.gameObject.SetActive(false);
+            SetSpritePreview(slot, null, blockColor, showInfinite, available);
         }
 
         if (slot.previewImage != null)
@@ -950,6 +838,56 @@ public class InventoryUI : MonoBehaviour
         bool isSelected = builderController != null && builderController.currentInventoryEntry == entry;
         ApplySelectionOutline(slot.previewOutline, isSelected);
         ApplySelectionOutline(slot.previewRawOutline, isSelected);
+    }
+
+    private bool TryGetSpritePreview(BlockType blockType, out Sprite sprite)
+    {
+        sprite = null;
+        switch (blockType)
+        {
+            case BlockType.Walk:
+                if (walkBlockSprite == null) LoadWalkBlockSprite();
+                sprite = walkBlockSprite;
+                return true;
+            case BlockType.Crumbler:
+                if (crumblerBlockSprite == null) LoadCrumblerBlockSprite();
+                sprite = crumblerBlockSprite;
+                return true;
+            case BlockType.Teleporter:
+                if (teleporterBlockSprite == null) LoadTeleporterBlockSprite();
+                sprite = teleporterBlockSprite;
+                return true;
+            case BlockType.Key:
+                if (keyBlockSprite == null) LoadKeyBlockSprite();
+                sprite = keyBlockSprite;
+                return true;
+            case BlockType.Lock:
+                if (lockBlockSprite == null) LoadLockBlockSprite();
+                sprite = lockBlockSprite;
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void SetSpritePreview(SlotUI slot, Sprite sprite, Color fallbackColor, bool showInfinite, int available)
+    {
+        if (slot.previewImage != null)
+        {
+            slot.previewImage.enabled = true;
+            slot.previewImage.sprite = sprite;
+            slot.previewImage.color = sprite != null
+                ? (showInfinite || available > 0 ? Color.white : DepletedPreviewColor)
+                : fallbackColor;
+        }
+
+        SetRawPreviewVisible(slot.previewRaw, false);
+    }
+
+    private static void SetRawPreviewVisible(RawImage rawImage, bool visible)
+    {
+        if (rawImage == null) return;
+        rawImage.gameObject.SetActive(visible);
     }
 
     private Shadow EnsureShadow(Graphic graphic)
@@ -1142,6 +1080,8 @@ public class InventoryUI : MonoBehaviour
 
     private bool TrySetTransporterPreview(BlockInventoryEntry entry, RawImage rawImage, Color blockColor, Vector2 size)
     {
+        if (rawImage == null) return false;
+
         string[] steps = ResolveRouteSteps(entry);
         if (steps == null || steps.Length == 0) return false;
 

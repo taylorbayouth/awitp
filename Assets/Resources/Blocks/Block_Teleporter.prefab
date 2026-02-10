@@ -326,8 +326,12 @@ MonoBehaviour:
   centerLabelDuration: 0.15
   teleporterFlavor: 0
   teleportCooldownSeconds: 0
-  preTeleportPauseSeconds: 1.5
-  postTeleportPauseSeconds: 1.5
+  preTeleportPauseSeconds: 2
+  postTeleportPauseSeconds: 2
+  sinkDistance: 1
+  sinkDurationSeconds: 0.5
+  sinkToTeleportDelaySeconds: 2
+  riseDurationSeconds: 0.5
   destinationYOffset: 0.001
   showTeleportLabel: 1
   labelColor: {r: 1, g: 1, b: 1, a: 0.9}

@@ -80,7 +80,7 @@ public class WorldManager : MonoBehaviour
     /// <summary>
     /// Gets all worlds as an array (for UI iteration).
     /// </summary>
-    public WorldData[] allWorlds => _worlds.ToArray();
+    public WorldData[] allWorlds => GetAllWorlds();
 
     /// <summary>
     /// Gets the number of worlds.
@@ -147,12 +147,12 @@ public class WorldManager : MonoBehaviour
             _worldCache.Clear();
 
             // Load from Resources/Levels/Worlds
-            WorldData[] loadedWorlds = Resources.LoadAll<WorldData>("Levels/Worlds");
+            WorldData[] loadedWorlds = Resources.LoadAll<WorldData>(GameConstants.ResourcePaths.WorldsRoot);
 
             if (loadedWorlds.Length == 0)
             {
                 // Try alternate path
-                loadedWorlds = Resources.LoadAll<WorldData>("Levels");
+                loadedWorlds = Resources.LoadAll<WorldData>(GameConstants.ResourcePaths.LevelsRoot);
             }
 
             // Sort by orderInGame

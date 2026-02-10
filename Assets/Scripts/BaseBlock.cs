@@ -340,7 +340,7 @@ public class BaseBlock : MonoBehaviour
 
         if (prefab == null)
         {
-            prefab = Resources.Load<GameObject>("Blocks/BaseBlock");
+            prefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.BaseBlockPrefab);
             if (prefab == null)
             {
                 return null;
@@ -381,12 +381,6 @@ public class BaseBlock : MonoBehaviour
                         _cachedInventory.ReturnBlock(blockType);
                     }
                 }
-                else
-                {
-                }
-            }
-            else
-            {
             }
 
             // Unregister from GridManager
@@ -394,15 +388,13 @@ public class BaseBlock : MonoBehaviour
             {
                 GridManager.Instance.UnregisterBlock(this);
             }
-            else
-            {
-            }
 
             // Destroy the GameObject
             Destroy(gameObject);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Debug.LogError($"[BaseBlock] Failed to destroy block {name} ({blockType}) at index {gridIndex}: {ex.Message}");
         }
     }
 
@@ -420,7 +412,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             currentPlayer = other.GetComponent<LemController>();
             isPlayerOnBlock = true;
@@ -439,7 +431,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             LemController lem = other.GetComponent<LemController>();
             isPlayerOnBlock = false;
@@ -460,7 +452,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             if (!isPlayerOnBlock)
             {
@@ -481,7 +473,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (collision.collider.CompareTag("Player"))
+        if (collision.collider.CompareTag(GameConstants.Tags.Player))
         {
             currentPlayer = collision.collider.GetComponent<LemController>();
             isPlayerOnBlock = true;
@@ -499,7 +491,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (collision.collider.CompareTag("Player"))
+        if (collision.collider.CompareTag(GameConstants.Tags.Player))
         {
             isPlayerOnBlock = false;
             currentPlayer = null;
@@ -517,7 +509,7 @@ public class BaseBlock : MonoBehaviour
     {
         if (!IsPlayModeActive()) return;
 
-        if (collision.collider.CompareTag("Player"))
+        if (collision.collider.CompareTag(GameConstants.Tags.Player))
         {
             if (!isPlayerOnBlock)
             {
@@ -748,7 +740,7 @@ public class BaseBlock : MonoBehaviour
         bool playerInBox = false;
         foreach (Collider hit in hits)
         {
-            if (!hit.CompareTag("Player")) continue;
+            if (!hit.CompareTag(GameConstants.Tags.Player)) continue;
             playerInBox = true;
             Vector3 footPoint = GetFootPoint(hit);
             if (Vector3.Distance(footPoint, centerTriggerCenter) <= centerTriggerRadius)

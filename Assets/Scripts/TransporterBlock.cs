@@ -15,6 +15,10 @@ public class TransporterBlock : BaseBlock
     [Header("Transport Settings")]
     public float unitsPerSecond = 2f;
     public float speedMultiplier = 0.25f;
+    [Tooltip("Seconds to pause after snapping/freezing the Lem and before the block starts moving")]
+    public float preMovePauseSeconds = 0f;
+    [Tooltip("Seconds to pause after movement completes and before unfreezing the Lem")]
+    public float postMovePauseSeconds = 0f;
     public bool debugLogs = false;
 
     [Header("Route Preview")]
@@ -75,16 +79,20 @@ public class TransporterBlock : BaseBlock
 
         ClearPreview();
 
-        if (isTransporting && currentPlayer != null)
+        if (isTransporting)
         {
-            currentPlayer.transform.SetParent(null, true);
-            Rigidbody lemRb = currentPlayer.GetComponent<Rigidbody>();
-            if (lemRb != null)
+            LemController carriedLem = currentPlayer != null ? currentPlayer : GetComponentInChildren<LemController>();
+            if (carriedLem != null)
             {
-                lemRb.isKinematic = false;
-                lemRb.useGravity = true;
+                carriedLem.transform.SetParent(null, true);
+                Rigidbody lemRb = carriedLem.GetComponent<Rigidbody>();
+                if (lemRb != null)
+                {
+                    lemRb.isKinematic = false;
+                    lemRb.useGravity = true;
+                }
+                carriedLem.SetFrozen(false);
             }
-            currentPlayer.SetFrozen(false);
         }
     }
 
@@ -106,11 +114,22 @@ public class TransporterBlock : BaseBlock
     /// </summary>
     private IEnumerator TransportRoutine(LemController lem, List<Vector2Int> steps)
     {
+        if (lem == null || steps == null || steps.Count == 0)
+        {
+            RearmImmediately();
+            yield break;
+        }
+
         isTransporting = true;
         hasSnappedThisRide = false;
         bool lemWasPushedOff = false;
 
-        yield return lem.StartCoroutine(lem.TweenHorizontalSpeedToZero(lem.GetInteractionStopTweenDuration()));
+        yield return StartCoroutine(lem.TweenHorizontalSpeedToZero(lem.GetInteractionStopTweenDuration()));
+        if (lem == null)
+        {
+            RearmImmediately();
+            yield break;
+        }
 
         // Freeze Lem's physics - save previous state to restore later
         Rigidbody lemRb = lem.GetComponent<Rigidbody>();
@@ -130,11 +149,22 @@ public class TransporterBlock : BaseBlock
         lem.transform.SetParent(transform, true);
 
         GridManager grid = GetGridManager();
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         Vector2Int currentCoords = grid != null ? grid.IndexToCoordinates(gridIndex) : Vector2Int.zero;
 
         // Snap Lem to the block's center if they're slightly misaligned
         TrySnapLemToBlockCenter(lem);
+
+        float preMoveDelay = Mathf.Max(0f, preMovePauseSeconds);
+        if (preMoveDelay > 0f)
+        {
+            yield return new WaitForSeconds(preMoveDelay);
+            if (lem == null)
+            {
+                RearmImmediately();
+                yield break;
+            }
+        }
 
         // Execute each step of the route
         foreach (Vector2Int step in steps)
@@ -181,8 +211,19 @@ public class TransporterBlock : BaseBlock
         }
 
         // Unparent Lem and restore physics when still being carried.
-        if (!lemWasPushedOff)
+        if (!lemWasPushedOff && lem != null)
         {
+            float postMoveDelay = Mathf.Max(0f, postMovePauseSeconds);
+            if (postMoveDelay > 0f)
+            {
+                yield return new WaitForSeconds(postMoveDelay);
+                if (lem == null)
+                {
+                    RearmImmediately();
+                    yield break;
+                }
+            }
+
             lem.transform.SetParent(null, true);
             if (lemRb != null)
             {
@@ -199,6 +240,14 @@ public class TransporterBlock : BaseBlock
         // Wait for Lem to exit before re-arming
         isTransporting = false;
         waitingForExit = true;
+    }
+
+    private void RearmImmediately()
+    {
+        isTransporting = false;
+        waitingForExit = false;
+        isArmed = true;
+        SetCenterTriggerEnabled(true);
     }
 
     private bool TryPushCarriedLemOffIfBlocked(
@@ -449,7 +498,7 @@ public class TransporterBlock : BaseBlock
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count == 0) return;
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
 
         // Convert grid indices to world positions (waypoints)
         List<Vector3> waypoints = new List<Vector3>();
@@ -600,7 +649,7 @@ public class TransporterBlock : BaseBlock
     /// </summary>
     private void CreateArrowhead(Vector3 endPosition, Vector3 previousPosition)
     {
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
 
         arrowheadObject = new GameObject("TransportArrowhead");
         arrowheadObject.transform.position = endPosition;
@@ -639,7 +688,7 @@ public class TransporterBlock : BaseBlock
         List<int> pathIndices = GetRoutePathIndices();
         if (pathIndices.Count < 2) return;
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
 
         // Convert path indices to world positions
         List<Vector3> waypoints = new List<Vector3>();
@@ -756,7 +805,7 @@ public class TransporterBlock : BaseBlock
     {
         if (lem == null || hasSnappedThisRide) return;
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         float topPlaneY = transform.position.y + (cellSize * 0.5f);
         Vector3 pos = lem.transform.position;
         Collider lemCollider = lem.GetComponent<Collider>();
@@ -798,7 +847,7 @@ public class TransporterBlock : BaseBlock
 
         foreach (Collider hit in hits)
         {
-            if (hit.CompareTag("Player")) return true;
+            if (hit.CompareTag(GameConstants.Tags.Player)) return true;
         }
         return false;
     }

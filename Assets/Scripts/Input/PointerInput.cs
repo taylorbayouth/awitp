@@ -9,6 +9,7 @@ using System.Collections.Generic;
 public static class PointerInput
 {
     public const int MousePointerId = -1;
+    private static readonly List<RaycastResult> RaycastResults = new List<RaycastResult>(8);
 
     public static bool TryGetPrimaryPointerDown(out Vector2 screenPosition, out int pointerId)
     {
@@ -45,8 +46,8 @@ public static class PointerInput
             pointerId = pointerId
         };
 
-        List<RaycastResult> results = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, results);
-        return results.Count > 0;
+        RaycastResults.Clear();
+        EventSystem.current.RaycastAll(eventData, RaycastResults);
+        return RaycastResults.Count > 0;
     }
 }

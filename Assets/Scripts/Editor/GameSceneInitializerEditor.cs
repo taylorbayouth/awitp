@@ -84,12 +84,12 @@ public class GameSceneInitializerEditor : Editor
     private void LoadAllLevels()
     {
         // Load all LevelDefinition assets from Resources
-        allLevels = Resources.LoadAll<LevelDefinition>("Levels/LevelDefinitions");
+        allLevels = Resources.LoadAll<LevelDefinition>(GameConstants.ResourcePaths.LevelDefinitionsRoot);
 
         if (allLevels == null || allLevels.Length == 0)
         {
             // Try alternate path
-            allLevels = Resources.LoadAll<LevelDefinition>("Levels");
+            allLevels = Resources.LoadAll<LevelDefinition>(GameConstants.ResourcePaths.LevelsRoot);
         }
 
         // Sort by world and order

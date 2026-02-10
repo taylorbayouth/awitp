@@ -520,7 +520,7 @@ public class LevelManager : MonoBehaviour
     public void ReturnToWorldMap()
     {
         UnloadLevel();
-        SceneManager.LoadScene("WorldMap");
+        SceneManager.LoadScene(GameConstants.SceneNames.WorldMap);
     }
 
     /// <summary>
@@ -529,7 +529,7 @@ public class LevelManager : MonoBehaviour
     public void ReturnToMainMenu()
     {
         UnloadLevel();
-        SceneManager.LoadScene("MainMenu");
+        SceneManager.LoadScene(GameConstants.SceneNames.MainMenu);
     }
 
     #endregion
@@ -550,18 +550,18 @@ public class LevelManager : MonoBehaviour
 
         // Try to load from Resources
         // Convention: Resources/Levels/LevelDefinitions/{levelId}
-        LevelDefinition levelDef = Resources.Load<LevelDefinition>($"Levels/LevelDefinitions/{levelId}");
+        LevelDefinition levelDef = Resources.Load<LevelDefinition>($"{GameConstants.ResourcePaths.LevelDefinitionsRoot}/{levelId}");
 
         if (levelDef == null)
         {
             // Try alternate path without subfolder
-            levelDef = Resources.Load<LevelDefinition>($"Levels/{levelId}");
+            levelDef = Resources.Load<LevelDefinition>($"{GameConstants.ResourcePaths.LevelsRoot}/{levelId}");
         }
 
         if (levelDef == null)
         {
             // Search all loaded LevelDefinitions
-            LevelDefinition[] allLevels = Resources.LoadAll<LevelDefinition>("Levels");
+            LevelDefinition[] allLevels = Resources.LoadAll<LevelDefinition>(GameConstants.ResourcePaths.LevelsRoot);
             foreach (var level in allLevels)
             {
                 if (level.levelId == levelId)

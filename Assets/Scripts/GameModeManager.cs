@@ -20,8 +20,8 @@ public class GameModeManager : MonoBehaviour
 
     [Header("Music - Synchronized Dual-Track System")]
     [Tooltip("Both tracks play simultaneously from start, only volumes crossfade")]
-    public string builderMusicResourcePath = "Music/SoundtrackBuild";
-    public string playMusicResourcePath = "Music/SoundtrackPlay";
+    public string builderMusicResourcePath = GameConstants.ResourcePaths.BuilderMusicTrack;
+    public string playMusicResourcePath = GameConstants.ResourcePaths.PlayMusicTrack;
     [Range(0f, 1f)]
     public float musicVolume = 1f;
     [Range(0.05f, 2f)]
@@ -73,7 +73,7 @@ public class GameModeManager : MonoBehaviour
         // Auto-find Sky object if not set
         if (skyObject == null)
         {
-            skyObject = GameObject.Find("Sky");
+            skyObject = GameObject.Find(GameConstants.ObjectNames.Sky);
         }
 
         // Set initial background color on startup
@@ -91,10 +91,9 @@ public class GameModeManager : MonoBehaviour
     {
         if (builderController == null)
         {
-            // Try to find it if not found
             builderController = ServiceRegistry.TryGet<BuilderController>();
-            return;
         }
+        if (builderController == null) return;
 
         // Check if game mode changed
         if (builderController.currentMode != previousMode)
@@ -270,23 +269,12 @@ public class GameModeManager : MonoBehaviour
 
     public void SetNormalMode()
     {
-        if (mainCamera != null)
-        {
-            if (normalModeSkybox != null)
-            {
-                RenderSettings.skybox = normalModeSkybox;
-            }
-            mainCamera.clearFlags = CameraClearFlags.Skybox;
-        }
+        UpdateBackgroundColor();
     }
 
     public void SetEditorMode()
     {
-        if (mainCamera != null)
-        {
-            mainCamera.clearFlags = CameraClearFlags.SolidColor;
-            mainCamera.backgroundColor = designerModeColor;
-        }
+        UpdateBackgroundColor();
     }
 
     private void SetGridVisible(bool visible)
@@ -305,7 +293,7 @@ public class GameModeManager : MonoBehaviour
     {
         if (skyObject == null)
         {
-            skyObject = GameObject.Find("Sky");
+            skyObject = GameObject.Find(GameConstants.ObjectNames.Sky);
         }
 
         if (skyObject != null)

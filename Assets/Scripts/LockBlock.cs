@@ -20,6 +20,9 @@ public class LockBlock : BaseBlock
     [Tooltip("Local Y offset for the key when locked")]
     [SerializeField] private float keyLockYOffset = 0.75f;
 
+    [Tooltip("Key scale relative to grid cell size when inserted into this lock")]
+    [SerializeField] private float keyScale = 0.2f;
+
     private Transform lockTransform;
 
     private void OnEnable()
@@ -48,14 +51,7 @@ public class LockBlock : BaseBlock
 
     public void AttachKeyFromState(KeyItem key)
     {
-        if (key == null || key.IsLocked) return;
-        if (HasKeyLocked()) return;
-
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
-        float keyWorldScale = cellSize * 0.2f;
-        float keyLocalOffset = cellSize * keyLockYOffset;
-        key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
-        OnLockStateChanged?.Invoke();
+        TryAttachKeyToLock(key);
     }
 
     protected override void Start()
@@ -69,14 +65,7 @@ public class LockBlock : BaseBlock
         if (currentPlayer == null) return;
 
         KeyItem key = KeyItem.FindHeldKey(currentPlayer);
-        if (key == null || key.IsLocked) return;
-        if (HasKeyLocked()) return;
-
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
-        float keyWorldScale = cellSize * 0.2f;
-        float keyLocalOffset = cellSize * keyLockYOffset;
-        key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
-        OnLockStateChanged?.Invoke();
+        TryAttachKeyToLock(key);
     }
 
     private void EnsureLockVisual()
@@ -87,7 +76,7 @@ public class LockBlock : BaseBlock
         }
         if (lockTransform == null) return;
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         float worldScale = cellSize * statueScale;
 
         // Position statue so base aligns with block surface (mesh pivot is at center, so offset up by half)
@@ -97,5 +86,17 @@ public class LockBlock : BaseBlock
         float parentScale = transform.lossyScale.x;
         float localScale = parentScale > 0f ? worldScale / parentScale : worldScale;
         lockTransform.localScale = Vector3.one * localScale;
+    }
+
+    private void TryAttachKeyToLock(KeyItem key)
+    {
+        if (key == null || key.IsLocked) return;
+        if (HasKeyLocked()) return;
+
+        float cellSize = GameConstants.Grid.CellSize;
+        float keyWorldScale = cellSize * keyScale;
+        float keyLocalOffset = cellSize * keyLockYOffset;
+        key.AttachToLock(transform, keyLocalOffset, keyWorldScale);
+        OnLockStateChanged?.Invoke();
     }
 }

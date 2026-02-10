@@ -32,10 +32,10 @@ public class VictoryScreenUI : MonoBehaviour
 
     [Header("Settings")]
     [Tooltip("Level select scene name")]
-    public string levelSelectSceneName = "LevelSelect";
+    public string levelSelectSceneName = GameConstants.SceneNames.LevelSelect;
 
     [Tooltip("World map scene name")]
-    public string worldMapSceneName = "WorldMap";
+    public string worldMapSceneName = GameConstants.SceneNames.WorldMap;
 
     [Tooltip("Particle effect for celebration (optional)")]
     public ParticleSystem celebrationParticles;
@@ -151,9 +151,10 @@ public class VictoryScreenUI : MonoBehaviour
     private void UpdateStatsDisplay()
     {
         if (statsText == null) return;
-        if (ProgressManager.Instance == null || currentLevel == null) return;
+        if (currentLevel == null) return;
+        ProgressManager progressManager = ProgressManager.Instance;
 
-        LevelProgress progress = ProgressManager.Instance.GetLevelProgress(currentLevel.levelId);
+        LevelProgress progress = progressManager.GetLevelProgress(currentLevel.levelId);
 
         if (progress != null)
         {
@@ -171,13 +172,14 @@ public class VictoryScreenUI : MonoBehaviour
 
     private LevelDefinition GetNextLevel(LevelDefinition currentLevel)
     {
-        if (WorldManager.Instance == null || currentLevel == null)
+        if (currentLevel == null)
         {
             return null;
         }
+        WorldManager worldManager = WorldManager.Instance;
 
         // Find the world containing this level
-        foreach (WorldData world in WorldManager.Instance.allWorlds)
+        foreach (WorldData world in worldManager.Worlds)
         {
             LevelDefinition foundLevel = world.GetNextLevel(currentLevel.levelId);
             if (foundLevel != null)

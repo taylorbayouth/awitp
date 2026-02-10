@@ -37,6 +37,9 @@ public class TeleporterBlock : BaseBlock
     [Tooltip("Seconds to sink into the source teleporter")]
     public float sinkDurationSeconds = 0.25f;
 
+    [Tooltip("Seconds to wait after sinking before the Lem is warped to the destination")]
+    public float sinkToTeleportDelaySeconds = 0f;
+
     [Tooltip("Seconds to rise out of the destination teleporter")]
     public float riseDurationSeconds = 0.25f;
 
@@ -151,27 +154,9 @@ public class TeleporterBlock : BaseBlock
 
     private TeleporterBlock FindMatchingTeleporter()
     {
-        TeleporterBlock[] teleporters = UnityEngine.Object.FindObjectsByType<TeleporterBlock>(FindObjectsSortMode.None);
-        if (teleporters == null || teleporters.Length == 0) return null;
-
         string key = GetTeleportKey();
-        TeleporterBlock best = null;
-        float bestDistance = float.MaxValue;
-
-        foreach (TeleporterBlock teleporter in teleporters)
-        {
-            if (teleporter == null || teleporter == this) continue;
-            if (teleporter.GetTeleportKey() != key) continue;
-
-            float dist = Vector3.Distance(transform.position, teleporter.transform.position);
-            if (dist < bestDistance)
-            {
-                bestDistance = dist;
-                best = teleporter;
-            }
-        }
-
-        return best;
+        FindMatchingTeleporters(key, out TeleporterBlock closest, out _);
+        return closest;
     }
 
     private string GetTeleportKey()
@@ -200,7 +185,7 @@ public class TeleporterBlock : BaseBlock
 
     private Vector3 GetTeleportLandingPosition(float yOffset)
     {
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         Vector3 target = transform.position;
         target.y += cellSize * 0.5f + yOffset;
         return target;
@@ -231,6 +216,14 @@ public class TeleporterBlock : BaseBlock
             Tween sinkTween = lem.transform.DOMoveY(sourceSunkenY, sinkDuration).SetEase(Ease.InOutSine);
             yield return sinkTween.WaitForCompletion();
         }
+
+        float sinkToTeleportDelay = Mathf.Max(0f, sinkToTeleportDelaySeconds);
+        if (sinkToTeleportDelay > 0f)
+        {
+            yield return new WaitForSeconds(sinkToTeleportDelay);
+        }
+
+        if (lem == null || destination == null) yield break;
 
         Vector3 targetPosition = destination.GetTeleportLandingPosition(destinationYOffset);
         targetPosition.y -= sinkAmount;
@@ -305,10 +298,35 @@ public class TeleporterBlock : BaseBlock
             Mathf.Max(0f, preTeleportPauseSeconds) +
             Mathf.Max(0f, postTeleportPauseSeconds) +
             Mathf.Max(0f, sinkDurationSeconds) +
+            Mathf.Max(0f, sinkToTeleportDelaySeconds) +
             Mathf.Max(0f, riseDurationSeconds);
         float cooldown = Mathf.Max(teleportCooldownSeconds, animationTime);
         cooldown += Mathf.Max(0.05f, lem.GetInteractionStopTweenDuration());
         LemCooldownUntil[lem] = Time.time + cooldown;
+    }
+
+    private void FindMatchingTeleporters(string key, out TeleporterBlock closest, out int matchCount)
+    {
+        closest = null;
+        matchCount = 0;
+
+        TeleporterBlock[] teleporters = UnityEngine.Object.FindObjectsByType<TeleporterBlock>(FindObjectsSortMode.None);
+        if (teleporters == null || teleporters.Length == 0) return;
+
+        float bestDistance = float.MaxValue;
+        foreach (TeleporterBlock teleporter in teleporters)
+        {
+            if (teleporter == null || teleporter == this) continue;
+            if (teleporter.GetTeleportKey() != key) continue;
+
+            matchCount++;
+            float dist = Vector3.Distance(transform.position, teleporter.transform.position);
+            if (dist < bestDistance)
+            {
+                bestDistance = dist;
+                closest = teleporter;
+            }
+        }
     }
 
     #region Placement Validation Overrides
@@ -374,21 +392,8 @@ public class TeleporterBlock : BaseBlock
     /// </summary>
     public bool HasValidPair()
     {
-        TeleporterBlock[] teleporters = UnityEngine.Object.FindObjectsByType<TeleporterBlock>(FindObjectsSortMode.None);
-        if (teleporters == null) return false;
-
         string key = GetTeleportKey();
-        int matchCount = 0;
-
-        foreach (TeleporterBlock teleporter in teleporters)
-        {
-            if (teleporter == null || teleporter == this) continue;
-            if (teleporter.GetTeleportKey() == key)
-            {
-                matchCount++;
-            }
-        }
-
+        FindMatchingTeleporters(key, out _, out int matchCount);
         return matchCount == 1; // Exactly one pair
     }
 

@@ -17,12 +17,12 @@ public class GameSceneInitializer : MonoBehaviour
         // In editor, use the Inspector-selected level
         if (selectedLevel != null)
         {
-            PlayerPrefs.SetString("SelectedLevelId", selectedLevel.levelId);
+            PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.SelectedLevelId, selectedLevel.levelId);
             Debug.Log($"[GameSceneInitializer] Set level from Inspector: {selectedLevel.levelId}");
         }
 #endif
 
-        string levelId = PlayerPrefs.GetString("SelectedLevelId", "");
+        string levelId = PlayerPrefs.GetString(GameConstants.PlayerPrefsKeys.SelectedLevelId, "");
 
         if (string.IsNullOrEmpty(levelId))
         {

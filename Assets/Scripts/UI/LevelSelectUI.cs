@@ -30,10 +30,10 @@ public class LevelSelectUI : MonoBehaviour
 
     [Header("Settings")]
     [Tooltip("World map scene name")]
-    public string worldMapSceneName = "WorldMap";
+    public string worldMapSceneName = GameConstants.SceneNames.WorldMap;
 
     [Tooltip("Game scene name")]
-    public string gameSceneName = "Game";
+    public string gameSceneName = GameConstants.SceneNames.Gameplay;
 
     private WorldData currentWorld;
     private List<LevelButton> levelButtons = new List<LevelButton>();
@@ -54,18 +54,12 @@ public class LevelSelectUI : MonoBehaviour
 
     private void LoadSelectedWorld()
     {
-        string worldId = PlayerPrefs.GetString("SelectedWorldId", "");
+        string worldId = PlayerPrefs.GetString(GameConstants.PlayerPrefsKeys.SelectedWorldId, "");
 
         if (string.IsNullOrEmpty(worldId))
         {
             Debug.LogError("[LevelSelectUI] No world ID stored! Returning to world map.");
             SceneManager.LoadScene(worldMapSceneName);
-            return;
-        }
-
-        if (WorldManager.Instance == null)
-        {
-            Debug.LogError("[LevelSelectUI] WorldManager not found!");
             return;
         }
 
@@ -180,7 +174,7 @@ public class LevelSelectUI : MonoBehaviour
         Debug.Log($"[LevelSelectUI] Level selected: {level.levelName}");
 
         // Store selected level ID
-        PlayerPrefs.SetString("SelectedLevelId", level.levelId);
+        PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.SelectedLevelId, level.levelId);
         PlayerPrefs.Save();
 
         // Load game scene

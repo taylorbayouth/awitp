@@ -23,9 +23,9 @@ public class OverworldUI : MonoBehaviour
 
     [Header("Navigation")]
     [Tooltip("Scene to load when a level is selected.")]
-    public string gameSceneName = "Master";
+    public string gameSceneName = GameConstants.SceneNames.Gameplay;
     [Tooltip("Scene to load when backing out to main menu.")]
-    public string mainMenuSceneName = "MainMenu";
+    public string mainMenuSceneName = GameConstants.SceneNames.MainMenu;
     [Tooltip("Optional back button to return to main menu.")]
     public Button backButton;
 
@@ -95,26 +95,9 @@ public class OverworldUI : MonoBehaviour
 
     private void EnsureManagers()
     {
-        if (WorldManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("WorldManager");
-            managerObj.AddComponent<WorldManager>();
-            DontDestroyOnLoad(managerObj);
-        }
-
-        if (ProgressManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("ProgressManager");
-            managerObj.AddComponent<ProgressManager>();
-            DontDestroyOnLoad(managerObj);
-        }
-
-        if (LevelManager.Instance == null)
-        {
-            GameObject managerObj = new GameObject("LevelManager");
-            managerObj.AddComponent<LevelManager>();
-            DontDestroyOnLoad(managerObj);
-        }
+        _ = WorldManager.Instance;
+        _ = ProgressManager.Instance;
+        _ = LevelManager.Instance;
     }
 
     private void BuildWorldCards()
@@ -135,14 +118,15 @@ public class OverworldUI : MonoBehaviour
             }
         }
 
-        WorldData[] worlds = WorldManager.Instance != null ? WorldManager.Instance.allWorlds : null;
-        if (worlds == null || worlds.Length == 0)
+        WorldManager worldManager = WorldManager.Instance;
+        var worlds = worldManager.Worlds;
+        if (worlds == null || worlds.Count == 0)
         {
             Debug.LogWarning("[OverworldUI] No worlds found.");
             return;
         }
 
-        int total = worlds.Length;
+        int total = worlds.Count;
         int cols = Mathf.Max(1, columns);
         int rows = Mathf.CeilToInt(total / (float)cols);
 
@@ -166,7 +150,7 @@ public class OverworldUI : MonoBehaviour
             rect.sizeDelta = cardSize;
             rect.anchoredPosition = new Vector2(x, y);
 
-            bool isUnlocked = WorldManager.Instance != null && WorldManager.Instance.IsWorldUnlocked(world.worldId);
+            bool isUnlocked = worldManager.IsWorldUnlocked(world.worldId);
             if (!isUnlocked)
             {
                 // Locked worlds should not be visible or accessible - destroy the card we just created
@@ -174,7 +158,7 @@ public class OverworldUI : MonoBehaviour
                 continue;
             }
 
-            int completedLevels = WorldManager.Instance != null ? WorldManager.Instance.GetCompletedLevelCount(world.worldId) : 0;
+            int completedLevels = worldManager.GetCompletedLevelCount(world.worldId);
             int totalLevels = world != null ? world.LevelCount : 0;
             bool isComplete = totalLevels > 0 && completedLevels >= totalLevels;
             bool hasProgress = completedLevels > 0 && !isComplete;
@@ -183,7 +167,10 @@ public class OverworldUI : MonoBehaviour
             string statusLabel = isComplete ? "Unlocked" : (hasProgress ? "In Progress" : "Unlocked");
             string worldId = world != null ? world.worldId : string.Empty;
             List<LevelDefinition> levels = LoadLevelsForWorld(worldId);
-            Debug.Log($"[OverworldUI] World '{worldId}' has {levels.Count} levels from Resources.");
+            if (verboseLogs)
+            {
+                Debug.Log($"[OverworldUI] World '{worldId}' has {levels.Count} levels from Resources.");
+            }
 
             card.Initialize(world, this, statusLabel, isUnlocked, isComplete, hasProgress, isAvailable);
             card.verboseLogs = verboseLogs;
@@ -201,7 +188,7 @@ public class OverworldUI : MonoBehaviour
             return results;
         }
 
-        LevelDefinition[] allLevels = Resources.LoadAll<LevelDefinition>("Levels/LevelDefinitions");
+        LevelDefinition[] allLevels = Resources.LoadAll<LevelDefinition>(GameConstants.ResourcePaths.LevelDefinitionsRoot);
         if (allLevels == null || allLevels.Length == 0)
         {
             Debug.LogWarning("[OverworldUI] No LevelDefinition assets found in Resources/Levels/LevelDefinitions.");
@@ -230,12 +217,9 @@ public class OverworldUI : MonoBehaviour
             return;
         }
 
-        if (WorldManager.Instance != null)
-        {
-            WorldManager.Instance.SetCurrentWorld(world.worldId);
-        }
+        WorldManager.Instance.SetCurrentWorld(world.worldId);
 
-        PlayerPrefs.SetString("SelectedWorldId", world.worldId);
+        PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.SelectedWorldId, world.worldId);
         PlayerPrefs.Save();
 
         Debug.Log($"[OverworldUI] World selected: {world.worldName}");
@@ -251,7 +235,7 @@ public class OverworldUI : MonoBehaviour
             return;
         }
 
-        PlayerPrefs.SetString("PendingLevelId", level.levelId);
+        PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.PendingLevelId, level.levelId);
         PlayerPrefs.Save();
 
         Debug.Log($"[OverworldUI] Loading level: {level.levelName} ({level.levelId})");

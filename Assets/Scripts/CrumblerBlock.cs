@@ -694,7 +694,7 @@ public class CrumblerBlock : BaseBlock
     private static void RefreshPlayerColliders()
     {
         playerColliders.Clear();
-        var players = GameObject.FindGameObjectsWithTag("Player");
+        var players = GameObject.FindGameObjectsWithTag(GameConstants.Tags.Player);
         foreach (var player in players)
         {
             if (player == null) continue;

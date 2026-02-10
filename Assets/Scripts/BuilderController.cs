@@ -36,7 +36,7 @@ public class BuilderController : MonoBehaviour
         }
 
         InitializeInventorySelection();
-        FreezeAllLems();
+        SetAllLemsFrozen(true);
     }
 
     private void InitializeInventorySelection()
@@ -318,16 +318,9 @@ public class BuilderController : MonoBehaviour
 
             // Remove block if present
             BaseBlock block = GridManager.Instance.GetBlockAtIndex(cursorIndex);
-            if (block != null)
+            if (block != null && (!block.isPermanent || currentMode == GameMode.Designer))
             {
-                if (block.isPermanent && currentMode != GameMode.Designer)
-                {
-                    // Cannot remove permanent block in Builder mode
-                }
-                else
-                {
-                    block.DestroyBlock();
-                }
+                block.DestroyBlock();
             }
 
             // Remove Lem only in Level Builder mode
@@ -346,7 +339,7 @@ public class BuilderController : MonoBehaviour
 
     private void HandleInventorySelection()
     {
-        if (GridManager.Instance == null || blockInventory == null) return;
+        if (blockInventory == null) return;
 
         IReadOnlyList<BlockInventoryEntry> entries = blockInventory.GetEntriesForMode(currentMode);
         if (entries == null || entries.Count == 0) return;
@@ -482,28 +475,6 @@ public class BuilderController : MonoBehaviour
         return true;
     }
 
-    private void ChangeBlockType(BaseBlock block, BlockInventoryEntry entry)
-    {
-        if (block == null || entry == null) return;
-
-        // Store position and index
-        int gridIndex = block.gridIndex;
-        bool wasPermanent = block.isPermanent;
-
-        // Remove old block
-        block.DestroyBlock();
-
-        // Place new block of different type at same position
-        if (wasPermanent)
-        {
-            GridManager.Instance.PlacePermanentBlock(entry, gridIndex);
-        }
-        else
-        {
-            GridManager.Instance.PlaceBlock(entry, gridIndex);
-        }
-    }
-
     private void HandleLemPlacement()
     {
         if (GridManager.Instance == null) return;
@@ -524,38 +495,20 @@ public class BuilderController : MonoBehaviour
     {
         if (currentMode != GameMode.Play) return;
 
-        currentMode = GameMode.Builder;
-        if (GridManager.Instance != null)
-        {
-            GridManager.Instance.RestorePlayModeSnapshot();
-        }
-        FreezeAllLems();
-        UpdateCursorVisibility();
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
+
+        grid.RestorePlayModeSnapshot();
+        SetMode(GameMode.Builder);
     }
 
     private void HandleModeToggle()
     {
-        // E key toggles between Designer and Editor
+        // E key toggles between Designer and Builder
         if (Input.GetKeyDown(KeyCode.E))
         {
-            if (currentMode == GameMode.Designer)
-            {
-                currentMode = GameMode.Builder;
-                if (gameModeManager != null) gameModeManager.SetNormalMode();
-                FreezeAllLems();
-                UpdateCursorVisibility();
-            }
-            else if (currentMode == GameMode.Builder)
-            {
-                currentMode = GameMode.Designer;
-                if (gameModeManager != null) gameModeManager.SetEditorMode();
-                FreezeAllLems();
-                UpdateCursorVisibility();
-            }
-            else if (currentMode == GameMode.Play)
-            {
-                // Can't toggle modes during play
-            }
+            if (currentMode == GameMode.Builder) SetMode(GameMode.Designer);
+            else if (currentMode == GameMode.Designer) SetMode(GameMode.Builder);
         }
 
         // P key toggles Play mode
@@ -567,75 +520,87 @@ public class BuilderController : MonoBehaviour
             }
             else
             {
-                // Enter play mode from any Designer mode
-                if (GridManager.Instance != null && GridManager.Instance.HasTransporterConflicts())
-                {
-                    return;
-                }
-                if (GridManager.Instance != null)
-                {
-                    GridManager.Instance.CapturePlayModeSnapshot();
-                }
-                currentMode = GameMode.Play;
-                UnfreezeAllLems();
-                UpdateCursorVisibility();
+                EnterPlayMode();
             }
         }
     }
 
+    private void EnterPlayMode()
+    {
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
+        if (grid.HasTransporterConflicts()) return;
+
+        grid.CapturePlayModeSnapshot();
+        SetMode(GameMode.Play);
+    }
+
+    private void SetMode(GameMode mode)
+    {
+        if (currentMode == mode) return;
+
+        currentMode = mode;
+        if (gameModeManager == null)
+        {
+            gameModeManager = ServiceRegistry.Get<GameModeManager>();
+        }
+        if (mode == GameMode.Designer)
+        {
+            gameModeManager?.SetEditorMode();
+        }
+        else if (mode == GameMode.Builder)
+        {
+            gameModeManager?.SetNormalMode();
+        }
+
+        SetAllLemsFrozen(mode != GameMode.Play);
+        UpdateCursorVisibility();
+    }
+
     private void UpdateCursorVisibility()
     {
-        if (GridManager.Instance == null) return;
-        GridManager.Instance.SetCursorVisible(currentMode != GameMode.Play);
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
 
-        PlaceableSpaceVisualizer visualizer = GridManager.Instance.GetComponent<PlaceableSpaceVisualizer>();
+        bool showCursor = currentMode != GameMode.Play;
+        grid.SetCursorVisible(showCursor);
+
+        PlaceableSpaceVisualizer visualizer = grid.GetComponent<PlaceableSpaceVisualizer>();
         if (visualizer != null)
         {
-            visualizer.SetVisible(currentMode != GameMode.Play);
+            visualizer.SetVisible(showCursor);
         }
     }
 
-    private void FreezeAllLems()
+    private static void SetAllLemsFrozen(bool frozen)
     {
         LemController[] lems = UnityEngine.Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
         foreach (LemController lem in lems)
         {
-            lem.SetFrozen(true);
-        }
-    }
-
-    private void UnfreezeAllLems()
-    {
-        LemController[] lems = UnityEngine.Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
-        foreach (LemController lem in lems)
-        {
-            lem.SetFrozen(false);
+            lem.SetFrozen(frozen);
         }
     }
 
     private void HandlePlaceableSpaceToggle()
     {
-        if (GridManager.Instance == null) return;
+        GridManager grid = GridManager.Instance;
+        if (grid == null) return;
 
         // Space/Enter to mark space as placeable in Level Builder mode
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
         {
-            int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
-            if (!GridManager.Instance.IsSpacePlaceable(cursorIndex))
+            int cursorIndex = grid.GetCurrentCursorIndex();
+            if (!grid.IsSpacePlaceable(cursorIndex))
             {
-                GridManager.Instance.SetSpacePlaceable(cursorIndex, true);
+                grid.SetSpacePlaceable(cursorIndex, true);
             }
         }
     }
 
     private void HandleSaveLoad()
     {
-        if (GridManager.Instance == null) return;
-
-        if (currentMode == GameMode.Play)
-        {
-            return;
-        }
+        GridManager grid = GridManager.Instance;
+        if (grid == null || currentMode == GameMode.Play) return;
 
         // Check for Ctrl/Cmd modifier
         bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
@@ -645,12 +610,12 @@ public class BuilderController : MonoBehaviour
         if (ctrlOrCmd && Input.GetKeyDown(KeyCode.S))
         {
             LevelManager levelManager = LevelManager.Instance;
-            if (levelManager == null || levelManager.CurrentLevelDef == null)
+            if (levelManager.CurrentLevelDef == null)
             {
                 return;
             }
 
-            LevelData levelData = GridManager.Instance.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
+            LevelData levelData = grid.CaptureLevelData(includePlacedBlocks: false, includeKeyStates: false);
             levelManager.CurrentLevelDef.SaveFromLevelData(levelData);
         }
     }

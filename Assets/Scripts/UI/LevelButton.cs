@@ -105,7 +105,6 @@ public class LevelButton : MonoBehaviour
         // Button is always interactable (can replay completed levels)
         button.interactable = true;
 
-        Debug.Log($"[LevelButton] Initialized: {levelData.levelName} (Completed: {isCompleted})");
     }
 
     private void OnClick()

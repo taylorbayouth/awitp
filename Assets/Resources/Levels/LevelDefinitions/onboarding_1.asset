@@ -16,15 +16,26 @@ MonoBehaviour:
   levelName: Onboarding 1
   worldId: onboarding
   orderInWorld: 1
-  gridWidth: 10
-  gridHeight: 10
-  cellSize: 1
-  levelDataJson: "{\n    \"gridWidth\": 10,\n    \"gridHeight\": 10,\n    \"cellSize\":
-    1.0,\n    \"cameraSettings\": {\n        \"fieldOfView\": 38.0,\n        \"nearClipPlane\":
-    0.30000001192092898,\n        \"farClipPlane\": 100.0,\n        \"verticalOffset\":
-    4.0,\n        \"horizontalOffset\": 0.0,\n        \"tiltAngle\": -30.0,\n       
-    \"panAngle\": 0.0,\n        \"gridMargin\": 1.0,\n        \"minDistance\": 8.0\n   
-    },\n    \"blocks\": [],\n    \"permanentBlocks\": [],\n    \"inventoryEntries\":
-    [],\n    \"placeableSpaceIndices\": [],\n    \"lems\": [],\n    \"keyStates\":
-    [],\n    \"levelName\": \"Onboarding 1\",\n    \"saveTimestamp\": \"2026-01-28
-    12:13:57\"\n}"
+  gridLineWidth: 0.01
+  gridLineColor: {r: 0.8, g: 0.8, b: 0.8, a: 0.2}
+  cursorPlaceableColor: {r: 0, g: 0, b: 1, a: 1}
+  cursorEditableColor: {r: 0, g: 1, b: 0, a: 1}
+  cursorNonPlaceableColor: {r: 1, g: 0, b: 0, a: 1}
+  visualTheme: {fileID: 0}
+  audioTheme: {fileID: 0}
+  levelData:
+    gridWidth: 9
+    gridHeight: 8
+    cameraSettings:
+      cameraDistance: 150
+      gridMargin: 1
+      nearClipPlane: 0.24
+      farClipPlane: 500
+    blocks: []
+    permanentBlocks: []
+    inventoryEntries: []
+    placeableSpaceIndices: 
+    lems: []
+    keyStates: []
+    levelName: 
+    saveTimestamp: 2026-02-09 17:41:06

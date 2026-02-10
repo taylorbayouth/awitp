@@ -111,7 +111,6 @@ public class WorldButton : MonoBehaviour
             }
         }
 
-        Debug.Log($"[WorldButton] Initialized: {worldData.worldName} (Unlocked: {isUnlocked}, Completed: {isCompleted})");
     }
 
     private void OnClick()

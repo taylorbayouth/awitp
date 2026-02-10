@@ -24,10 +24,10 @@ public class WorldMapUI : MonoBehaviour
 
     [Header("Settings")]
     [Tooltip("Main menu scene name")]
-    public string mainMenuSceneName = "MainMenu";
+    public string mainMenuSceneName = GameConstants.SceneNames.MainMenu;
 
     [Tooltip("Level select scene name")]
-    public string levelSelectSceneName = "LevelSelect";
+    public string levelSelectSceneName = GameConstants.SceneNames.LevelSelect;
 
     private List<WorldButton> worldButtons = new List<WorldButton>();
 
@@ -46,11 +46,7 @@ public class WorldMapUI : MonoBehaviour
 
     private void PopulateWorldButtons()
     {
-        if (WorldManager.Instance == null)
-        {
-            Debug.LogError("[WorldMapUI] WorldManager instance not found!");
-            return;
-        }
+        WorldManager worldManager = WorldManager.Instance;
 
         if (worldButtonContainer == null)
         {
@@ -58,8 +54,8 @@ public class WorldMapUI : MonoBehaviour
             return;
         }
 
-        WorldData[] worlds = WorldManager.Instance.allWorlds;
-        if (worlds == null || worlds.Length == 0)
+        var worlds = worldManager.Worlds;
+        if (worlds == null || worlds.Count == 0)
         {
             Debug.LogWarning("[WorldMapUI] No worlds found to display");
             return;
@@ -98,14 +94,15 @@ public class WorldMapUI : MonoBehaviour
     private void UpdateProgressText()
     {
         if (progressText == null) return;
-        if (WorldManager.Instance == null || ProgressManager.Instance == null) return;
+        WorldManager worldManager = WorldManager.Instance;
 
-        int totalWorlds = WorldManager.Instance.allWorlds.Length;
+        var worlds = worldManager.Worlds;
+        int totalWorlds = worlds.Count;
         int completedWorlds = 0;
 
-        foreach (WorldData world in WorldManager.Instance.allWorlds)
+        foreach (WorldData world in worlds)
         {
-            if (WorldManager.Instance.IsWorldComplete(world.worldId))
+            if (worldManager.IsWorldComplete(world.worldId))
             {
                 completedWorlds++;
             }
@@ -125,7 +122,7 @@ public class WorldMapUI : MonoBehaviour
         Debug.Log($"[WorldMapUI] World selected: {world.worldName}");
 
         // Store selected world ID for level select scene
-        PlayerPrefs.SetString("SelectedWorldId", world.worldId);
+        PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.SelectedWorldId, world.worldId);
         PlayerPrefs.Save();
 
         // Load level select scene

@@ -49,7 +49,7 @@ public class CenterTrigger : MonoBehaviour
             isActive = false;
             return;
         }
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             LogCrumblerSphere("enter", other);
             UpdateCenterState(other);
@@ -64,7 +64,7 @@ public class CenterTrigger : MonoBehaviour
             isActive = false;
             return;
         }
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             UpdateCenterState(other);
         }
@@ -78,7 +78,7 @@ public class CenterTrigger : MonoBehaviour
             isActive = false;
             return;
         }
-        if (other.CompareTag("Player"))
+        if (other.CompareTag(GameConstants.Tags.Player))
         {
             if (isActive)
             {

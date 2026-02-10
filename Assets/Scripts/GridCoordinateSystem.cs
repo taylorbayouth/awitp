@@ -16,8 +16,8 @@ using UnityEngine;
 public class GridCoordinateSystem
 {
     // Grid dimensions
-    private readonly int gridWidth;
-    private readonly int gridHeight;
+    private int gridWidth;
+    private int gridHeight;
 
     // Calculated origin point (bottom-left corner of grid)
     private Vector3 gridOrigin;
@@ -78,15 +78,8 @@ public class GridCoordinateSystem
     /// </summary>
     public void UpdateDimensions(int newWidth, int newHeight)
     {
-        // Note: Using reflection to set readonly fields
-        // This is safe because we control when this is called (level load only)
-        typeof(GridCoordinateSystem).GetField("gridWidth",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.SetValue(this, newWidth);
-
-        typeof(GridCoordinateSystem).GetField("gridHeight",
-            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
-            ?.SetValue(this, newHeight);
+        gridWidth = newWidth;
+        gridHeight = newHeight;
 
         CalculateGridOrigin();
     }

@@ -41,7 +41,7 @@ public class GridCursor : MonoBehaviour
     {
         if (borderRenderer == null) SetupCursor();
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         Color currentColor = GetColorForState(currentState);
         borderRenderer.Initialize(currentColor, cellSize, RenderingConstants.CURSOR_DEPTH, RenderingConstants.CURSOR_SORTING, RenderingConstants.CURSOR_LINE_WIDTH);
     }

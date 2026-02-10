@@ -186,12 +186,12 @@ public class GameInitializer : MonoBehaviour
     /// </summary>
     private void LoadPendingLevel()
     {
-        string pendingLevelId = PlayerPrefs.GetString("PendingLevelId", "");
+        string pendingLevelId = PlayerPrefs.GetString(GameConstants.PlayerPrefsKeys.PendingLevelId, "");
 
         if (!string.IsNullOrEmpty(pendingLevelId))
         {
             // Clear the pending level so it doesn't reload on scene restart
-            PlayerPrefs.DeleteKey("PendingLevelId");
+            PlayerPrefs.DeleteKey(GameConstants.PlayerPrefsKeys.PendingLevelId);
             PlayerPrefs.Save();
 
             DebugLog.Info($"GameInitializer: Loading pending level: {pendingLevelId}");

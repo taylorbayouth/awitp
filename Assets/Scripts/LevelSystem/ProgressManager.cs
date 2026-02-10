@@ -77,7 +77,7 @@ public class ProgressManager : MonoBehaviour
     [SerializeField] private bool _autoSave = true;
 
     [Tooltip("File name for progress save")]
-    [SerializeField] private string _saveFileName = "progress.json";
+    [SerializeField] private string _saveFileName = GameConstants.SaveFiles.Progress;
 
     // Save path
     private string _savePath;
@@ -505,7 +505,7 @@ public class ProgressManager : MonoBehaviour
             }
         }
 
-        return "onboarding";
+        return GameConstants.Defaults.InitialWorldId;
     }
 
     #endregion

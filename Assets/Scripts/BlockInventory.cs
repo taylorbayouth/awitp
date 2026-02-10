@@ -337,9 +337,10 @@ public class BlockInventory : MonoBehaviour
             }
 
             int newCount = Mathf.Max(0, groupEntry.currentCount - 1);
-            SetGroupCount(key, newCount);
+            SetGroupCount(key, newCount, notify: false);
             int newCredits = Mathf.Max(0, groupEntry.pairSize - 1);
-            SetPairCredits(key, newCredits);
+            SetPairCredits(key, newCredits, notify: false);
+            NotifyInventoryChanged();
             return true;
         }
 
@@ -394,8 +395,9 @@ public class BlockInventory : MonoBehaviour
             }
 
             int newPairCount = Mathf.Min(groupEntry.maxCount, groupEntry.currentCount + 1);
-            SetGroupCount(key, newPairCount);
-            SetPairCredits(key, 0);
+            SetGroupCount(key, newPairCount, notify: false);
+            SetPairCredits(key, 0, notify: false);
+            NotifyInventoryChanged();
             return;
         }
 
@@ -513,9 +515,15 @@ public class BlockInventory : MonoBehaviour
     /// <summary>
     /// Resets all entries to their max counts and clears pair credits.
     /// </summary>
-    public void ResetInventory()
+    public void ResetInventory(bool notify = true)
     {
-        pairCredits.Clear();
+        bool changed = false;
+        if (pairCredits.Count > 0)
+        {
+            pairCredits.Clear();
+            changed = true;
+        }
+
         HashSet<string> groups = new HashSet<string>();
         foreach (BlockInventoryEntry entry in entries)
         {
@@ -523,8 +531,13 @@ public class BlockInventory : MonoBehaviour
             string key = GetInventoryKey(entry);
             if (groups.Add(key))
             {
-                SetGroupCount(key, GetGroupMaxCount(key));
+                changed |= SetGroupCount(key, GetGroupMaxCount(key), notify: false);
             }
+        }
+
+        if (notify && changed)
+        {
+            NotifyInventoryChanged();
         }
     }
 
@@ -551,10 +564,10 @@ public class BlockInventory : MonoBehaviour
         }
 
         NormalizeEntries();
-        ResetInventory();
+        ResetInventory(notify: false);
         playerVisibleEntries = null;
 
-        OnInventoryChanged?.Invoke();
+        NotifyInventoryChanged();
     }
 
     private void NormalizeEntries()
@@ -639,17 +652,28 @@ public class BlockInventory : MonoBehaviour
         return entry != null ? entry.maxCount : 0;
     }
 
-    private void SetGroupCount(string key, int newCount)
+    private bool SetGroupCount(string key, int newCount, bool notify = true)
     {
+        if (string.IsNullOrEmpty(key)) return false;
+
+        bool changed = false;
         foreach (BlockInventoryEntry entry in entries)
         {
             if (entry == null) continue;
             if (GetInventoryKey(entry) == key)
             {
+                if (entry.currentCount == newCount) continue;
                 entry.currentCount = newCount;
+                changed = true;
             }
         }
-        OnInventoryChanged?.Invoke();
+
+        if (notify && changed)
+        {
+            NotifyInventoryChanged();
+        }
+
+        return changed;
     }
 
     private int GetPairCredits(string key)
@@ -658,10 +682,36 @@ public class BlockInventory : MonoBehaviour
         return pairCredits.TryGetValue(key, out int value) ? value : 0;
     }
 
-    private void SetPairCredits(string key, int credits)
+    private bool SetPairCredits(string key, int credits, bool notify = true)
     {
-        if (string.IsNullOrEmpty(key)) return;
-        pairCredits[key] = Mathf.Max(0, credits);
+        if (string.IsNullOrEmpty(key)) return false;
+
+        int normalized = Mathf.Max(0, credits);
+        bool changed;
+        if (normalized == 0)
+        {
+            changed = pairCredits.Remove(key);
+        }
+        else if (pairCredits.TryGetValue(key, out int existing) && existing == normalized)
+        {
+            changed = false;
+        }
+        else
+        {
+            pairCredits[key] = normalized;
+            changed = true;
+        }
+
+        if (notify && changed)
+        {
+            NotifyInventoryChanged();
+        }
+
+        return changed;
+    }
+
+    private void NotifyInventoryChanged()
+    {
         OnInventoryChanged?.Invoke();
     }
 

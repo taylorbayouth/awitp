@@ -53,7 +53,7 @@ public class KeyBlock : BaseBlock
         Transform existingKey = transform.Find("Key");
         if (existingKey == null)
         {
-            existingKey = transform.Find("GreenApple");
+            existingKey = transform.Find(GameConstants.ResourcePaths.GreenApplePrefab);
         }
         bool hasEmbeddedKeyVisual = existingKey != null;
 
@@ -78,7 +78,7 @@ public class KeyBlock : BaseBlock
         else
         {
             // Try loading GreenApple prefab from Resources
-            GameObject applePrefab = Resources.Load<GameObject>("GreenApple");
+            GameObject applePrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.GreenApplePrefab);
             if (applePrefab != null)
             {
                 keyObj = Instantiate(applePrefab);
@@ -181,7 +181,7 @@ public class KeyBlock : BaseBlock
         if (keyTransform == null || lem == null) return;
 
         keyClaimed = true;
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         float carryOffset = cellSize * keyCarryYOffset;
         if (keyItem != null)
         {
@@ -196,7 +196,7 @@ public class KeyBlock : BaseBlock
             EnsureKeyVisual();
         }
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         keyClaimed = false;
         keyItem?.AttachToKeyBlock(transform, cellSize);
     }
@@ -212,7 +212,7 @@ public class KeyBlock : BaseBlock
 
     private float GetKeyWorldScale()
     {
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         return cellSize * keyScale * keyVisualScaleMultiplier;
     }
 

@@ -26,13 +26,11 @@ public class LemController : MonoBehaviour
 {
     private const float DefaultLemHeight = 0.95f;
     private const float ClockwiseTurnDegrees = -180f;
-    private const string PreRiggedLemResourcePath = "Characters/LemMeshPreRigged";
-    private const string PreRiggedLemTexturePath = "Characters/LemMeshPreRigged_Albedo";
-    private const string AnimatorControllerResourcePath = "Animations/Lem";
     private static readonly int SpeedParam = Animator.StringToHash("Speed");
     private static readonly int IsWalkingParam = Animator.StringToHash("IsWalking");
     private static readonly int HasKeyParam = Animator.StringToHash("HasKey");
     private static readonly int IsFallingParam = Animator.StringToHash("IsFalling");
+    private static PhysicsMaterial sharedLemPhysicsMaterial;
 
     [System.Serializable]
     public class FootstepSurface
@@ -165,9 +163,9 @@ public class LemController : MonoBehaviour
 
     void Awake()
     {
-        if (gameObject.tag != "Player")
+        if (gameObject.tag != GameConstants.Tags.Player)
         {
-            gameObject.tag = "Player";
+            gameObject.tag = GameConstants.Tags.Player;
         }
 
         rb = GetComponent<Rigidbody>();
@@ -186,18 +184,10 @@ public class LemController : MonoBehaviour
         defaultUseGravity = rb.useGravity;
         defaultIsKinematic = rb.isKinematic;
 
-        // Create physics material to prevent sticking
-        PhysicsMaterial physicsMaterial = new PhysicsMaterial("LemPhysics");
-        physicsMaterial.dynamicFriction = 0f;
-        physicsMaterial.staticFriction = 0f;
-        physicsMaterial.bounciness = 0f;
-        physicsMaterial.frictionCombine = PhysicsMaterialCombine.Minimum;
-        physicsMaterial.bounceCombine = PhysicsMaterialCombine.Minimum;
-
         CapsuleCollider collider = GetComponent<CapsuleCollider>();
         if (collider != null)
         {
-            collider.material = physicsMaterial;
+            collider.material = GetSharedLemPhysicsMaterial();
         }
 
         TrySwapToPreRiggedVisual();
@@ -226,7 +216,7 @@ public class LemController : MonoBehaviour
 
     private void TrySwapToPreRiggedVisual()
     {
-        GameObject preRiggedPrefab = Resources.Load<GameObject>(PreRiggedLemResourcePath);
+        GameObject preRiggedPrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.LemPreRiggedPrefab);
         if (preRiggedPrefab == null) return;
 
         RuntimeAnimatorController controllerAsset = null;
@@ -237,7 +227,7 @@ public class LemController : MonoBehaviour
         }
         if (controllerAsset == null)
         {
-            controllerAsset = Resources.Load<RuntimeAnimatorController>(AnimatorControllerResourcePath);
+            controllerAsset = Resources.Load<RuntimeAnimatorController>(GameConstants.ResourcePaths.LemAnimatorController);
         }
 
         Transform existingPivot = transform.Find("VisualPivot");
@@ -308,7 +298,7 @@ public class LemController : MonoBehaviour
         Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0) return;
 
-        Texture2D texture = Resources.Load<Texture2D>(PreRiggedLemTexturePath);
+        Texture2D texture = Resources.Load<Texture2D>(GameConstants.ResourcePaths.LemPreRiggedTexture);
         if (texture == null) return;
 
         Shader shader = GetPreferredCharacterShader(renderers);
@@ -514,10 +504,8 @@ public class LemController : MonoBehaviour
     {
         // Raycast from just above the foot point for precise ground detection
         Vector3 origin = GetFootPointPosition() + Vector3.up * 0.01f;
-        RaycastHit hit;
         // IMPORTANT: Use QueryTriggerInteraction.Ignore to ignore trigger colliders (like BaseBlock detection zones)
-        isGrounded = Physics.Raycast(origin, Vector3.down, out hit, groundCheckDistance, solidLayerMask, QueryTriggerInteraction.Ignore);
-
+        isGrounded = Physics.Raycast(origin, Vector3.down, groundCheckDistance, solidLayerMask, QueryTriggerInteraction.Ignore);
     }
 
     private void CheckWallAhead()
@@ -755,7 +743,10 @@ public class LemController : MonoBehaviour
             turnRoutine = null;
         }
         isTurningAround = false;
-        rb.linearVelocity = Vector3.zero;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
 
         // Wait 2 seconds before exiting play mode
         StartCoroutine(DieAfterDelay(2f));
@@ -843,6 +834,13 @@ public class LemController : MonoBehaviour
     private void PlayFootstep()
     {
         if (!isGrounded) return;
+        if (footstepSource == null) return;
+
+        if (hasCurrentBlock && currentBlock == null)
+        {
+            hasCurrentBlock = false;
+            currentBlockType = BlockType.Walk;
+        }
 
         BlockType type = hasCurrentBlock ? currentBlockType : BlockType.Walk;
         AudioClip clip = null;
@@ -862,13 +860,24 @@ public class LemController : MonoBehaviour
 
         if (clip == null) return;
 
-        footstepSource.pitch = UnityEngine.Random.Range(pitchRange.x, pitchRange.y);
-        float volume = UnityEngine.Random.Range(volumeRange.x, volumeRange.y);
+        float pitchMin = Mathf.Min(pitchRange.x, pitchRange.y);
+        float pitchMax = Mathf.Max(pitchRange.x, pitchRange.y);
+        float volumeMin = Mathf.Min(volumeRange.x, volumeRange.y);
+        float volumeMax = Mathf.Max(volumeRange.x, volumeRange.y);
+
+        footstepSource.pitch = UnityEngine.Random.Range(pitchMin, pitchMax);
+        float volume = UnityEngine.Random.Range(volumeMin, volumeMax);
         footstepSource.PlayOneShot(clip, volume);
     }
 
     private bool TryGetFootstepSurface(BlockType type, out FootstepSurface surface)
     {
+        if (footstepSurfaces == null || footstepSurfaces.Length == 0)
+        {
+            surface = null;
+            return false;
+        }
+
         for (int i = 0; i < footstepSurfaces.Length; i++)
         {
             FootstepSurface entry = footstepSurfaces[i];
@@ -891,7 +900,7 @@ public class LemController : MonoBehaviour
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
     {
-        GameObject lemPrefab = Resources.Load<GameObject>("Characters/Lem");
+        GameObject lemPrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.LemPrefab);
         if (lemPrefab != null)
         {
             GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
@@ -915,9 +924,9 @@ public class LemController : MonoBehaviour
         GameObject lem = new GameObject("Lem");
         lem.transform.position = position;
         lem.transform.localScale = Vector3.one;
-        lem.tag = "Player";
+        lem.tag = GameConstants.Tags.Player;
 
-        const float cellSize = 1f; // Grid cells are normalized to 1.0 world unit
+        float cellSize = GameConstants.Grid.CellSize;
         float height = cellSize * DefaultLemHeight;
         float lemRadius = height * 0.25f;
 
@@ -1170,6 +1179,25 @@ public class LemController : MonoBehaviour
         float maxDelta = Mathf.Max(0.01f, response) * deltaTime;
         float nextX = Mathf.MoveTowards(currentX, targetX, maxDelta);
         rb.linearVelocity = new Vector3(nextX, rb.linearVelocity.y, 0f);
+    }
+
+    private static PhysicsMaterial GetSharedLemPhysicsMaterial()
+    {
+        if (sharedLemPhysicsMaterial != null)
+        {
+            return sharedLemPhysicsMaterial;
+        }
+
+        sharedLemPhysicsMaterial = new PhysicsMaterial("LemPhysics")
+        {
+            dynamicFriction = 0f,
+            staticFriction = 0f,
+            bounciness = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+            bounceCombine = PhysicsMaterialCombine.Minimum
+        };
+
+        return sharedLemPhysicsMaterial;
     }
 
     private void TriggerWallBumpResponse()
