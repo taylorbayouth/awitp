@@ -54,6 +54,10 @@ public class CameraSetup : MonoBehaviour
     [Range(0.01f, 10f)]
     public float directionSmoothSpeed = 4f;
 
+    [Header("Zoom UI")]
+    [Tooltip("Font for the zoom toggle button. Assign Koulen-Regular or leave empty for fallback.")]
+    [SerializeField] private Font zoomButtonFont;
+
     [Header("Auto-Update")]
     [Tooltip("Automatically update camera when values change in the Inspector")]
     public bool autoUpdateInEditor = true;
@@ -84,6 +88,27 @@ public class CameraSetup : MonoBehaviour
     private void Start()
     {
         SetupCamera();
+
+        // Spawn the zoom toggle button (self-contained overlay)
+        GameObject uiObj = new GameObject("ZoomToggleUI");
+        uiObj.transform.SetParent(transform, false);
+        ZoomToggleUI zoomUI = uiObj.AddComponent<ZoomToggleUI>();
+        zoomUI.Initialize(this, zoomButtonFont);
+    }
+
+    /// <summary>
+    /// Returns true if the camera is currently zoomed in.
+    /// </summary>
+    public bool IsZoomed => isZoomed;
+
+    /// <summary>
+    /// Toggles between zoomed and unzoomed states.
+    /// Called by ZoomToggleUI button and Z keyboard shortcut.
+    /// </summary>
+    public void ToggleZoom()
+    {
+        isZoomed = !isZoomed;
+        targetFOV = isZoomed ? baseFOV * zoomFactor : baseFOV;
     }
 
     private void Update()
@@ -96,8 +121,7 @@ public class CameraSetup : MonoBehaviour
         // Z toggles zoom
         if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
         {
-            isZoomed = !isZoomed;
-            targetFOV = isZoomed ? baseFOV * zoomFactor : baseFOV;
+            ToggleZoom();
         }
 
         if (targetCamera == null) return;
