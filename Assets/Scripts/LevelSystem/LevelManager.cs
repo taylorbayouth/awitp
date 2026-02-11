@@ -22,6 +22,7 @@ using System.Collections.Generic;
 /// - OnLevelLoaded: Fired when a level finishes loading
 /// - OnLevelComplete: Fired when win condition is met
 /// - OnLevelFailed: Fired when level fails (all Lems dead, etc.)
+/// - OnLockProgressChanged: Fired when lock fill status changes (filledCount, totalCount)
 /// </summary>
 public class LevelManager : MonoBehaviour
 {
@@ -65,6 +66,9 @@ public class LevelManager : MonoBehaviour
     /// <summary>Fired when a level is unloaded.</summary>
     public event Action OnLevelUnloaded;
 
+    /// <summary>Fired when lock progress changes. Args: (filledCount, totalCount).</summary>
+    public event Action<int, int> OnLockProgressChanged;
+
     #endregion
 
     #region Fields
@@ -98,6 +102,11 @@ public class LevelManager : MonoBehaviour
 
     // Cache for loaded level definitions
     private Dictionary<string, LevelDefinition> _levelDefCache = new Dictionary<string, LevelDefinition>();
+
+    // Lock progress tracking (event-driven, cached)
+    private int _totalLockCount;
+    private int _filledLockCount;
+    private bool _lockProgressDirty = true;
 
     // Theme management
     private GameObject _currentVisualThemeBackground;
@@ -137,6 +146,16 @@ public class LevelManager : MonoBehaviour
     /// </summary>
     public int BlocksPlaced => _blocksPlacedCount;
 
+    /// <summary>
+    /// Total number of locks in the current level.
+    /// </summary>
+    public int TotalLockCount => _totalLockCount;
+
+    /// <summary>
+    /// Number of locks that currently have a key inserted.
+    /// </summary>
+    public int FilledLockCount => _filledLockCount;
+
     #endregion
 
     #region Unity Lifecycle
@@ -153,6 +172,9 @@ public class LevelManager : MonoBehaviour
 
         _instance = this;
         DontDestroyOnLoad(gameObject);
+
+        // Subscribe to lock state changes for event-driven progress tracking
+        LockBlock.OnLockStateChanged += HandleLockStateChanged;
 
         // Auto-find references if not set
         FindReferences();
@@ -171,14 +193,20 @@ public class LevelManager : MonoBehaviour
 
     private void Update()
     {
-        // Check win condition in play mode
+        // Process lock progress changes (deferred to Update to batch rapid state changes)
+        if (_lockProgressDirty && _levelLoaded)
+        {
+            _lockProgressDirty = false;
+            RefreshLockCounts();
+        }
+
+        // Check win condition in play mode using cached counts
         if (_levelLoaded && !_levelCompletedThisSession)
         {
-            // Only check in play mode
             BuilderController builderController = ServiceRegistry.Get<BuilderController>();
             if (builderController != null && builderController.currentMode == GameMode.Play)
             {
-                if (CheckLevelComplete())
+                if (_totalLockCount > 0 && _filledLockCount >= _totalLockCount)
                 {
                     HandleLevelComplete();
                 }
@@ -186,8 +214,47 @@ public class LevelManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Called when any lock's state changes (key inserted/removed, lock added/removed).
+    /// Marks the cached lock counts as dirty so they refresh next frame.
+    /// </summary>
+    private void HandleLockStateChanged()
+    {
+        _lockProgressDirty = true;
+    }
+
+    /// <summary>
+    /// Refreshes cached lock counts by scanning all active LockBlocks.
+    /// Fires OnLockProgressChanged if the counts have changed.
+    /// </summary>
+    private void RefreshLockCounts()
+    {
+        LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
+
+        int total = locks.Length;
+        int filled = 0;
+        foreach (var lockBlock in locks)
+        {
+            if (lockBlock != null && lockBlock.IsFilled())
+            {
+                filled++;
+            }
+        }
+
+        bool changed = (total != _totalLockCount || filled != _filledLockCount);
+        _totalLockCount = total;
+        _filledLockCount = filled;
+
+        if (changed)
+        {
+            OnLockProgressChanged?.Invoke(_filledLockCount, _totalLockCount);
+        }
+    }
+
     private void OnDestroy()
     {
+        LockBlock.OnLockStateChanged -= HandleLockStateChanged;
+
         if (_instance == this)
         {
             _instance = null;
@@ -274,6 +341,9 @@ public class LevelManager : MonoBehaviour
         _levelCompletedThisSession = false;
         _levelStartTime = Time.time;
         _blocksPlacedCount = 0;
+
+        // Initialize lock progress tracking
+        _lockProgressDirty = true;
 
         // Update progress tracking
         if (ProgressManager.Instance != null)
@@ -369,6 +439,9 @@ public class LevelManager : MonoBehaviour
             _currentLevelDef = null;
             _levelLoaded = false;
             _levelCompletedThisSession = false;
+            _totalLockCount = 0;
+            _filledLockCount = 0;
+            _lockProgressDirty = false;
 
             Debug.Log("[LevelManager] Level unloaded");
 
@@ -404,31 +477,20 @@ public class LevelManager : MonoBehaviour
     /// <summary>
     /// Checks if the level's win condition is met.
     /// Win condition: All locks are filled with keys.
+    /// Uses cached lock counts (updated via LockBlock.OnLockStateChanged).
     /// </summary>
     public bool CheckLevelComplete()
     {
         if (!_levelLoaded) return false;
 
-        // Find all locks
-        LockBlock[] locks = UnityEngine.Object.FindObjectsByType<LockBlock>(FindObjectsSortMode.None);
-
-        // If no locks, level can't be completed (or is a special case)
-        if (locks.Length == 0)
+        // Ensure counts are fresh
+        if (_lockProgressDirty)
         {
-            return false;
+            _lockProgressDirty = false;
+            RefreshLockCounts();
         }
 
-        // Check if all locks are filled
-        foreach (var lockBlock in locks)
-        {
-            if (lockBlock == null) continue;
-            if (!lockBlock.IsFilled())
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return _totalLockCount > 0 && _filledLockCount >= _totalLockCount;
     }
 
     /// <summary>

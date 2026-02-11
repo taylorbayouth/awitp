@@ -5,6 +5,7 @@ using UnityEngine.SceneManagement;
 /// <summary>
 /// Victory screen UI overlay shown when a level is completed.
 /// Provides options to continue, retry, or return to menu.
+/// Tracks whether completing this level unlocked a new world.
 /// </summary>
 public class VictoryScreenUI : MonoBehaviour
 {
@@ -30,6 +31,9 @@ public class VictoryScreenUI : MonoBehaviour
     [Tooltip("Button to return to world map")]
     public Button worldMapButton;
 
+    [Tooltip("Button to return to overworld (primary post-victory navigation)")]
+    public Button overworldButton;
+
     [Header("Settings")]
     [Tooltip("Level select scene name")]
     public string levelSelectSceneName = GameConstants.SceneNames.LevelSelect;
@@ -37,11 +41,19 @@ public class VictoryScreenUI : MonoBehaviour
     [Tooltip("World map scene name")]
     public string worldMapSceneName = GameConstants.SceneNames.WorldMap;
 
+    [Tooltip("Overworld scene name")]
+    public string overworldSceneName = GameConstants.SceneNames.Overworld;
+
     [Tooltip("Particle effect for celebration (optional)")]
     public ParticleSystem celebrationParticles;
 
     private LevelDefinition currentLevel;
     private LevelDefinition nextLevel;
+
+    /// <summary>
+    /// Tracks the worldId of a newly unlocked world during this level completion, or null.
+    /// </summary>
+    private string _newlyUnlockedWorldId;
 
     private void Start()
     {
@@ -72,19 +84,47 @@ public class VictoryScreenUI : MonoBehaviour
             worldMapButton.onClick.AddListener(OnWorldMap);
         }
 
+        if (overworldButton != null)
+        {
+            overworldButton.onClick.AddListener(OnOverworld);
+        }
+
         // Subscribe to level completion event
         if (LevelManager.Instance != null)
         {
             LevelManager.Instance.OnLevelComplete += Show;
         }
+
+        // Subscribe to world unlock events to track newly unlocked worlds
+        if (WorldManager.Instance != null)
+        {
+            WorldManager.Instance.OnWorldUnlocked += OnWorldUnlocked;
+        }
     }
 
     private void OnDestroy()
     {
-        // Unsubscribe from event
         if (LevelManager.Instance != null)
         {
             LevelManager.Instance.OnLevelComplete -= Show;
+        }
+
+        if (WorldManager.Instance != null)
+        {
+            WorldManager.Instance.OnWorldUnlocked -= OnWorldUnlocked;
+        }
+    }
+
+    /// <summary>
+    /// Called when a new world is unlocked (from WorldManager).
+    /// Stores the world ID so we can trigger a reveal when returning to the overworld.
+    /// </summary>
+    private void OnWorldUnlocked(WorldData world)
+    {
+        if (world != null)
+        {
+            _newlyUnlockedWorldId = world.worldId;
+            Debug.Log($"[VictoryScreenUI] New world unlocked: {world.worldName} ({world.worldId})");
         }
     }
 
@@ -128,6 +168,18 @@ public class VictoryScreenUI : MonoBehaviour
             if (buttonText != null)
             {
                 buttonText.text = nextLevel != null ? "Next Level" : "No More Levels";
+            }
+        }
+
+        // Update overworld button text to hint at new world if one was unlocked
+        if (overworldButton != null)
+        {
+            Text buttonText = overworldButton.GetComponentInChildren<Text>();
+            if (buttonText != null)
+            {
+                buttonText.text = !string.IsNullOrEmpty(_newlyUnlockedWorldId)
+                    ? "New World Unlocked!"
+                    : "Overworld";
             }
         }
 
@@ -233,5 +285,23 @@ public class VictoryScreenUI : MonoBehaviour
     {
         Debug.Log("[VictoryScreenUI] Returning to world map");
         SceneManager.LoadScene(worldMapSceneName);
+    }
+
+    /// <summary>
+    /// Navigates to the overworld. If a new world was unlocked during this session,
+    /// stores a pending reveal flag so the overworld can show a reveal animation.
+    /// </summary>
+    private void OnOverworld()
+    {
+        // If a new world was unlocked, store it for the overworld reveal
+        if (!string.IsNullOrEmpty(_newlyUnlockedWorldId))
+        {
+            PlayerPrefs.SetString(GameConstants.PlayerPrefsKeys.PendingWorldReveal, _newlyUnlockedWorldId);
+            PlayerPrefs.Save();
+            Debug.Log($"[VictoryScreenUI] Stored pending world reveal: {_newlyUnlockedWorldId}");
+        }
+
+        Debug.Log("[VictoryScreenUI] Returning to overworld");
+        SceneManager.LoadScene(overworldSceneName);
     }
 }

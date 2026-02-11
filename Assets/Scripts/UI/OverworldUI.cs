@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,6 +7,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Overworld UI controller.
 /// Builds a simple world card grid using WorldManager + ProgressManager.
+/// Supports a "world reveal" sequence when a new world is unlocked.
 /// </summary>
 public class OverworldUI : MonoBehaviour
 {
@@ -15,6 +17,16 @@ public class OverworldUI : MonoBehaviour
     public RectTransform cardContainer;
     public WorldCardUI cardPrefab;
     public Font defaultFont;
+
+    [Header("World Reveal Overlay")]
+    [Tooltip("Root panel that covers the screen during the world reveal countdown. Created at runtime if null.")]
+    public GameObject revealOverlayPanel;
+
+    [Tooltip("Text displaying the countdown or reveal message. Created at runtime if null.")]
+    public Text revealText;
+
+    [Tooltip("Duration of the countdown before revealing the new world (seconds)")]
+    public float revealCountdownDuration = 3f;
 
     [Header("Layout")]
     public int columns = 3;
@@ -35,6 +47,8 @@ public class OverworldUI : MonoBehaviour
 
     [Header("Debug")]
     public bool verboseLogs = false;
+
+    private bool _revealInProgress = false;
 
     private void Start()
     {
@@ -91,6 +105,9 @@ public class OverworldUI : MonoBehaviour
         {
             DumpTextState();
         }
+
+        // Check for a pending world reveal
+        CheckPendingWorldReveal();
     }
 
     private void EnsureManagers()
@@ -99,6 +116,164 @@ public class OverworldUI : MonoBehaviour
         _ = ProgressManager.Instance;
         _ = LevelManager.Instance;
     }
+
+    #region World Reveal
+
+    /// <summary>
+    /// Checks if there is a pending world reveal (set by VictoryScreenUI when a new world was unlocked).
+    /// If so, starts the reveal countdown sequence.
+    /// </summary>
+    private void CheckPendingWorldReveal()
+    {
+        string pendingWorldId = PlayerPrefs.GetString(GameConstants.PlayerPrefsKeys.PendingWorldReveal, "");
+        if (string.IsNullOrEmpty(pendingWorldId))
+        {
+            return;
+        }
+
+        // Clear the flag immediately so it doesn't re-trigger
+        PlayerPrefs.DeleteKey(GameConstants.PlayerPrefsKeys.PendingWorldReveal);
+        PlayerPrefs.Save();
+
+        // Find the world data for the reveal
+        WorldData revealWorld = WorldManager.Instance != null
+            ? WorldManager.Instance.GetWorld(pendingWorldId)
+            : null;
+
+        string worldName = revealWorld != null ? revealWorld.worldName : pendingWorldId;
+        Debug.Log($"[OverworldUI] Starting world reveal for: {worldName}");
+
+        StartCoroutine(WorldRevealSequence(worldName));
+    }
+
+    /// <summary>
+    /// Coroutine that shows a countdown overlay, then reveals the new world.
+    /// This is a placeholder sequence - replace with a proper cutscene/animation later.
+    /// </summary>
+    private IEnumerator WorldRevealSequence(string worldName)
+    {
+        _revealInProgress = true;
+
+        // Ensure we have an overlay panel (create at runtime if not assigned in inspector)
+        EnsureRevealOverlay();
+
+        if (revealOverlayPanel != null)
+        {
+            revealOverlayPanel.SetActive(true);
+        }
+
+        // Countdown phase
+        float remaining = revealCountdownDuration;
+        while (remaining > 0f)
+        {
+            if (revealText != null)
+            {
+                int seconds = Mathf.CeilToInt(remaining);
+                revealText.text = $"New world discovered...\n\n{seconds}";
+            }
+            remaining -= Time.deltaTime;
+            yield return null;
+        }
+
+        // Reveal announcement
+        if (revealText != null)
+        {
+            revealText.text = $"{worldName}\nUnlocked!";
+        }
+
+        // Hold the reveal message for a moment
+        yield return new WaitForSeconds(2f);
+
+        // Hide overlay
+        if (revealOverlayPanel != null)
+        {
+            revealOverlayPanel.SetActive(false);
+        }
+
+        _revealInProgress = false;
+
+        // Rebuild cards so the new world is now visible and interactable
+        BuildWorldCards();
+        if (forceLegacyFont && defaultFont != null)
+        {
+            ApplyFontToAllText(defaultFont);
+        }
+        Canvas.ForceUpdateCanvases();
+
+        Debug.Log($"[OverworldUI] World reveal complete: {worldName}");
+    }
+
+    /// <summary>
+    /// Creates a fullscreen reveal overlay at runtime if one wasn't assigned in the inspector.
+    /// </summary>
+    private void EnsureRevealOverlay()
+    {
+        if (revealOverlayPanel != null && revealText != null) return;
+
+        // Find or create a Canvas to parent our overlay
+        Canvas canvas = GetComponentInParent<Canvas>();
+        if (canvas == null)
+        {
+            canvas = FindFirstObjectByType<Canvas>();
+        }
+        if (canvas == null) return;
+
+        // Create overlay panel
+        if (revealOverlayPanel == null)
+        {
+            GameObject panel = new GameObject("WorldRevealOverlay");
+            panel.transform.SetParent(canvas.transform, false);
+
+            RectTransform panelRect = panel.AddComponent<RectTransform>();
+            panelRect.anchorMin = Vector2.zero;
+            panelRect.anchorMax = Vector2.one;
+            panelRect.offsetMin = Vector2.zero;
+            panelRect.offsetMax = Vector2.zero;
+
+            Image bg = panel.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.85f);
+
+            // Ensure it renders on top
+            Canvas overlayCanvas = panel.AddComponent<Canvas>();
+            overlayCanvas.overrideSorting = true;
+            overlayCanvas.sortingOrder = 100;
+            panel.AddComponent<GraphicRaycaster>();
+
+            revealOverlayPanel = panel;
+        }
+
+        // Create text
+        if (revealText == null)
+        {
+            GameObject textObj = new GameObject("RevealText");
+            textObj.transform.SetParent(revealOverlayPanel.transform, false);
+
+            RectTransform textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = new Vector2(0.1f, 0.2f);
+            textRect.anchorMax = new Vector2(0.9f, 0.8f);
+            textRect.offsetMin = Vector2.zero;
+            textRect.offsetMax = Vector2.zero;
+
+            revealText = textObj.AddComponent<Text>();
+            revealText.alignment = TextAnchor.MiddleCenter;
+            revealText.fontSize = 48;
+            revealText.color = Color.white;
+            revealText.fontStyle = FontStyle.Bold;
+
+            if (defaultFont != null)
+            {
+                revealText.font = defaultFont;
+            }
+            else
+            {
+                revealText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            }
+        }
+
+        revealOverlayPanel.SetActive(false);
+    }
+
+    #endregion
 
     private void BuildWorldCards()
     {
