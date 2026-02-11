@@ -32,9 +32,37 @@ public class CameraSetup : MonoBehaviour
     [Range(100f, 5000f)]
     public float farClipPlane = 500f;
 
+    [Header("Zoom Test")]
+    [Tooltip("How much to zoom in (0.5 = 50% of full FOV)")]
+    [Range(0.1f, 1f)]
+    public float zoomFactor = 0.5f;
+
+    [Tooltip("Smooth transition speed (higher = faster)")]
+    [Range(1f, 20f)]
+    public float zoomSmoothSpeed = 6f;
+
+    [Header("Lem Tracking (active when zoomed)")]
+    [Tooltip("Lem's horizontal viewport position behind them (0.2 = 20% from trailing edge)")]
+    [Range(0.05f, 0.5f)]
+    public float lemViewportX = 0.2f;
+
+    [Tooltip("How fast the camera follows Lem's position")]
+    [Range(1f, 20f)]
+    public float trackingSmoothSpeed = 5f;
+
+    [Tooltip("How fast the look-ahead flips when Lem changes direction")]
+    [Range(0.01f, 10f)]
+    public float directionSmoothSpeed = 4f;
+
     [Header("Auto-Update")]
     [Tooltip("Automatically update camera when values change in the Inspector")]
     public bool autoUpdateInEditor = true;
+
+    private float baseFOV;
+    private float targetFOV;
+    private bool isZoomed;
+    private LemController trackedLem;
+    private float smoothedDirectionSign = 1f; // 1 = facing right, -1 = facing left
 
     private void Awake()
     {
@@ -64,6 +92,78 @@ public class CameraSetup : MonoBehaviour
         {
             SetupCamera();
         }
+
+        // Z toggles zoom
+        if (Keyboard.current != null && Keyboard.current.zKey.wasPressedThisFrame)
+        {
+            isZoomed = !isZoomed;
+            targetFOV = isZoomed ? baseFOV * zoomFactor : baseFOV;
+        }
+
+        if (targetCamera == null) return;
+
+        // Smooth FOV toward target
+        if (!Mathf.Approximately(targetCamera.fieldOfView, targetFOV))
+        {
+            float t = 1f - Mathf.Exp(-zoomSmoothSpeed * Time.deltaTime);
+            targetCamera.fieldOfView = Mathf.Lerp(targetCamera.fieldOfView, targetFOV, t);
+        }
+
+        // --- Lem tracking (when zoomed) ---
+        Vector3 targetPos;
+        float distance = Mathf.Max(cameraDistance, 0.01f);
+
+        if (isZoomed && TryGetLem(out LemController lem))
+        {
+            // Smoothly interpolate the facing direction sign
+            float targetDir = lem.GetFacingRight() ? 1f : -1f;
+            float dirT = 1f - Mathf.Exp(-directionSmoothSpeed * Time.deltaTime);
+            smoothedDirectionSign = Mathf.Lerp(smoothedDirectionSign, targetDir, dirT);
+
+            // Visible width at the grid plane using current (animated) FOV
+            float currentFOV = targetCamera.fieldOfView;
+            float halfHeight = distance * Mathf.Tan(currentFOV * 0.5f * Mathf.Deg2Rad);
+            float fullWidth = halfHeight * 2f * targetCamera.aspect;
+
+            // Offset so Lem sits at lemViewportX behind them, 80% ahead
+            float hOffset = (0.5f - lemViewportX) * fullWidth * smoothedDirectionSign;
+
+            Vector3 lemPos = lem.GetFootPointPosition();
+            targetPos = new Vector3(lemPos.x + hOffset, lemPos.y, -distance);
+        }
+        else
+        {
+            // Default: center on grid
+            Vector3 gridCenter = GetGridCenter();
+            targetPos = gridCenter + new Vector3(0f, 0f, -distance);
+        }
+
+        float posT = 1f - Mathf.Exp(-trackingSmoothSpeed * Time.deltaTime);
+        targetCamera.transform.position = Vector3.Lerp(
+            targetCamera.transform.position,
+            targetPos,
+            posT
+        );
+    }
+
+    private bool TryGetLem(out LemController lem)
+    {
+        if (trackedLem != null)
+        {
+            lem = trackedLem;
+            return true;
+        }
+
+        var lems = Object.FindObjectsByType<LemController>(FindObjectsSortMode.None);
+        if (lems.Length > 0)
+        {
+            trackedLem = lems[0];
+            lem = trackedLem;
+            return true;
+        }
+
+        lem = null;
+        return false;
     }
 
 #if UNITY_EDITOR
@@ -131,7 +231,11 @@ public class CameraSetup : MonoBehaviour
         targetCamera.transform.position = gridCenter + new Vector3(0f, 0f, -distance);
         targetCamera.transform.rotation = Quaternion.LookRotation(gridCenter - targetCamera.transform.position, Vector3.up);
 
-        targetCamera.fieldOfView = CalculateFieldOfView(distance);
+        float fov = CalculateFieldOfView(distance);
+        targetCamera.fieldOfView = fov;
+        baseFOV = fov;
+        targetFOV = fov;
+        isZoomed = false;
     }
 
     private float CalculateFieldOfView(float distance)

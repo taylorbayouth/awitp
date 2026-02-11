@@ -443,8 +443,10 @@ public class LemController : MonoBehaviour
             ApplyLemDimensions();
         }
 
-        // Die if fallen outside camera bounds
-        if (IsOutsideCameraBounds())
+        // Die if fallen outside camera bounds.
+        // Skip while frozen — game systems (teleporter, transporter) move Lem
+        // programmatically and the camera may not have caught up yet.
+        if (!isFrozen && IsOutsideCameraBounds())
         {
             Die();
         }
@@ -681,6 +683,13 @@ public class LemController : MonoBehaviour
         {
             rb.isKinematic = defaultIsKinematic;
             rb.useGravity = defaultUseGravity;
+
+            // Sync ground state immediately to prevent spurious fall arc.
+            // Without this, stale isGrounded from before freeze combined with
+            // a one-frame physics miss triggers StartFallArc() on the first
+            // FixedUpdate, giving Lem unexpected horizontal momentum.
+            CheckGround();
+            wasGroundedLastFrame = isGrounded;
         }
     }
 
