@@ -26,10 +26,6 @@ public class LemController : MonoBehaviour
 {
     private const float DefaultLemHeight = 0.95f;
     private const float ClockwiseTurnDegrees = -180f;
-    private static readonly int SpeedParam = Animator.StringToHash("Speed");
-    private static readonly int IsWalkingParam = Animator.StringToHash("IsWalking");
-    private static readonly int HasKeyParam = Animator.StringToHash("HasKey");
-    private static readonly int IsFallingParam = Animator.StringToHash("IsFalling");
     private static PhysicsMaterial sharedLemPhysicsMaterial;
 
     [System.Serializable]
@@ -46,8 +42,8 @@ public class LemController : MonoBehaviour
     [Header("Visual")]
     [Tooltip("Local rotation offset (degrees) to align visual with +X movement")]
     [SerializeField] private Vector3 visualRotationOffset = new Vector3(0f, 90f, 0f);
-    [Tooltip("Animator speed blend damp time in seconds")]
-    [SerializeField] private float speedBlendDampTime = 0.08f;
+    [Tooltip("How quickly animation blends transition (higher = faster, 10 ≈ 0.3s)")]
+    [SerializeField] private float animationBlendSpeed = 10f;
 
     #region Inspector Fields
 
@@ -122,12 +118,7 @@ public class LemController : MonoBehaviour
     private Rigidbody rb;
     private CapsuleCollider capsuleCollider;
     private Transform footPoint;
-    private Animator visualAnimator;
-    private bool hasAnimator;
-    private bool hasSpeedParam;
-    private bool hasIsWalkingParam;
-    private bool hasHasKeyParam;
-    private bool hasIsFallingParam;
+    private LemAnimationPlayables animPlayables;
 
     // Fall arc tracking
     private bool wasGroundedLastFrame = true;
@@ -149,15 +140,6 @@ public class LemController : MonoBehaviour
     private BaseBlock currentBlock;
     private BlockType currentBlockType = BlockType.Walk;
     private bool hasCurrentBlock;
-
-    private enum AnimState
-    {
-        Dead,
-        Frozen,
-        Falling,
-        Turning,
-        Walking
-    }
 
     #endregion
 
@@ -190,7 +172,7 @@ public class LemController : MonoBehaviour
             collider.material = GetSharedLemPhysicsMaterial();
         }
 
-        TrySwapToPreRiggedVisual();
+        SetupVisual();
 
         footPoint = transform.Find("FootPoint");
         if (footPoint == null)
@@ -198,7 +180,6 @@ public class LemController : MonoBehaviour
             footPoint = transform;
         }
         visualPivot = transform.Find("VisualPivot");
-        CacheAnimator();
         ApplyVisualRotation();
 
         if (footstepSource == null)
@@ -214,43 +195,28 @@ public class LemController : MonoBehaviour
         footstepSource.spatialBlend = 0f;
     }
 
-    private void TrySwapToPreRiggedVisual()
+    /// <summary>
+    /// Builds the visual hierarchy (VisualPivot → Visual → model) from the pre-rigged mesh.
+    /// Creates a Playables graph for animation blending instead of using an Animator Controller.
+    /// Falls back to a primitive capsule if the mesh asset is missing.
+    /// </summary>
+    private void SetupVisual()
     {
-        GameObject preRiggedPrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.LemPreRiggedPrefab);
-        if (preRiggedPrefab == null) return;
+        // Clean up any existing visual hierarchy and Playables graph
+        animPlayables?.Dispose();
+        animPlayables = null;
+        DestroyChildByName("VisualPivot");
+        DestroyChildByName("Visual");
 
-        RuntimeAnimatorController controllerAsset = null;
-        Animator existingAnimator = GetComponentInChildren<Animator>();
-        if (existingAnimator != null)
+        GameObject meshPrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.LemMeshPrefab);
+        if (meshPrefab == null)
         {
-            controllerAsset = existingAnimator.runtimeAnimatorController;
-        }
-        if (controllerAsset == null)
-        {
-            controllerAsset = Resources.Load<RuntimeAnimatorController>(GameConstants.ResourcePaths.LemAnimatorController);
-        }
-
-        Transform existingPivot = transform.Find("VisualPivot");
-        if (existingPivot != null)
-        {
-            Destroy(existingPivot.gameObject);
-        }
-        Transform existingVisual = transform.Find("Visual");
-        if (existingVisual != null)
-        {
-            Destroy(existingVisual.gameObject);
-        }
-        Transform legacyGlitchPivot = transform.Find("GlitchPivot");
-        if (legacyGlitchPivot != null)
-        {
-            Destroy(legacyGlitchPivot.gameObject);
-        }
-        Transform legacyGlitch = transform.Find("Glitch");
-        if (legacyGlitch != null)
-        {
-            Destroy(legacyGlitch.gameObject);
+            float height = capsuleCollider != null ? capsuleCollider.height : DefaultLemHeight;
+            CreateFallbackBody(transform, height);
+            return;
         }
 
+        // Build hierarchy: Lem → VisualPivot → Visual → model instance
         Transform pivot = new GameObject("VisualPivot").transform;
         pivot.SetParent(transform, false);
         pivot.localPosition = Vector3.zero;
@@ -263,17 +229,19 @@ public class LemController : MonoBehaviour
         visualRoot.localRotation = Quaternion.identity;
         visualRoot.localScale = Vector3.one;
 
-        GameObject modelInstance = Instantiate(preRiggedPrefab, visualRoot);
+        GameObject modelInstance = Instantiate(meshPrefab, visualRoot);
         modelInstance.transform.localPosition = Vector3.zero;
         modelInstance.transform.localRotation = Quaternion.identity;
         modelInstance.transform.localScale = Vector3.one;
+
         if (modelInstance.GetComponent<HeadTiltOffset>() == null)
         {
             modelInstance.AddComponent<HeadTiltOffset>();
         }
-        ApplyPreRiggedMaterial(modelInstance);
-        FitVisualToHeight(visualRoot, transform, capsuleCollider != null ? capsuleCollider.height : DefaultLemHeight);
 
+        ApplyCharacterMaterial(modelInstance);
+
+        // Set up the Animator for Playables (no controller needed)
         Animator modelAnimator = modelInstance.GetComponent<Animator>();
         if (modelAnimator == null)
         {
@@ -282,26 +250,66 @@ public class LemController : MonoBehaviour
 
         if (modelAnimator != null)
         {
-            if (controllerAsset != null)
-            {
-                modelAnimator.runtimeAnimatorController = controllerAsset;
-            }
+            modelAnimator.runtimeAnimatorController = null; // Playables drives animation
             modelAnimator.applyRootMotion = false;
             modelAnimator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
-            modelAnimator.Rebind();
+
+            // Forward animation events from child Animator to this LemController
+            if (modelAnimator.gameObject != gameObject)
+            {
+                var relay = modelAnimator.gameObject.GetComponent<AnimEventRelay>();
+                if (relay == null)
+                {
+                    relay = modelAnimator.gameObject.AddComponent<AnimEventRelay>();
+                }
+                relay.target = this;
+            }
+
+            // Load clips and create the Playables blend graph
+            AnimationClip idleClip = Resources.Load<AnimationClip>(GameConstants.AnimationClips.IdlePath);
+            AnimationClip walkClip = Resources.Load<AnimationClip>(GameConstants.AnimationClips.WalkPath);
+            AnimationClip walkCarryClip = Resources.Load<AnimationClip>(GameConstants.AnimationClips.WalkCarryPath);
+
+            animPlayables = new LemAnimationPlayables();
+            animPlayables.BlendRate = animationBlendSpeed;
+            animPlayables.Create(modelAnimator,
+                (GameConstants.AnimationClips.Idle, idleClip),
+                (GameConstants.AnimationClips.Walk, walkClip),
+                (GameConstants.AnimationClips.WalkCarry, walkCarryClip)
+            );
+
+            // Force-evaluate so bone transforms reflect the idle pose,
+            // giving FitVisualToHeight accurate animated bounds (not bind pose)
+            animPlayables.ForceGraphEvaluate();
+        }
+
+        // Fit visual AFTER Playables evaluation so bounds reflect the actual animated pose
+        FitVisualToHeight(visualRoot, transform, capsuleCollider != null ? capsuleCollider.height : DefaultLemHeight);
+    }
+
+    private void DestroyChildByName(string childName)
+    {
+        Transform child = transform.Find(childName);
+        if (child != null)
+        {
+            Destroy(child.gameObject);
         }
     }
 
-    private void ApplyPreRiggedMaterial(GameObject modelInstance)
+    /// <summary>
+    /// Applies the character texture and material to the model instance.
+    /// Renders at queue 2450 so the Lem draws in front of debris (1900) and blocks (2000).
+    /// </summary>
+    private static void ApplyCharacterMaterial(GameObject modelInstance)
     {
         if (modelInstance == null) return;
         Renderer[] renderers = modelInstance.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0) return;
 
-        Texture2D texture = Resources.Load<Texture2D>(GameConstants.ResourcePaths.LemPreRiggedTexture);
+        Texture2D texture = Resources.Load<Texture2D>(GameConstants.ResourcePaths.LemTexture);
         if (texture == null) return;
 
-        Shader shader = GetPreferredCharacterShader(renderers);
+        Shader shader = FindShaderFromRenderers(renderers);
         if (shader == null) shader = Shader.Find("Universal Render Pipeline/Lit");
         if (shader == null) shader = Shader.Find("Standard");
         if (shader == null) return;
@@ -312,9 +320,6 @@ public class LemController : MonoBehaviour
         Color darkenTint = new Color(0.5f, 0.5f, 0.5f, 1f);
         if (materialToApply.HasProperty("_BaseColor")) materialToApply.SetColor("_BaseColor", darkenTint);
         if (materialToApply.HasProperty("_Color")) materialToApply.SetColor("_Color", darkenTint);
-
-        // Set render queue higher than default (2000) so Lem renders in front of debris
-        // Standard opaque queue is 2000, we use 2450 to render after debris (1900) and blocks (2000)
         materialToApply.renderQueue = 2450;
 
         for (int i = 0; i < renderers.Length; i++)
@@ -337,7 +342,7 @@ public class LemController : MonoBehaviour
         }
     }
 
-    private static Shader GetPreferredCharacterShader(Renderer[] renderers)
+    private static Shader FindShaderFromRenderers(Renderer[] renderers)
     {
         for (int i = 0; i < renderers.Length; i++)
         {
@@ -449,7 +454,7 @@ public class LemController : MonoBehaviour
             ApplyVisualRotation();
         }
 
-        UpdateAnimator();
+        UpdateAnimation();
     }
 
     private bool IsOutsideCameraBounds()
@@ -895,31 +900,9 @@ public class LemController : MonoBehaviour
 
     /// <summary>
     /// Creates a Lem character with its foot point placed at the specified position.
-    /// Uses prefab-based creation from Resources/Characters/Lem when available.
-    /// Falls back to programmatic creation if the prefab is missing.
+    /// Builds the GameObject programmatically with physics, then Awake() attaches visuals.
     /// </summary>
     public static GameObject CreateLem(Vector3 position)
-    {
-        GameObject lemPrefab = Resources.Load<GameObject>(GameConstants.ResourcePaths.LemPrefab);
-        if (lemPrefab != null)
-        {
-            GameObject lem = Instantiate(lemPrefab, position, Quaternion.identity);
-            LemController controller = lem.GetComponent<LemController>();
-            if (controller != null)
-            {
-                controller.SetFootPointPosition(position);
-                controller.SetFrozen(true);
-            }
-            return lem;
-        }
-
-        return CreateLemProgrammatically(position);
-    }
-
-    /// <summary>
-    /// Programmatic Lem creation.
-    /// </summary>
-    private static GameObject CreateLemProgrammatically(Vector3 position)
     {
         GameObject lem = new GameObject("Lem");
         lem.transform.position = position;
@@ -940,16 +923,11 @@ public class LemController : MonoBehaviour
         collider.radius = lemRadius;
         collider.center = Vector3.up * (height * 0.5f);
 
-        // Controller
+        // Controller — Awake() fires immediately on AddComponent and calls SetupVisual()
         LemController controller = lem.AddComponent<LemController>();
         controller.isFrozen = true;
         controller.UpdateFacingVisuals();
         controller.ApplyVisualRotation();
-
-        if (lem.GetComponentInChildren<Renderer>() == null)
-        {
-            CreateFallbackBody(lem.transform, height);
-        }
 
         return lem;
     }
@@ -1055,94 +1033,51 @@ public class LemController : MonoBehaviour
 
     #endregion
 
-    private void CacheAnimator()
+    /// <summary>
+    /// Drives the Playables animation blend weights based on current gameplay state.
+    /// Determines which clip should be active (idle, walk, walkCarry) and lets
+    /// LemAnimationPlayables smoothly interpolate the skeletal pose.
+    /// </summary>
+    private void UpdateAnimation()
     {
-        Transform preferredRoot = transform.Find("VisualPivot");
-        if (preferredRoot != null)
-        {
-            visualAnimator = preferredRoot.GetComponentInChildren<Animator>();
-        }
-        if (visualAnimator == null)
-        {
-            visualAnimator = GetComponentInChildren<Animator>();
-        }
-        if (visualAnimator == null)
-        {
-            hasAnimator = false;
-            return;
-        }
+        if (animPlayables == null || !animPlayables.IsValid) return;
 
-        hasAnimator = true;
-        hasSpeedParam = false;
-        hasIsWalkingParam = false;
-        hasHasKeyParam = false;
-        hasIsFallingParam = false;
-
-        foreach (AnimatorControllerParameter param in visualAnimator.parameters)
+        // Determine effective movement speed for animation decisions
+        float speed = 0f;
+        if (isAlive && !isFrozen)
         {
-            if (param.nameHash == SpeedParam) hasSpeedParam = true;
-            if (param.nameHash == IsWalkingParam) hasIsWalkingParam = true;
-            if (param.nameHash == HasKeyParam) hasHasKeyParam = true;
-            if (param.nameHash == IsFallingParam) hasIsFallingParam = true;
-        }
-    }
-
-    private void UpdateAnimator()
-    {
-        if (!hasAnimator || visualAnimator == null) return;
-
-        AnimState state = EvaluateAnimState();
-        bool isWalking = state == AnimState.Walking || state == AnimState.Turning;
-        bool isFalling = state == AnimState.Falling;
-        float horizontalSpeed = GetAnimatorSpeedValue(state);
-
-        if (state == AnimState.Frozen || state == AnimState.Dead)
-        {
-            horizontalSpeed = 0f;
+            if (isTurningAround)
+            {
+                // Keep walk animation active during turn (independent of physics slowdown)
+                speed = walkSpeed * Mathf.Max(0.1f, wallBumpSlowdownMultiplier);
+            }
+            else if (!isFallingArc && isGrounded && rb != null)
+            {
+                speed = Mathf.Abs(rb.linearVelocity.x);
+            }
         }
 
-        if (hasSpeedParam)
-        {
-            visualAnimator.SetFloat(SpeedParam, horizontalSpeed, speedBlendDampTime, Time.deltaTime);
-        }
+        bool isMoving = speed > 0.1f;
 
-        if (hasIsWalkingParam)
-        {
-            visualAnimator.SetBool(IsWalkingParam, isWalking);
-        }
-
-        if (hasHasKeyParam)
+        if (isMoving)
         {
             bool hasKey = KeyItem.FindHeldKey(this) != null;
-            visualAnimator.SetBool(HasKeyParam, hasKey);
+            animPlayables.SetActiveClip(hasKey
+                ? GameConstants.AnimationClips.WalkCarry
+                : GameConstants.AnimationClips.Walk);
+        }
+        else
+        {
+            animPlayables.SetActiveClip(GameConstants.AnimationClips.Idle);
         }
 
-        if (hasIsFallingParam)
-        {
-            visualAnimator.SetBool(IsFallingParam, isFalling);
-        }
+        animPlayables.BlendRate = animationBlendSpeed;
+        animPlayables.Evaluate(Time.deltaTime);
     }
 
-    private AnimState EvaluateAnimState()
+    void OnDestroy()
     {
-        if (!isAlive) return AnimState.Dead;
-        if (isFrozen) return AnimState.Frozen;
-        if (isFallingArc || !isGrounded) return AnimState.Falling;
-        if (isTurningAround) return AnimState.Turning;
-        return AnimState.Walking;
-    }
-
-    private float GetAnimatorSpeedValue(AnimState state)
-    {
-        if (rb == null) return 0f;
-
-        if (state == AnimState.Turning)
-        {
-            // Turn animation should stay in locomotion space, independent of physics slowdown to zero.
-            return walkSpeed * Mathf.Max(0.1f, wallBumpSlowdownMultiplier);
-        }
-
-        return Mathf.Abs(rb.linearVelocity.x);
+        animPlayables?.Dispose();
     }
 
     private float GetWallBumpSpeedMultiplier()
@@ -1276,5 +1211,25 @@ public class LemController : MonoBehaviour
         }
 
         lastAppliedLemHeight = lemHeight;
+    }
+}
+
+/// <summary>
+/// Forwards animation events from a child Animator to the root LemController.
+/// Unity's animation events only fire on the Animator's own GameObject via SendMessage,
+/// so this relay bridges the gap when the Animator lives on a child object.
+/// </summary>
+public class AnimEventRelay : MonoBehaviour
+{
+    [HideInInspector] public LemController target;
+
+    public void FootstepLeft()
+    {
+        if (target != null) target.FootstepLeft();
+    }
+
+    public void FootstepRight()
+    {
+        if (target != null) target.FootstepRight();
     }
 }

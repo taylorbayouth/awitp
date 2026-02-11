@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
 public class BuilderController : MonoBehaviour
@@ -206,19 +207,22 @@ public class BuilderController : MonoBehaviour
         Vector2Int movement = Vector2Int.zero;
 
         // Arrow keys or WASD for cursor movement
-        if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.W))
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        if (kb.upArrowKey.wasPressedThisFrame || kb.wKey.wasPressedThisFrame)
         {
             movement.y = 1;
         }
-        else if (Input.GetKeyDown(KeyCode.DownArrow) || Input.GetKeyDown(KeyCode.S))
+        else if (kb.downArrowKey.wasPressedThisFrame || kb.sKey.wasPressedThisFrame)
         {
             movement.y = -1;
         }
-        else if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
+        else if (kb.leftArrowKey.wasPressedThisFrame || kb.aKey.wasPressedThisFrame)
         {
             movement.x = -1;
         }
-        else if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
+        else if (kb.rightArrowKey.wasPressedThisFrame || kb.dKey.wasPressedThisFrame)
         {
             movement.x = 1;
         }
@@ -267,7 +271,8 @@ public class BuilderController : MonoBehaviour
         if (GridManager.Instance == null) return;
 
         // Space or Enter to place block
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+        var kb = Keyboard.current;
+        if (kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame))
         {
             int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             TryPlaceBlockAt(cursorIndex);
@@ -293,7 +298,8 @@ public class BuilderController : MonoBehaviour
         if (GridManager.Instance == null) return;
 
         // B key places a permanent block in Level Builder mode
-        if (Input.GetKeyDown(KeyCode.B))
+        var kb = Keyboard.current;
+        if (kb != null && kb.bKey.wasPressedThisFrame)
         {
             int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             if (currentInventoryEntry != null)
@@ -312,7 +318,8 @@ public class BuilderController : MonoBehaviour
         if (GridManager.Instance == null) return;
 
         // Delete or Backspace to remove block AND Lem
-        if (Input.GetKeyDown(KeyCode.Delete) || Input.GetKeyDown(KeyCode.Backspace))
+        var kb = Keyboard.current;
+        if (kb != null && (kb.deleteKey.wasPressedThisFrame || kb.backspaceKey.wasPressedThisFrame))
         {
             int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
 
@@ -354,13 +361,16 @@ public class BuilderController : MonoBehaviour
             return;
         }
 
-        if (Input.GetKeyDown(KeyCode.LeftBracket))
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        if (kb.leftBracketKey.wasPressedThisFrame)
         {
             int prevIndex = currentInventoryIndex - 1;
             if (prevIndex < 0) prevIndex = entries.Count - 1;
             SelectInventoryIndex(prevIndex, entries);
         }
-        else if (Input.GetKeyDown(KeyCode.RightBracket))
+        else if (kb.rightBracketKey.wasPressedThisFrame)
         {
             int nextIndex = currentInventoryIndex + 1;
             if (nextIndex >= entries.Count) nextIndex = 0;
@@ -370,15 +380,18 @@ public class BuilderController : MonoBehaviour
 
     private int? GetInventoryIndexFromKeys()
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1)) return 0;
-        if (Input.GetKeyDown(KeyCode.Alpha2) || Input.GetKeyDown(KeyCode.Keypad2)) return 1;
-        if (Input.GetKeyDown(KeyCode.Alpha3) || Input.GetKeyDown(KeyCode.Keypad3)) return 2;
-        if (Input.GetKeyDown(KeyCode.Alpha4) || Input.GetKeyDown(KeyCode.Keypad4)) return 3;
-        if (Input.GetKeyDown(KeyCode.Alpha5) || Input.GetKeyDown(KeyCode.Keypad5)) return 4;
-        if (Input.GetKeyDown(KeyCode.Alpha6) || Input.GetKeyDown(KeyCode.Keypad6)) return 5;
-        if (Input.GetKeyDown(KeyCode.Alpha7) || Input.GetKeyDown(KeyCode.Keypad7)) return 6;
-        if (Input.GetKeyDown(KeyCode.Alpha8) || Input.GetKeyDown(KeyCode.Keypad8)) return 7;
-        if (Input.GetKeyDown(KeyCode.Alpha9) || Input.GetKeyDown(KeyCode.Keypad9)) return 8;
+        var kb = Keyboard.current;
+        if (kb == null) return null;
+
+        if (kb.digit1Key.wasPressedThisFrame || kb.numpad1Key.wasPressedThisFrame) return 0;
+        if (kb.digit2Key.wasPressedThisFrame || kb.numpad2Key.wasPressedThisFrame) return 1;
+        if (kb.digit3Key.wasPressedThisFrame || kb.numpad3Key.wasPressedThisFrame) return 2;
+        if (kb.digit4Key.wasPressedThisFrame || kb.numpad4Key.wasPressedThisFrame) return 3;
+        if (kb.digit5Key.wasPressedThisFrame || kb.numpad5Key.wasPressedThisFrame) return 4;
+        if (kb.digit6Key.wasPressedThisFrame || kb.numpad6Key.wasPressedThisFrame) return 5;
+        if (kb.digit7Key.wasPressedThisFrame || kb.numpad7Key.wasPressedThisFrame) return 6;
+        if (kb.digit8Key.wasPressedThisFrame || kb.numpad8Key.wasPressedThisFrame) return 7;
+        if (kb.digit9Key.wasPressedThisFrame || kb.numpad9Key.wasPressedThisFrame) return 8;
         return null;
     }
 
@@ -480,7 +493,8 @@ public class BuilderController : MonoBehaviour
         if (GridManager.Instance == null) return;
 
         // L key to place Lem or turn it around if already exists
-        if (Input.GetKeyDown(KeyCode.L))
+        var kb = Keyboard.current;
+        if (kb != null && kb.lKey.wasPressedThisFrame)
         {
             int cursorIndex = GridManager.Instance.GetCurrentCursorIndex();
             GridManager.Instance.PlaceLem(cursorIndex);
@@ -505,14 +519,17 @@ public class BuilderController : MonoBehaviour
     private void HandleModeToggle()
     {
         // E key toggles between Designer and Builder
-        if (Input.GetKeyDown(KeyCode.E))
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        if (kb.eKey.wasPressedThisFrame)
         {
             if (currentMode == GameMode.Builder) SetMode(GameMode.Designer);
             else if (currentMode == GameMode.Designer) SetMode(GameMode.Builder);
         }
 
         // P key toggles Play mode
-        if (Input.GetKeyDown(KeyCode.P))
+        if (kb.pKey.wasPressedThisFrame)
         {
             if (currentMode == GameMode.Play)
             {
@@ -587,7 +604,8 @@ public class BuilderController : MonoBehaviour
         if (grid == null) return;
 
         // Space/Enter to mark space as placeable in Level Builder mode
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+        var kb = Keyboard.current;
+        if (kb != null && (kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame))
         {
             int cursorIndex = grid.GetCurrentCursorIndex();
             if (!grid.IsSpacePlaceable(cursorIndex))
@@ -603,11 +621,14 @@ public class BuilderController : MonoBehaviour
         if (grid == null || currentMode == GameMode.Play) return;
 
         // Check for Ctrl/Cmd modifier
-        bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl) ||
-                         Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+        var kb = Keyboard.current;
+        if (kb == null) return;
+
+        bool ctrlOrCmd = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed ||
+                         kb.leftCommandKey.isPressed || kb.rightCommandKey.isPressed;
 
         // Ctrl/Cmd + S to save
-        if (ctrlOrCmd && Input.GetKeyDown(KeyCode.S))
+        if (ctrlOrCmd && kb.sKey.wasPressedThisFrame)
         {
             LevelManager levelManager = LevelManager.Instance;
             if (levelManager.CurrentLevelDef == null)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Simple camera framing for a grid on the XY plane.
@@ -59,7 +60,7 @@ public class CameraSetup : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.C))
+        if (Keyboard.current != null && Keyboard.current.cKey.wasPressedThisFrame)
         {
             SetupCamera();
         }

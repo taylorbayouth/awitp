@@ -19,21 +19,38 @@ public static class GameConstants
         public const string SelectedWorldId = "SelectedWorldId";
         public const string SelectedLevelId = "SelectedLevelId";
         public const string PendingLevelId = "PendingLevelId";
+        /// <summary>Stores the worldId of a newly unlocked world to trigger a reveal animation in the overworld.</summary>
+        public const string PendingWorldReveal = "PendingWorldReveal";
     }
 
     public static class ResourcePaths
     {
         public const string BaseBlockPrefab = "Blocks/BaseBlock";
-        public const string LemPrefab = "Characters/Lem";
-        public const string LemPreRiggedPrefab = "Characters/LemMeshPreRigged";
-        public const string LemPreRiggedTexture = "Characters/LemMeshPreRigged_Albedo";
-        public const string LemAnimatorController = "Animations/Lem";
+        public const string LemMeshPrefab = "Characters/LemMeshPreRigged";
+        public const string LemTexture = "Characters/LemMeshPreRigged_Albedo";
         public const string BuilderMusicTrack = "Music/SoundtrackBuild";
         public const string PlayMusicTrack = "Music/SoundtrackPlay";
         public const string LevelsRoot = "Levels";
         public const string LevelDefinitionsRoot = "Levels/LevelDefinitions";
         public const string WorldsRoot = "Levels/Worlds";
         public const string GreenApplePrefab = "GreenApple";
+    }
+
+    /// <summary>
+    /// Animation clip identifiers and resource paths for the Playables-based animation system.
+    /// To add a new animation: add constants here, then load + register in LemController.SetupVisual().
+    /// </summary>
+    public static class AnimationClips
+    {
+        // Clip identifiers (used with LemAnimationPlayables.SetActiveClip)
+        public const string Idle = "idle";
+        public const string Walk = "walk";
+        public const string WalkCarry = "walkCarry";
+
+        // Resource paths (relative to Resources/, no extension)
+        public const string IdlePath = "Animations/Sad Idle";
+        public const string WalkPath = "Animations/Sad Walk";
+        public const string WalkCarryPath = "Animations/Walking Carrying";
     }
 
     public static class ObjectNames
