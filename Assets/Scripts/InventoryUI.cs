@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using System.Collections.Generic;
 
 /// <summary>
@@ -396,7 +397,7 @@ public class InventoryUI : MonoBehaviour
 
         GameObject eventSystem = new GameObject("EventSystem");
         eventSystem.AddComponent<EventSystem>();
-        eventSystem.AddComponent<StandaloneInputModule>();
+        eventSystem.AddComponent<InputSystemUIInputModule>();
     }
 
     private void CleanupLegacyOrDuplicateUI()

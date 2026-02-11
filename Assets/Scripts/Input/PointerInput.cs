@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.EnhancedTouch;
 using System.Collections.Generic;
+using Touch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 /// <summary>
 /// Small helper to unify mouse/touch pointer detection.
@@ -11,22 +14,35 @@ public static class PointerInput
     public const int MousePointerId = -1;
     private static readonly List<RaycastResult> RaycastResults = new List<RaycastResult>(8);
 
+    private static bool enhancedTouchEnabled;
+
+    private static void EnsureEnhancedTouchEnabled()
+    {
+        if (!enhancedTouchEnabled)
+        {
+            EnhancedTouchSupport.Enable();
+            enhancedTouchEnabled = true;
+        }
+    }
+
     public static bool TryGetPrimaryPointerDown(out Vector2 screenPosition, out int pointerId)
     {
-        if (Input.touchCount > 0)
+        EnsureEnhancedTouchEnabled();
+
+        if (Touch.activeTouches.Count > 0)
         {
-            Touch touch = Input.GetTouch(0);
-            if (touch.phase == TouchPhase.Began)
+            var touch = Touch.activeTouches[0];
+            if (touch.phase == UnityEngine.InputSystem.TouchPhase.Began)
             {
-                screenPosition = touch.position;
-                pointerId = touch.fingerId;
+                screenPosition = touch.screenPosition;
+                pointerId = touch.touchId;
                 return true;
             }
         }
 
-        if (Input.GetMouseButtonDown(0))
+        if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
         {
-            screenPosition = Input.mousePosition;
+            screenPosition = Mouse.current.position.ReadValue();
             pointerId = MousePointerId;
             return true;
         }
