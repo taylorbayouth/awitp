@@ -84,21 +84,26 @@ public sealed class BrickCubeGenerator : MonoBehaviour
             return;
         }
 
-        var container = GetOrCreateContainer();
-        ClearContainer(container);
-
         var rng = useSeed ? new System.Random(seed) : new System.Random();
 
         instances = (packingMode == PackingMode.RelaxedGrid) && (compactAfterGenerate || enforceCubeSides)
             ? new GameObject[counts.x, counts.y, counts.z]
             : null;
 
-        var prefabBoundsSize = GetPrefabBoundsSize();
+        if (!TryGetPrefabBoundsSize(out var prefabBoundsSize))
+        {
+            Debug.LogError("[BrickCubeGenerator] Cannot generate: selected brickPrefab has no Renderer. Assign a prefab/model that contains a visible mesh.");
+            return;
+        }
+
         if (prefabBoundsSize.x <= 0f || prefabBoundsSize.y <= 0f || prefabBoundsSize.z <= 0f)
         {
-            // Fallback to no scaling if we can't measure bounds.
-            prefabBoundsSize = Vector3.one;
+            Debug.LogError("[BrickCubeGenerator] Cannot generate: selected brickPrefab has invalid render bounds.");
+            return;
         }
+
+        var container = GetOrCreateContainer();
+        ClearContainer(container);
 
         if (packingMode == PackingMode.TiledLayers)
         {
@@ -966,12 +971,8 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         var renderers = instance.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0) return;
 
-        // Only vary brightness (avoid hue shifts). We keep alpha from colorMin/colorMax but default to 1.
-        var minBrightness = Mathf.Min(colorMin.grayscale, colorMax.grayscale);
-        var maxBrightness = Mathf.Max(colorMin.grayscale, colorMax.grayscale);
-        var brightness = RandomRange(rng, minBrightness, maxBrightness);
-        var alpha = RandomRange(rng, Mathf.Min(colorMin.a, colorMax.a), Mathf.Max(colorMin.a, colorMax.a));
-        var color = new Color(brightness, brightness, brightness, alpha);
+        var t = (float)rng.NextDouble();
+        var color = Color.Lerp(colorMin, colorMax, t);
 
         var metallic = RandomRange(rng, metallicRange.x, metallicRange.y);
         var roughness = RandomRange(rng, roughnessRange.x, roughnessRange.y);
@@ -1272,7 +1273,7 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         }
     }
 
-    private Vector3 GetPrefabBoundsSize()
+    private bool TryGetPrefabBoundsSize(out Vector3 size)
     {
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -1285,8 +1286,11 @@ public sealed class BrickCubeGenerator : MonoBehaviour
                 {
                     if (root != null)
                     {
-                        var bounds = CalculateWorldBounds(root);
-                        return bounds.size;
+                        if (TryCalculateWorldBounds(root, out var bounds))
+                        {
+                            size = bounds.size;
+                            return true;
+                        }
                     }
                 }
                 finally
@@ -1306,7 +1310,7 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         temp.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
         temp.transform.localScale = Vector3.one;
 
-        var measured = CalculateWorldBounds(temp);
+        var hasBounds = TryCalculateWorldBounds(temp, out var measured);
 
 #if UNITY_EDITOR
         if (!Application.isPlaying)
@@ -1321,24 +1325,32 @@ public sealed class BrickCubeGenerator : MonoBehaviour
         Destroy(temp);
 #endif
 
-        return measured.size;
+        if (hasBounds)
+        {
+            size = measured.size;
+            return true;
+        }
+
+        size = Vector3.zero;
+        return false;
     }
 
-    private static Bounds CalculateWorldBounds(GameObject root)
+    private static bool TryCalculateWorldBounds(GameObject root, out Bounds bounds)
     {
         var renderers = root.GetComponentsInChildren<Renderer>(true);
         if (renderers == null || renderers.Length == 0)
         {
-            return new Bounds(Vector3.zero, Vector3.one);
+            bounds = default;
+            return false;
         }
 
-        var bounds = renderers[0].bounds;
+        bounds = renderers[0].bounds;
         for (var i = 1; i < renderers.Length; i++)
         {
             bounds.Encapsulate(renderers[i].bounds);
         }
 
-        return bounds;
+        return true;
     }
 
     private void OnValidate()
