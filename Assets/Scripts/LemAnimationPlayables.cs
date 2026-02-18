@@ -24,9 +24,9 @@ using UnityEngine.Animations;
 ///   playables.Dispose();               // cleanup on destroy
 ///
 /// TO ADD A NEW ANIMATION:
-///   1. Drop the FBX into Assets/Resources/Animations/
+///   1. Export the clip from UMotion or place the .anim in Assets/Resources/Animations/
 ///   2. Add a constant to GameConstants.AnimationClips
-///   3. Load and pass the clip in LemController.SetupVisual()
+///   3. Load and pass the clip in CharacterVisual.SetupAnimation()
 ///   4. Call SetActiveClip() with the new name when appropriate
 /// </summary>
 public class LemAnimationPlayables : System.IDisposable
@@ -40,6 +40,22 @@ public class LemAnimationPlayables : System.IDisposable
     /// A value of 10 means ~95% blended in 0.3 seconds.
     /// </summary>
     public float BlendRate { get; set; } = 10f;
+
+    /// <summary>
+    /// Controls animation playback speed (1 = normal, 2 = double speed, 0.5 = half speed).
+    /// Use this to sync animation with movement speed and prevent foot sliding.
+    /// </summary>
+    public float Speed
+    {
+        get => mixer.IsValid() ? (float)mixer.GetSpeed() : 1f;
+        set
+        {
+            if (mixer.IsValid())
+            {
+                mixer.SetSpeed(Mathf.Max(0f, value));
+            }
+        }
+    }
 
     public bool IsValid => graph.IsValid();
 

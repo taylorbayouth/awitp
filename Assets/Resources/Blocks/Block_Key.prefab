@@ -276,7 +276,7 @@ MonoBehaviour:
   showTriggerGizmos: 1
   onTriggerBoxSize: {x: 1, y: 1, z: 1}
   onTriggerYOffset: 1
-  centerTriggerRadius: 0.02
+  centerTriggerRadius: 0.1
   centerTriggerYOffset: 0.5
   centerTriggerWorldYOffset: 0
   centerLabelDuration: 0.15

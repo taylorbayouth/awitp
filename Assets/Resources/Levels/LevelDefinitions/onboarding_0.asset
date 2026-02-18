@@ -33,91 +33,84 @@ MonoBehaviour:
       farClipPlane: 500
     blocks: []
     permanentBlocks:
-    - blockType: 1
+    - blockType: 0
       gridIndex: 1
-      inventoryKey: Teleporter_A
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 2
+      gridIndex: 32
+      inventoryKey: Crumbler
       flavorId: A
       routeSteps: []
     - blockType: 1
       gridIndex: 50
-      inventoryKey: Teleporter_A
-      flavorId: A
+      inventoryKey: Teleporter_B
+      flavorId: D
       routeSteps: []
     - blockType: 0
-      gridIndex: 0
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 51
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 52
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 2
-      gridIndex: 53
-      inventoryKey: Crumbler
-      flavorId: A
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 54
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 65
+      gridIndex: 31
       inventoryKey: Walk
       flavorId: 
       routeSteps: []
     - blockType: 1
-      gridIndex: 2
-      inventoryKey: Teleporter_B_1
-      flavorId: B
-      routeSteps: []
-    - blockType: 1
-      gridIndex: 56
-      inventoryKey: Teleporter_B_1
-      flavorId: B
-      routeSteps: []
-    - blockType: 2
-      gridIndex: 57
-      inventoryKey: Crumbler
-      flavorId: A
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 69
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 4
-      gridIndex: 58
-      inventoryKey: Key
-      flavorId: 
-      routeSteps: []
-    - blockType: 0
-      gridIndex: 3
-      inventoryKey: Walk
-      flavorId: 
-      routeSteps: []
-    - blockType: 3
       gridIndex: 33
-      inventoryKey: Transporter_D2,R1
-      flavorId: 1
-      routeSteps:
-      - D2
-      - R1
+      inventoryKey: Teleporter_B
+      flavorId: D
+      routeSteps: []
     - blockType: 0
-      gridIndex: 5
+      gridIndex: 30
       inventoryKey: Walk
       flavorId: 
       routeSteps: []
-    - blockType: 5
+    - blockType: 0
+      gridIndex: 10
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 56
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 2
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 1
+      gridIndex: 5
+      inventoryKey: Teleporter_C
+      flavorId: C
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 19
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 8
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 7
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
       gridIndex: 6
-      inventoryKey: Lock
+      inventoryKey: Walk
+      flavorId: 
+      routeSteps: []
+    - blockType: 1
+      gridIndex: 3
+      inventoryKey: Teleporter_C
+      flavorId: C
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 4
+      inventoryKey: Walk
       flavorId: 
       routeSteps: []
     inventoryEntries:
@@ -225,12 +218,24 @@ MonoBehaviour:
       pairSize: 2
       maxCount: 1
       currentCount: 1
+    - entryId: Transporter_R1,U4
+      blockType: 3
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps:
+      - R1
+      - U4
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 1
+      currentCount: 1
     placeableSpaceIndices: 
     lems:
-    - gridIndex: 10
+    - gridIndex: 11
       facingRight: 1
-      worldPosition: {x: -4.5, y: -2.5, z: 0.5}
+      worldPosition: {x: -3.5, y: -2.5, z: 0.5}
       hasWorldPosition: 1
     keyStates: []
     levelName: Onboarding 0
-    saveTimestamp: 2026-02-08 22:18:50
+    saveTimestamp: 2026-02-17 21:48:10

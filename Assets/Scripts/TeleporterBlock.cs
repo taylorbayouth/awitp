@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using DG.Tweening;
+using TMPro;
 
 /// <summary>
 /// Teleporter block: teleports Lem to matching paired teleporter with same flavor.
@@ -48,14 +49,25 @@ public class TeleporterBlock : BaseBlock
 
     [Header("Label Settings")]
     public bool showTeleportLabel = true;
-    public Color labelColor = new Color(0f, 0f, 0f, 123f/255f);
-    [Tooltip("Font used for the 3D teleporter label text.")]
-    public Font teleporterLabelFont;
+    public Color labelColor = new Color(1f, 1f, 1f, 0.9f);
+    [Tooltip("TMP font asset for the 3D teleporter label text.")]
+    public TMP_FontAsset teleporterLabelFont;
     public float labelScale = 0.28f;
-    public float labelZOffset = 0.01f;
+    public float labelZOffset = 0.05f;
+    [Tooltip("Multiplier for wave bobbing on the label. 0 = static, 1 = match wave amplitude.")]
+    [SerializeField, Range(0f, 20f)] private float labelWaveBobScale = 10f;
 
-    private TextMesh labelMesh;
+    [Header("Label Glow")]
+    [SerializeField] private Color glowColor = new Color(0.3f, 0.8f, 1f, 1f);
+    [SerializeField, Range(0f, 1f)] private float glowOuter = 0.45f;
+    [SerializeField, Range(0f, 1f)] private float glowInner = 0.15f;
+    [SerializeField, Range(-1f, 1f)] private float glowOffset = 0f;
+    [SerializeField, Range(1f, 10f)] private float glowPower = 2f;
+
+    private TextMeshPro labelTMP;
     private Transform labelTransform;
+    private WaterCubeController waterController;
+    private Vector3 labelBaseLocalPos;
 
     private static readonly Dictionary<LemController, float> LemCooldownUntil = new Dictionary<LemController, float>();
     private readonly HashSet<LemController> blockedUntilTriggerExit = new HashSet<LemController>();
@@ -117,6 +129,7 @@ public class TeleporterBlock : BaseBlock
         TryResolveFlavorFromInventory();
         SyncFlavor();
         ApplyFlavorVisuals();
+        waterController = GetComponentInChildren<WaterCubeController>();
         EnsureLabel();
         UpdateLabel();
     }
@@ -124,6 +137,17 @@ public class TeleporterBlock : BaseBlock
     private void LateUpdate()
     {
         if (labelTransform == null || !showTeleportLabel) return;
+
+        // Apply wave displacement to label so it bobs vertically with the water surface.
+        // Sample at the block's world position (fixed) to avoid feedback loop.
+        if (waterController != null && labelWaveBobScale > 0f)
+        {
+            float displacement = waterController.GetWaveDisplacement(transform.position);
+            Vector3 pos = labelBaseLocalPos;
+            pos.y += displacement * labelWaveBobScale;
+            labelTransform.localPosition = pos;
+        }
+
         FaceCamera();
     }
 
@@ -195,10 +219,26 @@ public class TeleporterBlock : BaseBlock
     {
         if (lem == null || destination == null) yield break;
 
+        // Get Lem's Rigidbody and CharacterVisual once for the entire sequence
+        Rigidbody lemRb = lem.GetComponent<Rigidbody>();
+        if (lemRb == null)
+        {
+            Debug.LogError("[TeleporterBlock] Lem has no Rigidbody - teleport aborted");
+            yield break;
+        }
+
+        CharacterVisual characterVisual = lem.GetComponent<CharacterVisual>();
+
         yield return lem.StartCoroutine(lem.TweenHorizontalSpeedToZero(lem.GetInteractionStopTweenDuration()));
 
         lem.SetFrozen(true);
         SetCooldown(lem);
+
+        // Enable transparency mode before fading
+        if (characterVisual != null)
+        {
+            characterVisual.EnableTransparency();
+        }
 
         float preDelay = Mathf.Max(0f, preTeleportPauseSeconds);
         if (preDelay > 0f)
@@ -212,8 +252,16 @@ public class TeleporterBlock : BaseBlock
 
         if (lem != null && sinkAmount > 0f)
         {
-            float sourceSunkenY = lem.transform.position.y - sinkAmount;
-            Tween sinkTween = lem.transform.DOMoveY(sourceSunkenY, sinkDuration).SetEase(Ease.InOutSine);
+            float sourceSunkenY = lemRb.position.y - sinkAmount;
+            // Animate Rigidbody for consistent physics handling
+            Tween sinkTween = lemRb.DOMove(new Vector3(lemRb.position.x, sourceSunkenY, lemRb.position.z), sinkDuration).SetEase(Ease.InOutSine);
+
+            // Fade Lem from fully visible (1) to invisible (0) during sink
+            if (characterVisual != null)
+            {
+                DOTween.To(() => 1f, alpha => characterVisual.SetAlpha(alpha), 0f, sinkDuration).SetEase(Ease.InOutSine);
+            }
+
             yield return sinkTween.WaitForCompletion();
         }
 
@@ -228,12 +276,23 @@ public class TeleporterBlock : BaseBlock
         Vector3 targetPosition = destination.GetTeleportLandingPosition(destinationYOffset);
         targetPosition.y -= sinkAmount;
         destination.RequireTriggerExitBeforeReuse(lem);
-        lem.transform.position = targetPosition;
+
+        // Use Rigidbody.position instead of transform.position for proper physics integration
+        // This works even when kinematic and ensures transform/rb stay in sync
+        lemRb.position = targetPosition;
 
         if (lem != null && sinkAmount > 0f)
         {
             float destinationRiseY = targetPosition.y + sinkAmount;
-            Tween riseTween = lem.transform.DOMoveY(destinationRiseY, riseDuration).SetEase(Ease.InOutSine);
+            // Animate Rigidbody instead of Transform to maintain physics integrity
+            Tween riseTween = lemRb.DOMove(new Vector3(lemRb.position.x, destinationRiseY, lemRb.position.z), riseDuration).SetEase(Ease.InOutSine);
+
+            // Fade Lem from invisible (0) to fully visible (1) during rise
+            if (characterVisual != null)
+            {
+                DOTween.To(() => 0f, alpha => characterVisual.SetAlpha(alpha), 1f, riseDuration).SetEase(Ease.InOutSine);
+            }
+
             yield return riseTween.WaitForCompletion();
         }
 
@@ -245,7 +304,19 @@ public class TeleporterBlock : BaseBlock
 
         if (lem != null)
         {
+            // Restore opaque rendering and ensure Lem is fully visible
+            if (characterVisual != null)
+            {
+                characterVisual.SetAlpha(1f);
+                characterVisual.DisableTransparency();
+            }
+
             lem.SetFacingRight(facingRight);
+
+            // Ensure physics system is up-to-date before unfreezing
+            // (ensures CheckGround() raycast in SetFrozen will have accurate collision data)
+            Physics.SyncTransforms();
+
             lem.SetFrozen(false);
         }
     }
@@ -410,14 +481,27 @@ public class TeleporterBlock : BaseBlock
     {
         if (!showTeleportLabel) return;
 
+        // Find existing label child
         if (labelTransform == null)
         {
             Transform existing = transform.Find("TeleportLabel");
             if (existing != null)
             {
                 labelTransform = existing;
-                labelMesh = labelTransform.GetComponent<TextMesh>();
+                labelTMP = labelTransform.GetComponent<TextMeshPro>();
             }
+        }
+
+        // Only create new objects / migrate components on live scene instances.
+        // OnValidate runs on prefab assets (even during play mode) where create/destroy is unsafe.
+        if (!Application.isPlaying || !gameObject.scene.IsValid()) return;
+
+        // Migrate: remove legacy TextMesh on scene instances
+        if (labelTransform != null)
+        {
+            TextMesh legacyMesh = labelTransform.GetComponent<TextMesh>();
+            if (legacyMesh != null)
+                Destroy(legacyMesh);
         }
 
         if (labelTransform == null)
@@ -427,12 +511,12 @@ public class TeleporterBlock : BaseBlock
             labelTransform = labelObj.transform;
         }
 
-        if (labelMesh == null)
+        if (labelTMP == null)
         {
-            labelMesh = labelTransform.GetComponent<TextMesh>();
-            if (labelMesh == null)
+            labelTMP = labelTransform.GetComponent<TextMeshPro>();
+            if (labelTMP == null)
             {
-                labelMesh = labelTransform.gameObject.AddComponent<TextMesh>();
+                labelTMP = labelTransform.gameObject.AddComponent<TextMeshPro>();
             }
         }
 
@@ -443,24 +527,54 @@ public class TeleporterBlock : BaseBlock
     {
         if (!showTeleportLabel) return;
         EnsureLabel();
+        if (labelTMP == null) return;
 
-        labelMesh.text = GetTeleportKey();
-        labelMesh.anchor = TextAnchor.MiddleCenter;
-        labelMesh.alignment = TextAlignment.Center;
-        labelMesh.fontStyle = FontStyle.Bold;
-        labelMesh.fontSize = 200;
-        labelMesh.characterSize = 0.17f;
-        labelMesh.color = labelColor;
+        labelTMP.text = GetTeleportKey();
+        labelTMP.alignment = TextAlignmentOptions.Center;
+        labelTMP.fontStyle = FontStyles.Bold;
+        labelTMP.fontSize = 60f;
+        labelTMP.color = labelColor;
+        labelTMP.enableWordWrapping = false;
+        labelTMP.overflowMode = TextOverflowModes.Overflow;
+        labelTMP.sortingOrder = 1;
+
         if (teleporterLabelFont != null)
+            labelTMP.font = teleporterLabelFont;
+
+        ApplyLabelMaterial();
+    }
+
+    private void ApplyLabelMaterial()
+    {
+        if (labelTMP == null || labelTMP.font == null) return;
+
+        // Ensure shared material is initialized from the font asset.
+        // Prefab-baked TMP components can have m_sharedMaterial = null,
+        // which causes fontMaterial to throw when cloning.
+        if (labelTMP.fontSharedMaterial == null)
         {
-            labelMesh.font = teleporterLabelFont;
+            if (labelTMP.font.material == null) return;
+            labelTMP.fontSharedMaterial = labelTMP.font.material;
         }
 
-        Renderer labelRenderer = labelMesh.GetComponent<Renderer>();
-        if (labelRenderer != null && labelMesh.font != null)
+        // Switch from Mobile/Distance Field to full Distance Field for glow support
+        // and render after the water cube's Transparent queue so depth doesn't cull us
+        Shader fullShader = Shader.Find("TextMeshPro/Distance Field");
+        if (fullShader != null)
         {
-            // TextMesh must use the active font's atlas material to render glyphs.
-            labelRenderer.sharedMaterial = labelMesh.font.material;
+            Material mat = labelTMP.fontMaterial;
+            if (mat == null) return;
+
+            mat.shader = fullShader;
+            mat.renderQueue = 3100; // After Transparent (3000) where the water cube renders
+
+            // Glow
+            mat.EnableKeyword("GLOW_ON");
+            mat.SetColor("_GlowColor", glowColor);
+            mat.SetFloat("_GlowOuter", glowOuter);
+            mat.SetFloat("_GlowInner", glowInner);
+            mat.SetFloat("_GlowOffset", glowOffset);
+            mat.SetFloat("_GlowPower", glowPower);
         }
     }
 
@@ -468,7 +582,8 @@ public class TeleporterBlock : BaseBlock
     {
         if (labelTransform == null) return;
         float halfDepth = 0.5f * transform.localScale.z;
-        labelTransform.localPosition = new Vector3(0f, 0f, -halfDepth - labelZOffset);
+        labelBaseLocalPos = new Vector3(0f, 0f, -halfDepth - labelZOffset);
+        labelTransform.localPosition = labelBaseLocalPos;
         labelTransform.localScale = Vector3.one * labelScale;
     }
 
@@ -594,7 +709,7 @@ public class TeleporterBlock : BaseBlock
         {
             Renderer renderer = renderers[i];
             if (renderer == null) continue;
-            if (renderer.GetComponent<TextMesh>() != null) continue;
+            if (renderer.GetComponent<TextMeshPro>() != null) continue;
             if (renderer.GetComponentInParent<WaterCubeController>() != null) continue;
             ApplyRendererPalette(renderer, useFlavorOverride, padBaseColor, padEmissionColor);
         }

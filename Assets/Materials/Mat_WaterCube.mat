@@ -20,33 +20,33 @@ Material:
   stringTagMap:
     RenderType: Transparent
   disabledShaderPasses: []
-  m_LockedProperties:
+  m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
     m_TexEnvs: []
     m_Ints: []
     m_Floats:
-    - _WaveAmplitude: 0.015
-    - _WaveFrequency: 3
-    - _WaveSpeed: 1.2
-    - _Wave2Amplitude: 0.008
-    - _Wave2Frequency: 7
-    - _Wave2Speed: 0.8
-    - _NormalStrength: 0.8
-    - _NormalScale: 6
-    - _NormalSpeed: 0.5
-    - _FresnelPower: 3
-    - _ReflectionStrength: 0.6
-    - _RefractionStrength: 0.03
-    - _SpecularPower: 128
-    - _SpecularIntensity: 1.5
-    - _SSSPower: 4
-    - _SSSIntensity: 0.3
-    - _MinAlpha: 0.75
+    - _FresnelPower: 1
+    - _MinAlpha: 0.445
+    - _NormalScale: 1.14
+    - _NormalSpeed: 0.29
+    - _NormalStrength: 0.356
+    - _ReflectionStrength: 1
+    - _RefractionStrength: 0.1
+    - _SSSIntensity: 0
+    - _SSSPower: 1
+    - _SpecularIntensity: 3
+    - _SpecularPower: 512
+    - _Wave2Amplitude: 0.0093
+    - _Wave2Frequency: 4.72
+    - _Wave2Speed: 0
+    - _WaveAmplitude: 0.1
+    - _WaveFrequency: 7.85
+    - _WaveSpeed: 1.67
     m_Colors:
-    - _DeepColor: {r: 0.02, g: 0.08, b: 0.25, a: 1}
-    - _ShallowColor: {r: 0.1, g: 0.4, b: 0.6, a: 1}
-    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
+    - _DeepColor: {r: 0.007787468, g: 0.11312647, b: 0.3301887, a: 1}
     - _SSSColor: {r: 0.1, g: 0.6, b: 0.3, a: 1}
+    - _ShallowColor: {r: 0.28261837, g: 0.45848808, b: 0.6886792, a: 0.89411765}
+    - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

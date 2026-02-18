@@ -2,6 +2,10 @@ using System.Text;
 using UnityEditor;
 using UnityEngine;
 
+/// <summary>
+/// Copies a single component's serialized properties to the clipboard
+/// in a format optimized for sharing with LLMs.
+/// </summary>
 public static class ComponentSettingsCopyForLLM
 {
     private const string MenuPath = "CONTEXT/Component/Copy component settings for LLM";
@@ -17,6 +21,22 @@ public static class ComponentSettingsCopyForLLM
         StringBuilder builder = new StringBuilder(1024);
         builder.AppendLine($"Component: {component.GetType().Name}");
         builder.AppendLine($"GameObject: {component.gameObject.name}");
+
+        // Enabled state
+        if (component is Behaviour behaviour)
+            builder.AppendLine($"Enabled: {behaviour.enabled}");
+        else if (component is Renderer renderer)
+            builder.AppendLine($"Enabled: {renderer.enabled}");
+        else if (component is Collider collider)
+            builder.AppendLine($"Enabled: {collider.enabled}");
+
+        // Script file path for MonoBehaviours
+        if (component is MonoBehaviour mb)
+        {
+            var script = MonoScript.FromMonoBehaviour(mb);
+            if (script != null)
+                builder.AppendLine($"Script: {AssetDatabase.GetAssetPath(script)}");
+        }
 
         SerializedObject serialized = new SerializedObject(component);
         SerializedProperty iterator = serialized.GetIterator();
@@ -37,11 +57,24 @@ public static class ComponentSettingsCopyForLLM
         }
 
         GUIUtility.systemCopyBuffer = builder.ToString().TrimEnd();
-        Debug.Log($"Copied {component.GetType().Name} settings to clipboard for LLM.");
+        Debug.Log($"[LLM Copy] Copied {component.GetType().Name} settings to clipboard.");
     }
 
-    private static string GetPropertyValueString(SerializedProperty property)
+    /// <summary>
+    /// Converts a SerializedProperty to a human-readable string.
+    /// Public so GameObjectInfoCopyForLLM can reuse it.
+    /// </summary>
+    public static string GetPropertyValueString(SerializedProperty property)
     {
+        return GetPropertyValueString(property, 0);
+    }
+
+    private static string GetPropertyValueString(SerializedProperty property, int depth)
+    {
+        // Guard against excessive recursion
+        if (depth > 4)
+            return $"({property.type})";
+
         if (property.isArray && property.propertyType != SerializedPropertyType.String)
         {
             int size = property.arraySize;
@@ -59,7 +92,7 @@ public static class ComponentSettingsCopyForLLM
                 {
                     arrayBuilder.Append(", ");
                 }
-                arrayBuilder.Append(GetPropertyValueString(element));
+                arrayBuilder.Append(GetPropertyValueString(element, depth + 1));
             }
             arrayBuilder.Append(']');
             return arrayBuilder.ToString();
@@ -74,19 +107,19 @@ public static class ComponentSettingsCopyForLLM
             case SerializedPropertyType.Float:
                 return property.floatValue.ToString("G");
             case SerializedPropertyType.String:
-                return property.stringValue ?? string.Empty;
+                return string.IsNullOrEmpty(property.stringValue) ? "(empty)" : property.stringValue;
             case SerializedPropertyType.Color:
                 return property.colorValue.ToString();
             case SerializedPropertyType.ObjectReference:
                 return FormatObjectReference(property.objectReferenceValue);
             case SerializedPropertyType.LayerMask:
-                return property.intValue.ToString();
+                return FormatLayerMask(property.intValue);
             case SerializedPropertyType.Enum:
                 return FormatEnum(property);
             case SerializedPropertyType.Vector2:
                 return property.vector2Value.ToString();
             case SerializedPropertyType.Vector3:
-                return property.vector3Value.ToString();
+                return FormatVector3(property.vector3Value);
             case SerializedPropertyType.Vector4:
                 return property.vector4Value.ToString();
             case SerializedPropertyType.Rect:
@@ -107,8 +140,10 @@ public static class ComponentSettingsCopyForLLM
                 return FormatCurve(property.animationCurveValue);
             case SerializedPropertyType.ExposedReference:
                 return FormatObjectReference(property.exposedReferenceValue);
+            case SerializedPropertyType.Gradient:
+                return "Gradient(...)";
             case SerializedPropertyType.Generic:
-                return property.hasVisibleChildren ? "{...}" : property.type;
+                return FormatGeneric(property, depth);
             default:
                 return property.type;
         }
@@ -120,6 +155,11 @@ public static class ComponentSettingsCopyForLLM
         {
             return "null";
         }
+
+        string path = AssetDatabase.GetAssetPath(obj);
+        if (!string.IsNullOrEmpty(path))
+            return $"{obj.name} ({obj.GetType().Name}, {path})";
+
         return $"{obj.name} ({obj.GetType().Name})";
     }
 
@@ -135,10 +175,72 @@ public static class ComponentSettingsCopyForLLM
 
     private static string FormatCurve(AnimationCurve curve)
     {
-        if (curve == null)
+        if (curve == null || curve.length == 0)
         {
-            return "AnimationCurve(null)";
+            return "AnimationCurve(empty)";
         }
-        return $"AnimationCurve(keys={curve.length})";
+
+        var sb = new StringBuilder();
+        sb.Append($"AnimationCurve(keys={curve.length}) [");
+        for (int i = 0; i < curve.length; i++)
+        {
+            var key = curve[i];
+            if (i > 0) sb.Append(", ");
+            sb.Append($"({key.time:G3}, {key.value:G3})");
+        }
+        sb.Append(']');
+        return sb.ToString();
+    }
+
+    private static string FormatVector3(Vector3 v)
+    {
+        return $"({v.x:G5}, {v.y:G5}, {v.z:G5})";
+    }
+
+    private static string FormatLayerMask(int mask)
+    {
+        if (mask == 0) return "Nothing";
+        if (mask == ~0) return "Everything";
+
+        var sb = new StringBuilder();
+        for (int i = 0; i < 32; i++)
+        {
+            if ((mask & (1 << i)) != 0)
+            {
+                string layerName = LayerMask.LayerToName(i);
+                if (string.IsNullOrEmpty(layerName)) continue;
+                if (sb.Length > 0) sb.Append(" | ");
+                sb.Append(layerName);
+            }
+        }
+        return sb.Length > 0 ? sb.ToString() : mask.ToString();
+    }
+
+    private static string FormatGeneric(SerializedProperty property, int depth)
+    {
+        if (!property.hasVisibleChildren)
+            return property.type;
+
+        // Recurse into child properties for inline display
+        var sb = new StringBuilder();
+        sb.Append("{ ");
+
+        var child = property.Copy();
+        var endProperty = property.GetEndProperty();
+        bool first = true;
+
+        if (child.NextVisible(true))
+        {
+            while (!SerializedProperty.EqualContents(child, endProperty))
+            {
+                if (!first) sb.Append(", ");
+                first = false;
+                sb.Append($"{child.displayName}: {GetPropertyValueString(child, depth + 1)}");
+                if (!child.NextVisible(false)) break;
+            }
+        }
+
+        sb.Append(" }");
+        return sb.ToString();
     }
 }

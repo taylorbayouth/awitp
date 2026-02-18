@@ -19,6 +19,20 @@ public class CenterTrigger : MonoBehaviour
             sphere = gameObject.AddComponent<SphereCollider>();
         }
         sphere.isTrigger = true;
+
+        // CenterTrigger needs its own kinematic Rigidbody so Unity treats it as
+        // an independent physics body.  Without this, the SphereCollider is a
+        // compound child of the block's Rigidbody and trigger events
+        // (OnTriggerEnter/Stay/Exit) are dispatched only to the parent block,
+        // never to this script.
+        Rigidbody rb = GetComponent<Rigidbody>();
+        if (rb == null)
+        {
+            rb = gameObject.AddComponent<Rigidbody>();
+        }
+        rb.isKinematic = true;
+        rb.useGravity = false;
+
         UpdateShape();
     }
 
@@ -92,7 +106,12 @@ public class CenterTrigger : MonoBehaviour
     private void UpdateCenterState(Collider other)
     {
         Vector3 footPoint = GetFootPoint(other);
-        float distance = Vector3.Distance(footPoint, transform.position);
+        // Use XY distance only — the game runs on the XY plane, so any minor
+        // Z drift from physics should not affect center detection.
+        Vector3 triggerPos = transform.position;
+        float dx = footPoint.x - triggerPos.x;
+        float dy = footPoint.y - triggerPos.y;
+        float distance = Mathf.Sqrt(dx * dx + dy * dy);
         bool inside = distance <= sphere.radius;
 
         if (inside && !isActive)

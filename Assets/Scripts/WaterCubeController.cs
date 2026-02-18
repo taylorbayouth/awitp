@@ -45,7 +45,7 @@ public class WaterCubeController : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float sssIntensity = 0.3f;
 
     [Header("Transparency")]
-    [SerializeField, Range(0.3f, 1f)] private float minAlpha = 0.75f;
+    [SerializeField, Range(0f, 1f)] private float minAlpha = 0.75f;
 
     [Header("Reflection Probe (Optional)")]
     [SerializeField] private bool useRealtimeProbe = false;
@@ -122,7 +122,18 @@ public class WaterCubeController : MonoBehaviour
     void OnValidate()
     {
         if (materialInstance != null)
+        {
             UpdateMaterial();
+            return;
+        }
+
+        // Edit mode: push values to the shared material for live Inspector preview
+        if (!Application.isPlaying)
+        {
+            var r = GetComponentInChildren<Renderer>();
+            if (r != null && r.sharedMaterial != null)
+                PushPropertiesToMaterial(r.sharedMaterial);
+        }
     }
 
     void OnDestroy()
@@ -146,33 +157,38 @@ public class WaterCubeController : MonoBehaviour
 
     private void UpdateMaterial()
     {
-        materialInstance.SetColor(ID_DeepColor, deepColor);
-        materialInstance.SetColor(ID_ShallowColor, shallowColor);
-        materialInstance.SetColor(ID_SpecularColor, specularColor);
-        materialInstance.SetColor(ID_SSSColor, sssColor);
+        PushPropertiesToMaterial(materialInstance);
+    }
 
-        materialInstance.SetFloat(ID_WaveAmplitude, waveAmplitude);
-        materialInstance.SetFloat(ID_WaveFrequency, waveFrequency);
-        materialInstance.SetFloat(ID_WaveSpeed, waveSpeed);
-        materialInstance.SetFloat(ID_Wave2Amplitude, wave2Amplitude);
-        materialInstance.SetFloat(ID_Wave2Frequency, wave2Frequency);
-        materialInstance.SetFloat(ID_Wave2Speed, wave2Speed);
+    private void PushPropertiesToMaterial(Material mat)
+    {
+        mat.SetColor(ID_DeepColor, deepColor);
+        mat.SetColor(ID_ShallowColor, shallowColor);
+        mat.SetColor(ID_SpecularColor, specularColor);
+        mat.SetColor(ID_SSSColor, sssColor);
 
-        materialInstance.SetFloat(ID_NormalStrength, normalStrength);
-        materialInstance.SetFloat(ID_NormalScale, normalScale);
-        materialInstance.SetFloat(ID_NormalSpeed, normalSpeed);
+        mat.SetFloat(ID_WaveAmplitude, waveAmplitude);
+        mat.SetFloat(ID_WaveFrequency, waveFrequency);
+        mat.SetFloat(ID_WaveSpeed, waveSpeed);
+        mat.SetFloat(ID_Wave2Amplitude, wave2Amplitude);
+        mat.SetFloat(ID_Wave2Frequency, wave2Frequency);
+        mat.SetFloat(ID_Wave2Speed, wave2Speed);
 
-        materialInstance.SetFloat(ID_FresnelPower, fresnelPower);
-        materialInstance.SetFloat(ID_ReflectionStrength, reflectionStrength);
-        materialInstance.SetFloat(ID_RefractionStrength, refractionStrength);
+        mat.SetFloat(ID_NormalStrength, normalStrength);
+        mat.SetFloat(ID_NormalScale, normalScale);
+        mat.SetFloat(ID_NormalSpeed, normalSpeed);
 
-        materialInstance.SetFloat(ID_SpecularPower, specularPower);
-        materialInstance.SetFloat(ID_SpecularIntensity, specularIntensity);
+        mat.SetFloat(ID_FresnelPower, fresnelPower);
+        mat.SetFloat(ID_ReflectionStrength, reflectionStrength);
+        mat.SetFloat(ID_RefractionStrength, refractionStrength);
 
-        materialInstance.SetFloat(ID_SSSPower, sssPower);
-        materialInstance.SetFloat(ID_SSSIntensity, sssIntensity);
+        mat.SetFloat(ID_SpecularPower, specularPower);
+        mat.SetFloat(ID_SpecularIntensity, specularIntensity);
 
-        materialInstance.SetFloat(ID_MinAlpha, minAlpha);
+        mat.SetFloat(ID_SSSPower, sssPower);
+        mat.SetFloat(ID_SSSIntensity, sssIntensity);
+
+        mat.SetFloat(ID_MinAlpha, minAlpha);
     }
 
     public void ApplyFlavorPalette(Color deep, Color shallow, Color sss)
@@ -213,6 +229,27 @@ public class WaterCubeController : MonoBehaviour
         baseShallowColor = shallowColor;
         baseSpecularColor = specularColor;
         baseSssColor = sssColor;
+    }
+
+    // Wave direction constants — must match the shader exactly
+    private static readonly Vector3 WaveDir1 = new Vector3(1.0f, 0.7f, 0.3f).normalized;
+    private static readonly Vector3 WaveDir2 = new Vector3(-0.5f, 1.0f, 0.8f).normalized;
+
+    /// <summary>
+    /// Computes the combined wave displacement at a world position,
+    /// matching the shader's Gerstner vertex displacement.
+    /// </summary>
+    public float GetWaveDisplacement(Vector3 worldPos)
+    {
+        float wave1 = GerstnerWave(worldPos, WaveDir1, waveFrequency, waveSpeed, waveAmplitude);
+        float wave2 = GerstnerWave(worldPos, WaveDir2, wave2Frequency, wave2Speed, wave2Amplitude);
+        return wave1 + wave2;
+    }
+
+    private static float GerstnerWave(Vector3 worldPos, Vector3 dir, float freq, float speed, float amp)
+    {
+        float phase = Vector3.Dot(worldPos, dir) * freq + Time.time * speed;
+        return amp * (0.5f * Mathf.Sin(phase) + 0.25f * Mathf.Sin(phase * 2.1f + 0.7f));
     }
 
     private void SetupReflectionProbe()

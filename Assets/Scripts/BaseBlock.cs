@@ -70,14 +70,11 @@ public class BaseBlock : MonoBehaviour
     [Tooltip("Y offset for 'On' trigger box relative to block center")]
     public float onTriggerYOffset = 1f;
 
-    [Tooltip("Radius of the center detection sphere")]
-    public float centerTriggerRadius = 0.08f;
-
-    [Tooltip("Y offset for center trigger relative to block scale")]
-    public float centerTriggerYOffset = 0.5f;
-
-    [Tooltip("Additional world-space Y offset for center trigger")]
-    public float centerTriggerWorldYOffset = 0f;
+    // Center trigger geometry is defined in GameConstants.CenterTrigger
+    // so every block type shares the same values (not serialized per-prefab).
+    public float centerTriggerRadius => GameConstants.CenterTrigger.Radius;
+    public float centerTriggerYOffset => GameConstants.CenterTrigger.YOffset;
+    public float centerTriggerWorldYOffset => GameConstants.CenterTrigger.WorldYOffset;
 
     /// <summary>
     /// Represents the current state of player interaction with this block.
@@ -138,7 +135,8 @@ public class BaseBlock : MonoBehaviour
 
         // Cache renderer reference for highlighting (check children only, base has no mesh)
         blockRenderer = GetComponentInChildren<Renderer>();
-        if (blockRenderer != null && blockRenderer.material != null)
+        if (blockRenderer != null && blockRenderer.material != null
+            && blockRenderer.material.HasProperty("_Color"))
         {
             originalColor = blockRenderer.material.color;
         }
@@ -256,7 +254,7 @@ public class BaseBlock : MonoBehaviour
 
             return block;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             return null;
         }

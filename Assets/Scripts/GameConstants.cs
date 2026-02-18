@@ -9,6 +9,17 @@ public static class GameConstants
         public const float CellSize = 1f;
     }
 
+    /// <summary>
+    /// Shared center-trigger geometry for all block types.
+    /// Defined here (not serialized per-prefab) so every block gets the same values.
+    /// </summary>
+    public static class CenterTrigger
+    {
+        public const float Radius = 0.1f;
+        public const float YOffset = 0.5f;
+        public const float WorldYOffset = 0f;
+    }
+
     public static class Tags
     {
         public const string Player = "Player";
@@ -26,8 +37,8 @@ public static class GameConstants
     public static class ResourcePaths
     {
         public const string BaseBlockPrefab = "Blocks/BaseBlock";
-        public const string LemMeshPrefab = "Characters/LemMeshPreRigged";
-        public const string LemTexture = "Characters/LemMeshPreRigged_Albedo";
+        public const string LemPrefab = "Characters/Lem";
+        public const string CharacterMeshPrefab = "Characters/RobotKyle";
         public const string BuilderMusicTrack = "Music/SoundtrackBuild";
         public const string PlayMusicTrack = "Music/SoundtrackPlay";
         public const string LevelsRoot = "Levels";
@@ -38,7 +49,7 @@ public static class GameConstants
 
     /// <summary>
     /// Animation clip identifiers and resource paths for the Playables-based animation system.
-    /// To add a new animation: add constants here, then load + register in LemController.SetupVisual().
+    /// To add a new animation: add constants here, then load + register in CharacterVisual.SetupAnimation().
     /// </summary>
     public static class AnimationClips
     {
@@ -48,9 +59,13 @@ public static class GameConstants
         public const string WalkCarry = "walkCarry";
 
         // Resource paths (relative to Resources/, no extension)
-        public const string IdlePath = "Animations/Sad Idle";
-        public const string WalkPath = "Animations/Sad Walk";
-        public const string WalkCarryPath = "Animations/Walking Carrying";
+        public const string IdlePath = "Animations/Idle";
+        public const string WalkPath = "Animations/Walk";
+        /// <summary>
+        /// Falls back to WalkPath at runtime if this clip is missing.
+        /// Create a carry animation with UMotion Pro and place it in Resources/Animations/.
+        /// </summary>
+        public const string WalkCarryPath = "Animations/WalkCarry";
     }
 
     public static class ObjectNames
