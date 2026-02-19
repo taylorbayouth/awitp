@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using DG.Tweening;
 using UnityEngine;
 
 /// <summary>
@@ -194,6 +195,9 @@ public class BlockPlacementManager : MonoBehaviour
             newBlock.isPermanent = false;
             ApplyEntryMetadata(newBlock, resolvedEntry, inventory);
             PositionBlock(newBlock, gridIndex);
+
+            // Rubber band scale pop for responsive placement feedback
+            newBlock.transform.DOPunchScale(Vector3.one * 0.15f, 0.5f, vibrato: 1, elasticity: 0.5f);
 
             // Register the new block
             placedBlocks[gridIndex] = newBlock;
