@@ -280,6 +280,7 @@ public class TeleporterBlock : BaseBlock
         // Use Rigidbody.position instead of transform.position for proper physics integration
         // This works even when kinematic and ensures transform/rb stay in sync
         lemRb.position = targetPosition;
+        lem.NotifyTeleported();
 
         if (lem != null && sinkAmount > 0f)
         {
@@ -534,12 +535,19 @@ public class TeleporterBlock : BaseBlock
         labelTMP.fontStyle = FontStyles.Bold;
         labelTMP.fontSize = 60f;
         labelTMP.color = labelColor;
-        labelTMP.enableWordWrapping = false;
+        labelTMP.textWrappingMode = TextWrappingModes.NoWrap;
         labelTMP.overflowMode = TextOverflowModes.Overflow;
         labelTMP.sortingOrder = 1;
 
         if (teleporterLabelFont != null)
+        {
             labelTMP.font = teleporterLabelFont;
+        }
+        else if (labelTMP.font == null && TMP_Settings.defaultFontAsset != null)
+        {
+            // Avoid TMP mesh generation errors when no font is explicitly assigned.
+            labelTMP.font = TMP_Settings.defaultFontAsset;
+        }
 
         ApplyLabelMaterial();
     }

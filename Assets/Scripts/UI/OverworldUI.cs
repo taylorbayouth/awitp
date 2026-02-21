@@ -48,8 +48,6 @@ public class OverworldUI : MonoBehaviour
     [Header("Debug")]
     public bool verboseLogs = false;
 
-    private bool _revealInProgress = false;
-
     private void Start()
     {
         EnsureManagers();
@@ -152,8 +150,6 @@ public class OverworldUI : MonoBehaviour
     /// </summary>
     private IEnumerator WorldRevealSequence(string worldName)
     {
-        _revealInProgress = true;
-
         // Ensure we have an overlay panel (create at runtime if not assigned in inspector)
         EnsureRevealOverlay();
 
@@ -189,8 +185,6 @@ public class OverworldUI : MonoBehaviour
         {
             revealOverlayPanel.SetActive(false);
         }
-
-        _revealInProgress = false;
 
         // Rebuild cards so the new world is now visible and interactable
         BuildWorldCards();

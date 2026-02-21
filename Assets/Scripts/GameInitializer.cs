@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 /// <summary>
 /// Ensures all game systems are properly initialized in the correct order.
@@ -7,6 +9,8 @@ using UnityEngine;
 [ExecuteAlways]
 public class GameInitializer : MonoBehaviour
 {
+    private const string BackToMenuButtonName = "BackToMainMenuButton";
+
     [Header("Auto-Setup")]
     public bool autoSetupOnStart = true;
 
@@ -177,6 +181,8 @@ public class GameInitializer : MonoBehaviour
         // Check for pending level to load from UI navigation
         Invoke(nameof(LoadPendingLevel), 0.2f);
 
+        EnsureBackToMainMenuButton();
+
         DebugLog.Info("=== Game Initializer: Setup Complete ===");
     }
 
@@ -223,5 +229,74 @@ public class GameInitializer : MonoBehaviour
             gridManager.RefreshGrid();
             DebugLog.Info("GameInitializer: Performed delayed refresh");
         }
+    }
+
+    private void EnsureBackToMainMenuButton()
+    {
+        if (SceneManager.GetActiveScene().name != GameConstants.SceneNames.Gameplay) return;
+        if (GameObject.Find(BackToMenuButtonName) != null) return;
+
+        Canvas canvas = ServiceRegistry.TryGet<Canvas>();
+        if (canvas == null)
+        {
+            canvas = FindFirstObjectByType<Canvas>();
+        }
+
+        if (canvas == null)
+        {
+            Debug.LogWarning("[GameInitializer] No Canvas found for back-to-menu button.");
+            return;
+        }
+
+        GameObject buttonObject = new GameObject(BackToMenuButtonName, typeof(RectTransform), typeof(Image), typeof(Button));
+        buttonObject.transform.SetParent(canvas.transform, false);
+
+        RectTransform buttonRect = buttonObject.GetComponent<RectTransform>();
+        buttonRect.anchorMin = new Vector2(1f, 1f);
+        buttonRect.anchorMax = new Vector2(1f, 1f);
+        buttonRect.pivot = new Vector2(1f, 1f);
+        buttonRect.anchoredPosition = new Vector2(-16f, -16f);
+        buttonRect.sizeDelta = new Vector2(88f, 34f);
+
+        Image buttonImage = buttonObject.GetComponent<Image>();
+        buttonImage.color = new Color(0f, 0f, 0f, 0.55f);
+
+        Button button = buttonObject.GetComponent<Button>();
+        button.targetGraphic = buttonImage;
+        button.onClick.AddListener(OnBackToMainMenuClicked);
+
+        GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(Text));
+        textObject.transform.SetParent(buttonObject.transform, false);
+
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        Text text = textObject.GetComponent<Text>();
+        text.text = "Menu";
+        text.alignment = TextAnchor.MiddleCenter;
+        text.color = Color.white;
+        text.fontSize = 18;
+        text.raycastTarget = false;
+        Font font = Resources.Load<Font>("Fonts/Koulen-Regular");
+        if (font == null)
+        {
+            font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+        text.font = font;
+    }
+
+    private void OnBackToMainMenuClicked()
+    {
+        LevelManager levelManager = ServiceRegistry.TryGet<LevelManager>();
+        if (levelManager != null)
+        {
+            levelManager.ReturnToMainMenu();
+            return;
+        }
+
+        SceneManager.LoadScene(GameConstants.SceneNames.MainMenu);
     }
 }

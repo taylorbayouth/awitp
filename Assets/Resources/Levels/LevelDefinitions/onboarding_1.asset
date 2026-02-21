@@ -16,26 +16,60 @@ MonoBehaviour:
   levelName: Onboarding 1
   worldId: onboarding
   orderInWorld: 1
-  gridLineWidth: 0.01
-  gridLineColor: {r: 0.8, g: 0.8, b: 0.8, a: 0.2}
-  cursorPlaceableColor: {r: 0, g: 0, b: 1, a: 1}
-  cursorEditableColor: {r: 0, g: 1, b: 0, a: 1}
-  cursorNonPlaceableColor: {r: 1, g: 0, b: 0, a: 1}
+  gridLineWidth: 0.019
+  gridLineColor: {r: 0.053800277, g: 0.26901042, b: 0.3679245, a: 0.33333334}
+  cursorPlaceableColor: {r: 1, g: 0.7595173, b: 0, a: 1}
+  cursorEditableColor: {r: 1, g: 1, b: 1, a: 1}
+  cursorNonPlaceableColor: {r: 0.05882353, g: 0.27058825, b: 0.36862746, a: 0.3137255}
   visualTheme: {fileID: 0}
   audioTheme: {fileID: 0}
   levelData:
-    gridWidth: 9
-    gridHeight: 8
+    gridWidth: 12
+    gridHeight: 6
     cameraSettings:
       cameraDistance: 150
       gridMargin: 1
       nearClipPlane: 0.24
       farClipPlane: 500
     blocks: []
-    permanentBlocks: []
-    inventoryEntries: []
-    placeableSpaceIndices: 
-    lems: []
+    permanentBlocks:
+    - blockType: 0
+      gridIndex: 25
+      inventoryKey: 
+      flavorId: 
+      routeSteps: []
+    - blockType: 0
+      gridIndex: 26
+      inventoryKey: 
+      flavorId: 
+      routeSteps: []
+    inventoryEntries:
+    - entryId: Walk
+      blockType: 0
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps: []
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 3
+      currentCount: 2
+    - entryId: Crumbler
+      blockType: 2
+      displayName: 
+      inventoryGroupId: 
+      flavorId: 
+      routeSteps: []
+      isPairInventory: 0
+      pairSize: 2
+      maxCount: 2
+      currentCount: 2
+    placeableSpaceIndices: 0f000000100000003700000038000000
+    lems:
+    - gridIndex: 37
+      facingRight: 1
+      worldPosition: {x: -4.5, y: 0, z: 0.5}
+      hasWorldPosition: 1
     keyStates: []
-    levelName: 
-    saveTimestamp: 2026-02-09 17:41:06
+    levelName: Onboarding 1
+    saveTimestamp: 2026-02-21 18:10:19

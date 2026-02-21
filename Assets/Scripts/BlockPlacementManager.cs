@@ -159,10 +159,16 @@ public class BlockPlacementManager : MonoBehaviour
 
             // === PLACEMENT LOGIC ===
 
-            // If there's already a non-permanent block here, destroy it
-            if (placedBlocks.ContainsKey(gridIndex))
+            // If there's already a block of the same type here, do nothing
+            if (placedBlocks.TryGetValue(gridIndex, out BaseBlock existingBlock) && existingBlock.blockType == blockType)
             {
-                placedBlocks[gridIndex].DestroyBlock();
+                return null;
+            }
+
+            // If there's already a non-permanent block here, destroy it
+            if (existingBlock != null)
+            {
+                existingBlock.DestroyBlock();
             }
 
             // Consume block from inventory

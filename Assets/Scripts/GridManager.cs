@@ -913,6 +913,20 @@ public class GridManager : MonoBehaviour
     }
 
     /// <summary>
+    /// Re-applies current level definition driven grid settings, then refreshes visuals.
+    /// Useful during play mode when tweaking inspector values.
+    /// </summary>
+    public void RefreshGridSettings()
+    {
+        if (_currentLevelDefinition != null)
+        {
+            ApplyLevelDefinitionSettings(_currentLevelDefinition);
+        }
+
+        RefreshGrid();
+    }
+
+    /// <summary>
     /// Checks if any placed block claims this index via GetBlockedIndices().
     /// Used for placement validation - blocks can reserve grid spaces they don't occupy.
     /// </summary>

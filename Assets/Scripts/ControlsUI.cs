@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Simple text-only control hints shown per mode.
+/// Simple text-only control hints shown per mode, plus a Refresh Grid button in Play mode.
 /// </summary>
 public class ControlsUI : MonoBehaviour
 {
@@ -14,7 +14,13 @@ public class ControlsUI : MonoBehaviour
     public float boxWidth = 420f;
     public int fontSize = 18;
 
+    [Header("Refresh Button")]
+    public float buttonWidth = 140f;
+    public float buttonHeight = 32f;
+    public float buttonBottomMargin = 12f;
+
     private GUIStyle textStyle;
+    private GUIStyle buttonStyle;
 
     private void Awake()
     {
@@ -30,7 +36,8 @@ public class ControlsUI : MonoBehaviour
 
         EnsureStyle();
 
-        string[] lines = GetLinesForMode(builderController.currentMode);
+        GameMode mode = builderController.currentMode;
+        string[] lines = GetLinesForMode(mode);
         if (lines == null || lines.Length == 0) return;
 
         float lineHeight = textStyle.lineHeight > 0 ? textStyle.lineHeight : (fontSize + 6f);
@@ -40,6 +47,23 @@ public class ControlsUI : MonoBehaviour
 
         Rect rect = new Rect(x, y, boxWidth, boxHeight);
         GUI.Label(rect, string.Join("\n", lines), textStyle);
+
+        // Show Refresh Grid button in Play mode
+        if (mode == GameMode.Play)
+        {
+            float btnX = Screen.width - buttonWidth - rightMargin;
+            float btnY = y - buttonHeight - buttonBottomMargin;
+            Rect btnRect = new Rect(btnX, btnY, buttonWidth, buttonHeight);
+
+            if (GUI.Button(btnRect, "Refresh Grid (R)", buttonStyle))
+            {
+                GridManager grid = GridManager.Instance;
+                if (grid != null)
+                {
+                    grid.RefreshGridSettings();
+                }
+            }
+        }
     }
 
     private void EnsureStyle()
@@ -50,7 +74,13 @@ public class ControlsUI : MonoBehaviour
         {
             alignment = TextAnchor.LowerRight,
             fontSize = fontSize,
-            normal = { textColor = Color.white }
+            normal = { textColor = Color.black }
+        };
+
+        buttonStyle = new GUIStyle(GUI.skin.button)
+        {
+            fontSize = fontSize,
+            alignment = TextAnchor.MiddleCenter
         };
     }
 
@@ -66,6 +96,7 @@ public class ControlsUI : MonoBehaviour
                     "Remove: Delete / Backspace",
                     "Select Block: 1-9 / [ ]",
                     "Level Editor: E",
+                    "Refresh Grid: R",
                     "Play: P"
                 };
             case GameMode.Designer:
@@ -78,11 +109,13 @@ public class ControlsUI : MonoBehaviour
                     "Remove: Delete / Backspace",
                     "Select Block: 1-9 / [ ]",
                     "Editor: E",
+                    "Refresh Grid: R",
                     "Play: P"
                 };
             case GameMode.Play:
                 return new[]
                 {
+                    "Refresh Grid: R",
                     "Exit Play: P"
                 };
             default:

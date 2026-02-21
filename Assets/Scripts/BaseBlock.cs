@@ -491,10 +491,12 @@ public class BaseBlock : MonoBehaviour
 
         if (collision.collider.CompareTag(GameConstants.Tags.Player))
         {
+            LemController lem = collision.collider.GetComponent<LemController>();
             isPlayerOnBlock = false;
             currentPlayer = null;
             lastTriggerState = TriggerState.Off;
 
+            OnPlayerTriggerExit(lem);
             OnPlayerExit();
         }
     }

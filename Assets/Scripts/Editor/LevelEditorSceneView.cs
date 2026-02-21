@@ -22,7 +22,7 @@ public static class LevelEditorSceneView
         if (!_enabled) return;
 
         // Find active GridManager in the scene
-        GridManager gridManager = ServiceRegistry.Get<GridManager>();
+        GridManager gridManager = ServiceRegistry.Get<GridManager>(logIfMissing: false);
         if (gridManager == null) return;
 
         DrawGrid(gridManager);

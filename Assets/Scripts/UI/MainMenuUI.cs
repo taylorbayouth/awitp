@@ -80,7 +80,6 @@ public class MainMenuUI : MonoBehaviour
         // Access singletons to force initialization.
         _ = WorldManager.Instance;
         _ = ProgressManager.Instance;
-        _ = LevelManager.Instance;
     }
 
     private void OnLoadGame()

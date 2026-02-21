@@ -166,6 +166,17 @@ public class BuilderController : MonoBehaviour
                 currentBlockType = currentInventoryEntry.blockType;
             }
         }
+
+        // Always ensure a block is selected when entries are available
+        if (currentInventoryEntry == null && entries.Count > 0)
+        {
+            currentInventoryIndex = 0;
+            currentInventoryEntry = entries[0];
+            if (currentInventoryEntry != null)
+            {
+                currentBlockType = currentInventoryEntry.blockType;
+            }
+        }
     }
 
     private void Update()
@@ -538,6 +549,16 @@ public class BuilderController : MonoBehaviour
             else
             {
                 EnterPlayMode();
+            }
+        }
+
+        // R key re-applies level/grid settings and refreshes visuals.
+        if (kb.rKey.wasPressedThisFrame)
+        {
+            GridManager grid = GridManager.Instance;
+            if (grid != null)
+            {
+                grid.RefreshGridSettings();
             }
         }
     }

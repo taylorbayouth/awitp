@@ -47,7 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::LemController
   walkSpeed: 0.8
   lemHeight: 0.85
-  horizontalAcceleration: 0.6
+  horizontalAcceleration: 0.8
   horizontalDeceleration: 0.2
   wallBumpSlowdownMultiplier: 0.85
   wallBumpSlowdownDuration: 0.8
@@ -62,7 +62,7 @@ MonoBehaviour:
   fallArcHorizontalSpeed: 0.8
   fallArcEaseInTime: 0.08
   fallArcEaseOutTime: 0.08
-  facingRight: 1
+  facingRight: 0
   isGrounded: 1
   isAlive: 1
   isFrozen: 1

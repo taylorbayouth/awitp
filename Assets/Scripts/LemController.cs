@@ -74,17 +74,8 @@ public class LemController : MonoBehaviour
     [SerializeField] private LayerMask solidLayerMask = ~0;
 
     [Header("Fall Arc")]
-    [Tooltip("How far forward (X) to move during the fall (0.5 = center of next cell)")]
+    [Tooltip("How far forward (X) to drift during the arc phase before dropping straight down (0.5 = center of next cell)")]
     [SerializeField] private float fallArcForwardDistance = 0.5f;
-
-    [Tooltip("Horizontal speed during the fall arc (units per second)")]
-    [SerializeField] private float fallArcHorizontalSpeed = 0.8f;
-
-    [Tooltip("Time to smoothly ramp up to full speed at start (seconds)")]
-    [SerializeField] private float fallArcEaseInTime = 0.08f;
-
-    [Tooltip("Time to smoothly ramp down to zero at handoff (seconds)")]
-    [SerializeField] private float fallArcEaseOutTime = 0.08f;
 
     [Header("State")]
     [Tooltip("True if facing right, false if facing left")]
@@ -123,9 +114,6 @@ public class LemController : MonoBehaviour
     private bool wasGroundedLastFrame = true;
     private float fallArcTargetX;
     private float fallArcDirectionX;
-    private float fallArcElapsed = 0f;
-    private bool fallArcHandoffStarted = false;
-    private float fallArcHandoffElapsed = 0f;
     private float wallBumpTimer = 0f;
     private bool isExternalStopActive = false;
     private bool isTurningAround = false;
@@ -374,8 +362,9 @@ public class LemController : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts the controlled fall arc when Lem steps off a ledge.
-    /// Physics stays active - we only control horizontal velocity.
+    /// Starts the arc phase when Lem steps off a ledge.
+    /// Lem continues forward at walkSpeed until centered over the next column,
+    /// then transitions to a straight vertical drop.
     /// </summary>
     private void StartFallArc()
     {
@@ -384,78 +373,32 @@ public class LemController : MonoBehaviour
         isFallingArc = true;
         fallArcDirectionX = facingRight ? 1f : -1f;
         fallArcTargetX = transform.position.x + (fallArcForwardDistance * fallArcDirectionX);
-        fallArcElapsed = 0f;
-        fallArcHandoffStarted = false;
-        fallArcHandoffElapsed = 0f;
-
-        // Start with zero horizontal velocity (will ease in)
-        rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
     }
 
     /// <summary>
-    /// Updates the fall arc each FixedUpdate.
-    /// Eases in at start, maintains speed, then eases out at handoff.
+    /// Updates the arc phase each FixedUpdate.
+    /// Maintains walkSpeed forward until centered over target X, then ends.
     /// </summary>
     private void UpdateFallArc()
     {
-        fallArcElapsed += Time.fixedDeltaTime;
-
         float currentX = transform.position.x;
         bool reachedTarget = (fallArcDirectionX > 0 && currentX >= fallArcTargetX) ||
                              (fallArcDirectionX < 0 && currentX <= fallArcTargetX);
 
-        // Start handoff when reached target
-        if (reachedTarget && !fallArcHandoffStarted)
+        if (reachedTarget)
         {
-            fallArcHandoffStarted = true;
-            fallArcHandoffElapsed = 0f;
-        }
-
-        // During handoff, ease out velocity
-        if (fallArcHandoffStarted)
-        {
-            fallArcHandoffElapsed += Time.fixedDeltaTime;
-
-            if (fallArcHandoffElapsed >= fallArcEaseOutTime)
-            {
-                // Handoff complete
-                EndFallArc();
-                return;
-            }
-
-            // Ease out: velocity goes from full → 0
-            float t = fallArcHandoffElapsed / fallArcEaseOutTime;
-            float speed = fallArcHorizontalSpeed * (1f - t) * fallArcDirectionX;
-            rb.linearVelocity = new Vector3(speed, rb.linearVelocity.y, 0f);
+            EndFallArc();
             return;
         }
 
-        // End immediately if landed before handoff complete
         if (isGrounded)
         {
             EndFallArc();
             return;
         }
 
-        // Calculate horizontal velocity with ease-in at start
-        float horizontalSpeed;
-        if (fallArcElapsed < fallArcEaseInTime)
-        {
-            // Ease in: velocity goes from 0 → full
-            float t = fallArcElapsed / fallArcEaseInTime;
-            horizontalSpeed = fallArcHorizontalSpeed * t;
-        }
-        else
-        {
-            // Full speed
-            horizontalSpeed = fallArcHorizontalSpeed;
-        }
-
-        rb.linearVelocity = new Vector3(
-            horizontalSpeed * fallArcDirectionX,
-            rb.linearVelocity.y,
-            0f
-        );
+        // Maintain walk speed forward; gravity handles vertical
+        rb.linearVelocity = new Vector3(walkSpeed * fallArcDirectionX, rb.linearVelocity.y, 0f);
     }
 
     /// <summary>
@@ -464,9 +407,7 @@ public class LemController : MonoBehaviour
     private void EndFallArc()
     {
         isFallingArc = false;
-        fallArcHandoffStarted = false;
-
-        // Zero horizontal velocity - Lem falls straight down from here
+        // Zero horizontal velocity — Lem falls straight down from here
         rb.linearVelocity = new Vector3(0f, rb.linearVelocity.y, 0f);
     }
 
@@ -513,7 +454,6 @@ public class LemController : MonoBehaviour
 
             // Cancel any active fall arc
             isFallingArc = false;
-            fallArcHandoffStarted = false;
             wasGroundedLastFrame = true;
 
             if (!rb.isKinematic)
@@ -627,6 +567,40 @@ public class LemController : MonoBehaviour
             // Fallback if no editor controller (shouldn't happen in normal gameplay)
             Destroy(gameObject, 0.1f);
         }
+    }
+
+    /// <summary>
+    /// Fired when Lem's position changes discontinuously (teleport).
+    /// Camera should snap tracking to the new position when this fires.
+    /// </summary>
+    public event System.Action<Vector3> OnTeleported;
+
+    /// <summary>
+    /// Notifies the system that Lem has been teleported to a new position.
+    /// Call this after any instant position warp (e.g., TeleporterBlock).
+    /// </summary>
+    public void NotifyTeleported()
+    {
+        OnTeleported?.Invoke(GetFootPointPosition());
+    }
+
+    /// <summary>
+    /// Returns the current horizontal velocity from the Rigidbody.
+    /// Positive = moving right, negative = moving left.
+    /// Returns 0 if frozen, dead, or no Rigidbody.
+    /// </summary>
+    public float GetHorizontalVelocity()
+    {
+        if (rb == null || isFrozen || !isAlive) return 0f;
+        return rb.linearVelocity.x;
+    }
+
+    /// <summary>
+    /// Returns the walk speed setting for normalization.
+    /// </summary>
+    public float GetWalkSpeed()
+    {
+        return walkSpeed;
     }
 
     public Vector3 GetFootPointPosition()
@@ -900,6 +874,9 @@ public class LemController : MonoBehaviour
                 // Keep walk animation active during turn (independent of physics slowdown)
                 speed = walkSpeed * Mathf.Max(0.1f, wallBumpSlowdownMultiplier);
             }
+            // Future: fall animations plug in here.
+            // isFallingArc == true                → arc phase (drifting forward)
+            // !isFallingArc && !isGrounded        → drop phase (straight down)
             else if (!isFallingArc && isGrounded && rb != null)
             {
                 speed = Mathf.Abs(rb.linearVelocity.x);

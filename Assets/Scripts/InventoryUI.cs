@@ -102,8 +102,8 @@ public class InventoryUI : MonoBehaviour
     public float iconShadowBlur = 2f;
 
     [Header("Selection Border")]
-    [Range(0f, 8f)]
-    public float selectionBorderThickness = 3f;
+    [Range(0f, 16f)]
+    public float selectionBorderThickness = 6f;
     public Color selectionBorderColor = new Color(0.192f, 0.290f, 0.306f, 1f);
 
     [Header("Font")]
@@ -1010,7 +1010,7 @@ public class InventoryUI : MonoBehaviour
         }
 
         float scale = availableHeight / contentHeight;
-        scale = Mathf.Max(0.01f, scale);
+        scale = Mathf.Clamp(scale, 0.01f, 1f);
         _panel.localScale = new Vector3(scale, scale, 1f);
     }
 

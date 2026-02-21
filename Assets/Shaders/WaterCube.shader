@@ -42,6 +42,9 @@ Shader "Custom/WaterCube"
         _SSSPower ("SSS Power", Range(1, 10)) = 4.0
         _SSSIntensity ("SSS Intensity", Range(0, 1)) = 0.3
 
+        [Header(Emission)]
+        [HDR] _EmissionColor ("Emission Color", Color) = (0, 0, 0, 1)
+
         [Header(Transparency)]
         _MinAlpha ("Minimum Alpha", Range(0.3, 1)) = 0.75
     }
@@ -121,6 +124,8 @@ Shader "Custom/WaterCube"
             float _SSSIntensity;
 
             float _MinAlpha;
+
+            fixed4 _EmissionColor;
 
             sampler2D _WaterGrabTexture;
 
@@ -269,7 +274,7 @@ Shader "Custom/WaterCube"
                 float3 sss = _SSSColor.rgb * _LightColor0.rgb * sssBase * sssMask * _SSSIntensity;
 
                 // ------- Final compositing -------
-                float3 color = lerp(tintedRefraction, reflection, fresnel) + specular + sss;
+                float3 color = lerp(tintedRefraction, reflection, fresnel) + specular + sss + _EmissionColor.rgb;
 
                 // Alpha: opaque at glancing angles, slightly transparent at center
                 float alpha = lerp(_MinAlpha, 1.0, fresnel);
@@ -407,6 +412,8 @@ Shader "Custom/WaterCube"
 
             float _MinAlpha;
 
+            fixed4 _EmissionColor;
+
             float hash_fb(float3 p)
             {
                 p = frac(p * 0.3183099 + 0.1);
@@ -526,7 +533,7 @@ Shader "Custom/WaterCube"
                 float3 sss = _SSSColor.rgb * _LightColor0.rgb * sssBase * sssMask * _SSSIntensity;
 
                 // Composite
-                float3 color = lerp(waterColor, reflection, fresnel) + specular + sss;
+                float3 color = lerp(waterColor, reflection, fresnel) + specular + sss + _EmissionColor.rgb;
                 float alpha = lerp(_MinAlpha, 1.0, fresnel);
 
                 return fixed4(color, alpha);
